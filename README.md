@@ -1,14 +1,21 @@
-# Taskwarrior Task Viewer (c)
+# Personal PATH Scripts Repository
+
+Collection of utility scripts designed to be added to system PATH for easy command-line access
+
+## Primary Script: Taskwarrior Task Viewer (c)
 
 Simple bash wrapper for viewing Taskwarrior tasks with common filters
 
 ## Installation
 
+This repository contains personal scripts intended to be available system-wide via PATH:
+
 ```bash
+# Make executable and install to PATH
 chmod +x c
+sudo mv c /usr/local/bin/  # Or ~/.local/bin/ for user-specific install
+
 # Edit the script to point to your show_tw_tasks.py location
-# Optional: Move to somewhere in your PATH
-# sudo mv c /usr/local/bin/
 ```
 
 ## Usage
