@@ -36,4 +36,6 @@ c --no_default_filters "+otherfilter"
 
 ## Dependencies
 
-Requires `show_tw_tasks.py` and its dependencies (tasklib, click)
+Requires tasklib and a local copy of `show_tw_tasks.py` from the user's scripts repository
+
+**Note:** The script contains an absolute path to `show_tw_tasks.py` that users will need to modify for their system
