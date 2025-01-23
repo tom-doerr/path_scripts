@@ -1,2 +1,2 @@
 #!/bin/bash
-"/home/tom/git/path_scripts/scripts/show_tw_tasks.py" --once "$@"
+"/home/tom/git/scripts/show_tw_tasks.py" --once "$@"
