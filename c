@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Default filters
-DEFAULT_FILTERS=("+PENDING" "-bu")
+# Default filters (combined in single string)
+DEFAULT_FILTERS="'+PENDING -bu'"
 
 # Handle arguments
 if [[ $# -eq 0 ]]; then
@@ -21,8 +21,8 @@ fi
 # Build arguments
 ARGS=("--once")
 if ! $NO_DEFAULTS; then
-    ARGS+=("${DEFAULT_FILTERS[@]}")
+    ARGS+=("$DEFAULT_FILTERS")
 fi
 
-# Pass through remaining arguments
-"/home/tom/git/scripts/show_tw_tasks.py" "${ARGS[@]}" "$@"
+# Pass through remaining arguments as single quoted string
+"/home/tom/git/scripts/show_tw_tasks.py" "${ARGS[@]}" "$*"
