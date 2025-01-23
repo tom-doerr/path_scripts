@@ -1,2 +1,2 @@
 #!/bin/bash
-./scripts/show_tw_tasks.py --once "$@"
+"$(dirname "$0")/scripts/show_tw_tasks.py" --once "$@"
