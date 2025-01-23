@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Default filters (combined in single string)
-DEFAULT_FILTERS="'+PENDING -bu'"
+# Default filters as single string without extra quoting
+DEFAULT_FILTERS="+PENDING -bu"
 
 # Handle arguments
 if [[ $# -eq 0 ]]; then
@@ -24,5 +24,9 @@ if ! $NO_DEFAULTS; then
     ARGS+=("$DEFAULT_FILTERS")
 fi
 
-# Pass through remaining arguments as single quoted string
-"/home/tom/git/scripts/show_tw_tasks.py" "${ARGS[@]}" "$*"
+# Combine remaining arguments into single string and add to ARGS
+USER_ARGS="$*"
+ARGS+=("$USER_ARGS")
+
+# Pass all arguments as individual quoted elements
+"/home/tom/git/scripts/show_tw_tasks.py" "${ARGS[@]}"
