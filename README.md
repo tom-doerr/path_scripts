@@ -6,6 +6,7 @@ Simple bash wrapper for viewing Taskwarrior tasks with common filters
 
 ```bash
 chmod +x c
+# Edit the script to point to your show_tw_tasks.py location
 # Optional: Move to somewhere in your PATH
 # sudo mv c /usr/local/bin/
 ```
