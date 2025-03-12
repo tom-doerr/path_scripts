@@ -22,7 +22,7 @@ AIDER_ARGS=(
   --edit-format ${CONFIG[EDIT_FORMAT]}
   --yes-always
   --subtree-only
-  **/*py *py
+  "**/*py" "**/*md"
 )
 
 update_task_list() {
@@ -150,7 +150,8 @@ launch_instance() {
   local modes=("all" "tasks" "report" "dev")
   local mode_idx=$(( (instance_id - 1) % 4 ))
   
-  zsh -ic "project_agent --mode ${modes[$mode_idx]} $@" &
+  kitty @ launch --type=os-window --title "Agent $instance_id" \
+    --cwd current zsh -c "$(which project_agent) --mode ${modes[$mode_idx]} $@"
 }
 
 main() {
