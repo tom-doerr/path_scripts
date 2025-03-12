@@ -17,7 +17,7 @@ AIDER_ARGS=(
   --read spec.md
   --read issues.txt
   --file notes.md
-  --model $MODEL
+  --model ${CONFIG[MODEL]}
   --yes-always
   --no-auto-lint
   --edit-format whole
@@ -29,21 +29,21 @@ update_task_list() {
   echo "\n=== Updating Task List ==="
   aider ${AIDER_ARGS} task_list.md --message \
     'Review project and update task_list.md with prioritized, non-duplicated tasks'
-  sleep $TASK_SLEEP
+  sleep ${CONFIG[TASK_SLEEP]}
 }
 
 update_project_report() {
   echo "\n=== Updating Project Report ==="
   aider ${AIDER_ARGS} project_report.md --message \
     'Update project_report.md with current status, critical path, architecture issues, simplification opportunities. No long-term planning. Ensure accuracy and no duplication.'
-  sleep $REPORT_SLEEP
+  sleep ${CONFIG[REPORT_SLEEP]}
 }
 
 handle_development_tasks() {
   echo "\n=== Handling Development Tasks ==="
   aider ${AIDER_ARGS} --auto-test --message \
     'Work on highest priority tasks. Prioritize low complexity and isolated micro-packages.'
-  sleep $BASE_SLEEP
+  sleep ${CONFIG[BASE_SLEEP]}
 }
 
 parse_arguments() {
@@ -81,7 +81,7 @@ parse_arguments() {
 
 run_cycle() {
   local cycle=$1
-  echo "\n\n=== Cycle $cycle/$ITERATIONS ==="
+  echo "\n\n=== Cycle $cycle/${CONFIG[ITERATIONS]} ==="
   
   case $CONFIG[MODE] in
     "all")
