@@ -30,21 +30,21 @@ AIDER_ARGS=(
 update_task_list() {
   echo "\n=== Updating Task List ==="
   aider ${AIDER_ARGS} task_list.md --message \
-    'Review project and update task_list.md with prioritized, non-duplicated tasks'
+    "Review project and update task_list.md with prioritized, non-duplicated tasks. You are worker ${CONFIG[WORKER_ID]}."
   sleep ${CONFIG[TASK_SLEEP]}
 }
 
 update_project_report() {
   echo "\n=== Updating Project Report ==="
   aider ${AIDER_ARGS} project_report.md --message \
-    'Update project_report.md with current status, critical path, architecture issues, simplification opportunities. No long-term planning. Ensure accuracy and no duplication.'
+    "Update project_report.md with current status, critical path, architecture issues, simplification opportunities. No long-term planning. Ensure accuracy and no duplication. You are worker ${CONFIG[WORKER_ID]}."
   sleep ${CONFIG[REPORT_SLEEP]}
 }
 
 handle_development_tasks() {
   echo "\n=== Handling Development Tasks ==="
   aider ${AIDER_ARGS} --auto-test --message \
-    'Review spec.md and issues.txt and work on the highest priority items. Only work on pylint issues if the code is rated below 9'
+    "Review spec.md and issues.txt and work on the highest priority items. Only work on pylint issues if the code is rated below 9. You are worker ${CONFIG[WORKER_ID]}."
   sleep ${CONFIG[BASE_SLEEP]}
 }
 
@@ -73,6 +73,10 @@ parse_arguments() {
         ;;
       -n|--instances)
         CONFIG[INSTANCES]=$2
+        shift
+        ;;
+      --worker-id)
+        CONFIG[WORKER_ID]=$2
         shift
         ;;
       --help)
@@ -150,7 +154,7 @@ help() {
 launch_instance() {
   local instance_id=$1
   # Use direct command execution instead of nested instance management
-  kitty --title "Agent $instance_id" zsh -ic "project_agent --${CONFIG[MODE]} || echo 'Agent failed - press enter to exit'; read" &
+  kitty --title "Agent $instance_id" zsh -ic "project_agent --${CONFIG[MODE]} --worker-id $instance_id || echo 'Agent failed - press enter to exit'; read" &
 }
 
 main() {
