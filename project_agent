@@ -150,7 +150,7 @@ launch_instance() {
   local modes=("all" "tasks" "report" "dev")
   local mode_idx=$(( (instance_id - 1) % 4 ))
   
-  kitty --title "Agent $instance_id" zsh -ic "$(realpath $0) --mode ${modes[$mode_idx]}" &
+  kitty --title "Agent $instance_id" zsh -ic "$(realpath $0) --mode ${modes[$mode_idx]} || echo 'Agent failed - press enter to exit'; read" &
 }
 
 main() {
