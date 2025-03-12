@@ -5,12 +5,12 @@
 
 typeset -A CONFIG=(
   MODEL            "r1"
-  MAX_ITERATIONS   100
+  MAX_ITERATIONS   1000
   BASE_SLEEP       1
   TASK_SLEEP       60  
   REPORT_SLEEP     60
   MODE            "all"
-  ITERATIONS       1
+  ITERATIONS       1000
   EDIT_FORMAT      "diff"
 )
 
@@ -21,7 +21,7 @@ AIDER_ARGS=(
   --no-auto-lint
   --edit-format ${CONFIG[EDIT_FORMAT]}
   --subtree-only
-  "**/*py" "**/*md"
+  **/*py *py
 )
 
 update_task_list() {
