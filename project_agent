@@ -10,7 +10,6 @@ typeset -A CONFIG=(
   TASK_SLEEP       60  
   REPORT_SLEEP     60
   MODE            "all"
-  ITERATIONS       1000
   EDIT_FORMAT      "diff"
 )
 
@@ -61,7 +60,7 @@ parse_arguments() {
         CONFIG[MODE]="all"
         ;;
       -i|--iterations)
-        CONFIG[ITERATIONS]=$2
+        CONFIG[MAX_ITERATIONS]=$2
         shift
         ;;
       --edit-format)
@@ -116,7 +115,7 @@ help() {
   echo "  --all         Full operational mode (default)"
   
   echo "\nOPTIONS:"
-  echo "  -i, --iterations <NUM>  Set execution cycles (default: ${CONFIG[ITERATIONS]})"
+  echo "  -i, --iterations <NUM>  Set execution cycles (default: ${CONFIG[MAX_ITERATIONS]})"
   echo "  --edit-format (diff|whole) Edit format (default: ${CONFIG[EDIT_FORMAT]})"
   echo "  --help                  Show this help menu"
   
@@ -141,7 +140,7 @@ help() {
 
 main() {
   parse_arguments "$@"
-  for ((i=1; i<=${CONFIG[ITERATIONS]}; i++)); do
+  for ((i=1; i<=${CONFIG[MAX_ITERATIONS]}; i++)); do
     run_cycle $i
   done
 }
