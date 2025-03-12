@@ -147,7 +147,7 @@ help() {
 launch_instance() {
   local instance_id=$1
   # Use direct command execution instead of nested instance management
-  kitty --title "Agent $instance_id" zsh -ic "project_agent --mode ${CONFIG[MODE]} || echo 'Agent failed - press enter to exit'; read" &
+  kitty --title "Agent $instance_id" zsh -ic "project_agent --${CONFIG[MODE]} || echo 'Agent failed - press enter to exit'; read" &
 }
 
 main() {
