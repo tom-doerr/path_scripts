@@ -16,11 +16,9 @@ typeset -A CONFIG=(
 AIDER_ARGS=(
   --read spec.md
   --read issues.txt
-  --file notes.md
   --model ${CONFIG[MODEL]}
-  --yes-always
   --no-auto-lint
-  --edit-format whole
+  --edit-format diff
   --subtree-only
   "**/*py" "**/*md"
 )
