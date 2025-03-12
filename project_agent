@@ -65,8 +65,13 @@ parse_arguments() {
         CONFIG[ITERATIONS]=$2
         shift
         ;;
+      --help)
+        help
+        exit 0
+        ;;
       *)
         echo "Unknown option: $1"
+        help
         exit 1
         ;;
     esac
@@ -97,18 +102,37 @@ run_cycle() {
 }
 
 help() {
+  echo "Project Maintenance Agent - Unified Development Orchestrator"
+  echo "Version: 1.2.0 | License: MIT | Model: ${CONFIG[MODEL]}"
   echo "Usage: ./project_agent [OPTIONS]"
-  echo "Modes:"
-  echo "  --tasks    : Only run task list updates"
-  echo "  --report   : Only run project reporting"
-  echo "  --dev      : Only handle development tasks"
-  echo "  --all      : Run all tasks (default)"
-  echo "Options:"
-  echo "  -i, --iterations <NUM> : Set number of iterations (default: 1)"
-  echo ""
-  echo "Examples:"
-  echo "  ./project_agent --tasks -i 5    # Run task updates 5 times"
-  echo "  ./project_agent --report        # Generate one report"
+  
+  echo "\nOPERATIONAL MODES:"
+  echo "  --tasks       Focus only on task list maintenance (task_list.md)"
+  echo "  --report      Generate project status reports (project_report.md)"
+  echo "  --dev         Execute development tasks only (code changes)"
+  echo "  --all         Full operational mode (default)"
+  
+  echo "\nOPTIONS:"
+  echo "  -i, --iterations <NUM>  Set execution cycles (default: ${CONFIG[ITERATIONS]})"
+  echo "  --help                  Show this help menu"
+  
+  echo "\nCONFIGURATION DEFAULTS:"
+  echo "  Max Iterations: ${CONFIG[MAX_ITERATIONS]}"
+  echo "  Base Sleep: ${CONFIG[BASE_SLEEP]}s"
+  echo "  Task Sleep: ${CONFIG[TASK_SLEEP]}s"
+  echo "  Report Sleep: ${CONFIG[REPORT_SLEEP]}s"
+  
+  echo "\nEXAMPLES:"
+  echo "  ./project_agent --tasks -i 5     # Refresh task list 5 times"
+  echo "  ./project_agent --report         # Generate status report"
+  echo "  ./project_agent --dev            # Continuous development mode"
+  echo "  ./project_agent --all -i 100     # Full operation for 100 cycles"
+  
+  echo "\nNOTES:"
+  echo "  - Task priorities update automatically based on project state"
+  echo "  - Reports include architecture analysis and simplification opportunities"
+  echo "  - Development mode prefers isolated, low-complexity changes"
+  echo "  - Use 'aider --help' for details on the underlying AI agent"
 }
 
 main() {
