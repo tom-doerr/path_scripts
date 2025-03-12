@@ -147,10 +147,8 @@ help() {
 
 launch_instance() {
   local instance_id=$1
-  local modes=("all" "tasks" "report" "dev")
-  local mode_idx=$(( (instance_id - 1) % 4 ))
-  
-  kitty --title "Agent $instance_id" zsh -ic "$(realpath $0) --mode ${modes[$mode_idx]} || echo 'Agent failed - press enter to exit'; read" &
+  # Use direct command execution instead of nested instance management
+  kitty --title "Agent $instance_id" zsh -ic "project_agent --mode ${CONFIG[MODE]} || echo 'Agent failed - press enter to exit'; read" &
 }
 
 main() {
