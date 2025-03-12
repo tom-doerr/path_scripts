@@ -150,7 +150,7 @@ launch_instance() {
   local modes=("all" "tasks" "report" "dev")
   local mode_idx=$(( (instance_id - 1) % 4 ))
   
-  zsh -c "$(dirname $0)/project_agent --mode ${modes[$mode_idx]} $@" &
+  zsh -c "$(dirname $(realpath $0))/project_agent --mode ${modes[$mode_idx]} $@" &
 }
 
 main() {
