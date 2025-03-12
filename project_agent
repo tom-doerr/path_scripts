@@ -45,7 +45,7 @@ update_project_report() {
 handle_development_tasks() {
   echo "\n=== Handling Development Tasks ==="
   aider ${AIDER_ARGS} --auto-test --message \
-    'Work on highest priority tasks. Prioritize low complexity and isolated micro-packages.'
+    'Review spec.md and issues.txt and work on the highest priority items.'
   sleep ${CONFIG[BASE_SLEEP]}
 }
 
