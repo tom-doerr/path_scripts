@@ -20,8 +20,11 @@ AIDER_ARGS=(
   --model ${CONFIG[MODEL]}
   --no-auto-lint
   --edit-format ${CONFIG[EDIT_FORMAT]}
+  --no-browser
+  --no-suggest-shell-commands
+  --no-detect-urls
   --subtree-only
-  "**/*py" "**/*md"
+  **/*py 
 )
 
 update_task_list() {
