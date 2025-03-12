@@ -69,7 +69,7 @@ parse_arguments() {
         CONFIG[EDIT_FORMAT]="$2"
         shift
         ;;
-      --instances)
+      -n|--instances)
         CONFIG[INSTANCES]=$2
         shift
         ;;
@@ -123,7 +123,7 @@ help() {
   echo "\nOPTIONS:"
   echo "  -i, --iterations <NUM>  Set execution cycles (default: ${CONFIG[MAX_ITERATIONS]})"
   echo "  --edit-format (diff|whole) Edit format (default: ${CONFIG[EDIT_FORMAT]})"
-  echo "  --instances <NUM>     Run N parallel instances in kitty terminals (default: ${CONFIG[INSTANCES]})"
+  echo "  -n, --instances <NUM> Run N parallel instances in kitty terminals (default: ${CONFIG[INSTANCES]})"
   echo "  --help                  Show this help menu"
   
   echo "\nCONFIGURATION DEFAULTS:"
