@@ -11,6 +11,7 @@ typeset -A CONFIG=(
   REPORT_SLEEP     60
   MODE            "all"
   EDIT_FORMAT      "diff"
+  INSTANCES        1
 )
 
 AIDER_ARGS=(
@@ -68,6 +69,10 @@ parse_arguments() {
         CONFIG[EDIT_FORMAT]="$2"
         shift
         ;;
+      --instances)
+        CONFIG[INSTANCES]=$2
+        shift
+        ;;
       --help)
         help
         exit 0
@@ -118,6 +123,7 @@ help() {
   echo "\nOPTIONS:"
   echo "  -i, --iterations <NUM>  Set execution cycles (default: ${CONFIG[MAX_ITERATIONS]})"
   echo "  --edit-format (diff|whole) Edit format (default: ${CONFIG[EDIT_FORMAT]})"
+  echo "  --instances <NUM>     Run N parallel instances in kitty terminals (default: ${CONFIG[INSTANCES]})"
   echo "  --help                  Show this help menu"
   
   echo "\nCONFIGURATION DEFAULTS:"
@@ -139,8 +145,26 @@ help() {
   echo "  - Use 'aider --help' for details on the underlying AI agent"
 }
 
+launch_instance() {
+  local instance_id=$1
+  local modes=("all" "tasks" "report" "dev")
+  local mode_idx=$(( (instance_id - 1) % 4 ))
+  
+  kitty @ launch --type=os-window --title "Project Agent $instance_id" \
+    --cwd current zsh -c \
+    "$(dirname $0)/project_agent --mode ${modes[$mode_idx]} $@"
+}
+
 main() {
   parse_arguments "$@"
+  
+  if [[ ${CONFIG[INSTANCES]} -gt 1 ]]; then
+    for ((instance=1; instance<=${CONFIG[INSTANCES]}; instance++)); do
+      launch_instance $instance "$@"
+    done
+    exit 0
+  fi
+
   for ((i=1; i<=${CONFIG[MAX_ITERATIONS]}; i++)); do
     run_cycle $i
   done
