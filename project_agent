@@ -19,6 +19,7 @@ AIDER_ARGS=(
   --read issues.txt
   --model ${CONFIG[MODEL]}
   --no-auto-lint
+  --no-auto-create
   --edit-format ${CONFIG[EDIT_FORMAT]}
   --no-browser
   --no-suggest-shell-commands
