@@ -3,14 +3,14 @@
 # Unified project maintenance agent
 # Combines task list management, reporting, and development tasks
 
-CONFIG=(
-  MODEL="r1"  # openrouter/deepseek/deepseek-r1 (original from different provider)
-  MAX_ITERATIONS=100
-  BASE_SLEEP=1
-  TASK_SLEEP=60
-  REPORT_SLEEP=60
-  MODE="all"
-  ITERATIONS=1
+typeset -A CONFIG=(
+  MODEL            "r1"
+  MAX_ITERATIONS   100
+  BASE_SLEEP       1
+  TASK_SLEEP       60  
+  REPORT_SLEEP     60
+  MODE            "all"
+  ITERATIONS       1
 )
 
 AIDER_ARGS=(
