@@ -22,7 +22,7 @@ AIDER_ARGS=(
   --no-auto-lint
   --edit-format whole
   --subtree-only
-  **/*py **/*md
+  "**/*py" "**/*md"
 )
 
 update_task_list() {
@@ -137,7 +137,7 @@ help() {
 
 main() {
   parse_arguments "$@"
-  for ((i=1; i<=$CONFIG[ITERATIONS]; i++)); do
+  for ((i=1; i<=${CONFIG[ITERATIONS]}; i++)); do
     run_cycle $i
   done
 }
