@@ -20,7 +20,6 @@ AIDER_ARGS=(
   --model ${CONFIG[MODEL]}
   --no-auto-lint
   --edit-format ${CONFIG[EDIT_FORMAT]}
-  --yes-always
   --subtree-only
   "**/*py" "**/*md"
 )
