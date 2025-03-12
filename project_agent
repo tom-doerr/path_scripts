@@ -11,6 +11,7 @@ typeset -A CONFIG=(
   REPORT_SLEEP     60
   MODE            "all"
   ITERATIONS       1
+  EDIT_FORMAT      "diff"
 )
 
 AIDER_ARGS=(
@@ -18,7 +19,7 @@ AIDER_ARGS=(
   --read issues.txt
   --model ${CONFIG[MODEL]}
   --no-auto-lint
-  --edit-format diff
+  --edit-format ${CONFIG[EDIT_FORMAT]}
   --subtree-only
   "**/*py" "**/*md"
 )
@@ -61,6 +62,10 @@ parse_arguments() {
         ;;
       -i|--iterations)
         CONFIG[ITERATIONS]=$2
+        shift
+        ;;
+      --edit-format)
+        CONFIG[EDIT_FORMAT]="$2"
         shift
         ;;
       --help)
@@ -112,6 +117,7 @@ help() {
   
   echo "\nOPTIONS:"
   echo "  -i, --iterations <NUM>  Set execution cycles (default: ${CONFIG[ITERATIONS]})"
+  echo "  --edit-format (diff|whole) Edit format (default: ${CONFIG[EDIT_FORMAT]})"
   echo "  --help                  Show this help menu"
   
   echo "\nCONFIGURATION DEFAULTS:"
