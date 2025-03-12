@@ -1,0 +1,121 @@
+#!/bin/zsh
+
+# Unified project maintenance agent
+# Combines task list management, reporting, and development tasks
+
+CONFIG=(
+  MODEL="r1"  # openrouter/deepseek/deepseek-r1 (original from different provider)
+  MAX_ITERATIONS=100
+  BASE_SLEEP=1
+  TASK_SLEEP=60
+  REPORT_SLEEP=60
+  MODE="all"
+  ITERATIONS=1
+)
+
+AIDER_ARGS=(
+  --read spec.md
+  --read issues.txt
+  --file notes.md
+  --model $MODEL
+  --yes-always
+  --no-auto-lint
+  --edit-format whole
+  --subtree-only
+  **/*py **/*md
+)
+
+update_task_list() {
+  echo "\n=== Updating Task List ==="
+  aider ${AIDER_ARGS} task_list.md --message \
+    'Review project and update task_list.md with prioritized, non-duplicated tasks'
+  sleep $TASK_SLEEP
+}
+
+update_project_report() {
+  echo "\n=== Updating Project Report ==="
+  aider ${AIDER_ARGS} project_report.md --message \
+    'Update project_report.md with current status, critical path, architecture issues, simplification opportunities. No long-term planning. Ensure accuracy and no duplication.'
+  sleep $REPORT_SLEEP
+}
+
+handle_development_tasks() {
+  echo "\n=== Handling Development Tasks ==="
+  aider ${AIDER_ARGS} --auto-test --message \
+    'Work on highest priority tasks. Prioritize low complexity and isolated micro-packages.'
+  sleep $BASE_SLEEP
+}
+
+parse_arguments() {
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --tasks)
+        CONFIG[MODE]="tasks"
+        ;;
+      --report)
+        CONFIG[MODE]="report"
+        ;;
+      --dev)
+        CONFIG[MODE]="dev"
+        ;;
+      --all)
+        CONFIG[MODE]="all"
+        ;;
+      -i|--iterations)
+        CONFIG[ITERATIONS]=$2
+        shift
+        ;;
+      *)
+        echo "Unknown option: $1"
+        exit 1
+        ;;
+    esac
+    shift
+  done
+}
+
+run_cycle() {
+  local cycle=$1
+  echo "\n\n=== Cycle $cycle/$ITERATIONS ==="
+  
+  case $CONFIG[MODE] in
+    "all")
+      if (( cycle % 60 == 0 )); then update_task_list; fi
+      if (( cycle % 60 == 30 )); then update_project_report; fi
+      handle_development_tasks
+      ;;
+    "tasks")
+      update_task_list
+      ;;
+    "report")
+      update_project_report
+      ;;
+    "dev")
+      handle_development_tasks
+      ;;
+  esac
+}
+
+help() {
+  echo "Usage: ./project_agent [OPTIONS]"
+  echo "Modes:"
+  echo "  --tasks    : Only run task list updates"
+  echo "  --report   : Only run project reporting"
+  echo "  --dev      : Only handle development tasks"
+  echo "  --all      : Run all tasks (default)"
+  echo "Options:"
+  echo "  -i, --iterations <NUM> : Set number of iterations (default: 1)"
+  echo ""
+  echo "Examples:"
+  echo "  ./project_agent --tasks -i 5    # Run task updates 5 times"
+  echo "  ./project_agent --report        # Generate one report"
+}
+
+main() {
+  parse_arguments "$@"
+  for ((i=1; i<=$CONFIG[ITERATIONS]; i++)); do
+    run_cycle $i
+  done
+}
+
+main "$@"
