@@ -89,7 +89,7 @@ parse_arguments() {
 
 run_cycle() {
   local cycle=$1
-  echo "\n\n=== Cycle $cycle/${CONFIG[ITERATIONS]} ==="
+  echo "\n\n=== Cycle $cycle/${CONFIG[MAX_ITERATIONS]} ==="
   
   case $CONFIG[MODE] in
     "all")
