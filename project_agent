@@ -79,6 +79,10 @@ parse_arguments() {
         CONFIG[WORKER_ID]=$2
         shift
         ;;
+      --model)
+        CONFIG[MODEL]="$2"
+        shift
+        ;;
       --help)
         help
         exit 0
@@ -130,6 +134,7 @@ help() {
   echo "  -i, --iterations <NUM>  Set execution cycles (default: ${CONFIG[MAX_ITERATIONS]})"
   echo "  --edit-format (diff|whole) Edit format (default: ${CONFIG[EDIT_FORMAT]})"
   echo "  -n, --instances <NUM> Run N parallel background instances (default: ${CONFIG[INSTANCES]})"
+  echo "  --model <MODEL>       Set the AI model to use (default: ${CONFIG[MODEL]})"
   echo "  --help                  Show this help menu"
   
   echo "\nCONFIGURATION DEFAULTS:"
@@ -143,6 +148,7 @@ help() {
   echo "  ./project_agent --report         # Generate status report"
   echo "  ./project_agent --dev            # Continuous development mode"
   echo "  ./project_agent --all -i 100     # Full operation for 100 cycles"
+  echo "  ./project_agent --model gpt-4    # Use GPT-4 model"
   
   echo "\nNOTES:"
   echo "  - Task priorities update automatically based on project state"
