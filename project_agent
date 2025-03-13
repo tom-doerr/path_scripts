@@ -32,22 +32,31 @@ build_aider_args() {
 
 update_task_list() {
   echo "\n=== Updating Task List ==="
+  local worker_msg=""
+  [[ -n "${CONFIG[WORKER_ID]}" ]] && worker_msg=" You are worker ${CONFIG[WORKER_ID]}."
+  
   aider ${AIDER_ARGS} task_list.md --message \
-    "Review project and update task_list.md with prioritized, non-duplicated tasks. You are worker ${CONFIG[WORKER_ID]}."
+    "Review project and update task_list.md with prioritized, non-duplicated tasks.$worker_msg"
   sleep ${CONFIG[TASK_SLEEP]}
 }
 
 update_project_report() {
   echo "\n=== Updating Project Report ==="
+  local worker_msg=""
+  [[ -n "${CONFIG[WORKER_ID]}" ]] && worker_msg=" You are worker ${CONFIG[WORKER_ID]}."
+  
   aider ${AIDER_ARGS} project_report.md --message \
-    "Update project_report.md with current status, critical path, architecture issues, simplification opportunities. No long-term planning. Ensure accuracy and no duplication. You are worker ${CONFIG[WORKER_ID]}."
+    "Update project_report.md with current status, critical path, architecture issues, simplification opportunities. No long-term planning. Ensure accuracy and no duplication.$worker_msg"
   sleep ${CONFIG[REPORT_SLEEP]}
 }
 
 handle_development_tasks() {
   echo "\n=== Handling Development Tasks ==="
+  local worker_msg=""
+  [[ -n "${CONFIG[WORKER_ID]}" ]] && worker_msg=" You are worker ${CONFIG[WORKER_ID]}."
+  
   aider ${AIDER_ARGS} --auto-test --message \
-    "Review spec.md and issues.txt and work on the highest priority items. Only work on pylint issues if the code is rated below 9. You are worker ${CONFIG[WORKER_ID]}."
+    "Review spec.md and issues.txt and work on the highest priority items. Only work on pylint issues if the code is rated below 9.$worker_msg"
   sleep ${CONFIG[BASE_SLEEP]}
 }
 
@@ -172,6 +181,7 @@ main() {
   
   if [[ ${CONFIG[INSTANCES]} -gt 1 ]]; then
     for ((instance=1; instance<=${CONFIG[INSTANCES]}; instance++)); do
+      # Set worker ID for each instance
       launch_instance $instance "$@"
     done
     exit 0
