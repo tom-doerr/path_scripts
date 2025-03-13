@@ -14,18 +14,21 @@ typeset -A CONFIG=(
   INSTANCES        1
 )
 
-AIDER_ARGS=(
-  --read spec.md
-  --read issues.txt
-  --model ${CONFIG[MODEL]}
-  --no-auto-lint
-  --edit-format ${CONFIG[EDIT_FORMAT]}
-  --no-browser
-  --no-suggest-shell-commands
-  --no-detect-urls
-  --subtree-only
-  **/*py 
-)
+# Define a function to build AIDER_ARGS after parsing arguments
+build_aider_args() {
+  AIDER_ARGS=(
+    --read spec.md
+    --read issues.txt
+    --model ${CONFIG[MODEL]}
+    --no-auto-lint
+    --edit-format ${CONFIG[EDIT_FORMAT]}
+    --no-browser
+    --no-suggest-shell-commands
+    --no-detect-urls
+    --subtree-only
+    **/*py 
+  )
+}
 
 update_task_list() {
   echo "\n=== Updating Task List ==="
@@ -160,11 +163,12 @@ help() {
 launch_instance() {
   local instance_id=$1
   # Use direct command execution instead of nested instance management
-  kitty --title "Agent $instance_id" zsh -ic "project_agent --${CONFIG[MODE]} --worker-id $instance_id || echo 'Agent failed - press enter to exit'; read" &
+  kitty --title "Agent $instance_id" zsh -ic "project_agent --${CONFIG[MODE]} --worker-id $instance_id --model ${CONFIG[MODEL]} || echo 'Agent failed - press enter to exit'; read" &
 }
 
 main() {
   parse_arguments "$@"
+  build_aider_args
   
   if [[ ${CONFIG[INSTANCES]} -gt 1 ]]; then
     for ((instance=1; instance<=${CONFIG[INSTANCES]}; instance++)); do
