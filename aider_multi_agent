@@ -72,19 +72,27 @@ fi
 SESSION_NAME="aider_multi_agent_$(date +%s)"
 CUSTOM_HISTORY_FILE=custom_aider_history.md
 
-# Create new tmux session with vertical splits
+# Create new tmux session with horizontal splits
 if [ "$SESSIONS" -gt 1 ]; then
     echo "Creating $SESSIONS tmux sessions..."
     # Get current working directory
     CURRENT_DIR=$(pwd)
-    
+        
+    # Create initial session
     tmux new-session -d -s "$SESSION_NAME" -n "Session 1" "cd '$CURRENT_DIR' && ./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
-    
+        
+    # Create additional sessions
     for ((s=2; s<=SESSIONS; s++)); do
-        tmux split-window -h -t "$SESSION_NAME" "cd '$CURRENT_DIR' && ./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
-        tmux select-layout -t "$SESSION_NAME" even-horizontal
+        # Create new window first
+        tmux new-window -t "$SESSION_NAME" -n "Session $s" "cd '$CURRENT_DIR' && ./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODER"
+        # Then split horizontally
+        tmux split-window -h -t "$SESSION_NAME:$s" "cd '$CURRENT_DIR' && ./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
+        # Set layout
+        tmux select-layout -t "$SESSION_NAME:$s" even-horizontal
     done
-    
+        
+    # Attach to the first window
+    tmux select-window -t "$SESSION_NAME:1"
     tmux attach-session -t "$SESSION_NAME"
     exit 0
 fi
