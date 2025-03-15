@@ -78,20 +78,22 @@ if [ "$SESSIONS" -gt 1 ]; then
     # Get current working directory
     CURRENT_DIR=$(pwd)
         
-    # Create initial session
+    # Create initial session with first window
     tmux new-session -d -s "$SESSION_NAME" -n "Session 1" "cd '$CURRENT_DIR' && ./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
         
-    # Create additional sessions
+    # Create additional windows and splits
     for ((s=2; s<=SESSIONS; s++)); do
-        # Create new window first
-        tmux new-window -t "$SESSION_NAME" -n "Session $s" "cd '$CURRENT_DIR' && ./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODER"
-        # Then split horizontally
-        tmux split-window -h -t "$SESSION_NAME:$s" "cd '$CURRENT_DIR' && ./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
-        # Set layout
+        # Create new window
+        tmux new-window -t "$SESSION_NAME" -n "Session $s" "cd '$CURRENT_DIR' && ./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
+            
+        # Split window horizontally
+        tmux split-window -h -t "$SESSION_NAME:$s.0" "cd '$CURRENT_DIR' && ./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
+            
+        # Set layout for the window
         tmux select-layout -t "$SESSION_NAME:$s" even-horizontal
     done
         
-    # Attach to the first window
+    # Select first window and attach
     tmux select-window -t "$SESSION_NAME:1"
     tmux attach-session -t "$SESSION_NAME"
     exit 0
