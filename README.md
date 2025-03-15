@@ -62,6 +62,11 @@ Start multiple sessions:
 aider_multi_agent -s 3  # Starts 3 vertical splits
 ```
 
+Start multiple sessions:
+```bash
+aider_multi_agent -n 3  # Starts 3 vertical splits
+```
+
 Stop all sessions:
 ```bash
 aider_multi_agent -k
@@ -78,12 +83,16 @@ tmux list-sessions | grep aider_multi_agent
 -i ITERATIONS   Number of iterations (default: 1000)
 -m MODEL        Model to use (default: r1)
 -w WEAK_MODEL   Weak model to use (default: gemini-2.0-flash-001)
--s SESSIONS     Number of tmux sessions (default: 1)
+-n SESSIONS     Number of tmux sessions (default: 1)
 -k              Kill all running sessions
 ```
 
 #### Features
 - Parallel execution in tmux sessions
+- Horizontal splits for multiple agents
+- Centralized session management
+- Configurable models and iterations
+- Automatic history management
 - Vertical splits for multiple agents
 - Centralized session management
 - Configurable models and iterations
