@@ -108,12 +108,13 @@ for ((i=1; i<=ITERATIONS; i++)); do
         rm -f $CUSTOM_HISTORY_FILE
         for run in {1..3}; do
             aider --yes-always \
-                --read plex.md \
-                --read ~/git/dotfiles/instruction.md \
-                --read spec.md \
-                --read context.txt \
+                --read "${PWD}/plex.md" \
+                --read "${HOME}/git/dotfiles/instruction.md" \
+                --read "${PWD}/spec.md" \
+                --read "${PWD}/context.txt" \
                 --edit-format diff \
-                --model $MODEL \
+                --model "openrouter/deepseek/deepseek-r1" \
+                --no-show-model-warnings \
                 --weak-model $WEAK_MODEL \
                 --architect \
                 --chat-history-file $CUSTOM_HISTORY_FILE \
