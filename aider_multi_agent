@@ -22,13 +22,13 @@ show_help() {
     echo "  -i ITERATIONS   Number of iterations to run (default: 1000)"
     echo "  -m MODEL        Model to use (default: r1)"
     echo "  -w WEAK_MODEL   Weak model to use (default: gemini-2.0-flash-001)"
-    echo "  -s SESSIONS     Number of tmux sessions to create (default: 1)"
+    echo "  -n SESSIONS     Number of tmux sessions to create (default: 1)"
     echo "  -k              Kill all running aider_multi_agent tmux sessions"
     echo
     echo "This script runs multiple aider agents through a series of prompts to analyze and improve code."
     echo
     echo "To start multiple sessions:"
-    echo "  aider_multi_agent -s 3  # Starts 3 vertical splits"
+    echo "  aider_multi_agent -n 3  # Starts 3 vertical splits"
     echo
     echo "To stop all sessions:"
     echo "  aider_multi_agent -k"
@@ -47,12 +47,12 @@ WEAK_MODEL="gemini-2.0-flash-001"
 SESSIONS=1
 KILL_MODE=false
 
-while getopts "i:m:w:s:kh" opt; do
+while getopts "i:m:w:n:kh" opt; do
     case $opt in
         i) ITERATIONS=$OPTARG ;;
         m) MODEL=$OPTARG ;;
         w) WEAK_MODEL=$OPTARG ;;
-        s) SESSIONS=$OPTARG ;;
+        n) SESSIONS=$OPTARG ;;
         k) KILL_MODE=true ;;
         h) show_help; exit 0 ;;
         *) show_help; exit 1 ;;
