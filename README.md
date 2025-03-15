@@ -59,12 +59,7 @@ sudo mv aider_multi_agent /usr/local/bin/  # Optional: for global access
 #### Usage
 Start multiple sessions:
 ```bash
-aider_multi_agent -s 3  # Starts 3 vertical splits
-```
-
-Start multiple sessions:
-```bash
-aider_multi_agent -n 3  # Starts 3 vertical splits
+aider_multi_agent -n 3  # Starts 3 horizontal splits
 ```
 
 Stop all sessions:
@@ -89,11 +84,9 @@ tmux list-sessions | grep aider_multi_agent
 
 #### Features
 - Parallel execution in tmux sessions
-- Horizontal splits for multiple agents
+- Horizontal splits for multiple agents 
 - Centralized session management
 - Configurable models and iterations
 - Automatic history management
-- Vertical splits for multiple agents
-- Centralized session management
-- Configurable models and iterations
-- Automatic history management
+- Parallel task execution
+- Session persistence and recovery

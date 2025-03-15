@@ -87,10 +87,11 @@ if [ "$SESSIONS" -gt 1 ]; then
         tmux new-window -t "$SESSION_NAME" -n "Session $s" "cd '$CURRENT_DIR' && ./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
     done
         
-    # Split each window horizontally
+    # Split each window horizontally after brief delay
     for ((s=1; s<=SESSIONS; s++)); do
-        tmux split-window -h -t "$SESSION_NAME:$s" "cd '$CURRENT_DIR' && ./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
+        tmux split-window -h -t "$SESSION_NAME:$s" "sleep 0.1; cd '$CURRENT_DIR' && ./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
         tmux select-layout -t "$SESSION_NAME:$s" even-horizontal
+        sleep 0.1  # Allow time for window creation
     done
         
     # Select first window and attach
