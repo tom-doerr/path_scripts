@@ -75,10 +75,13 @@ CUSTOM_HISTORY_FILE=custom_aider_history.md
 # Create new tmux session with vertical splits
 if [ "$SESSIONS" -gt 1 ]; then
     echo "Creating $SESSIONS tmux sessions..."
-    tmux new-session -d -s "$SESSION_NAME" -n "Session 1" "./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
+    # Get current working directory
+    CURRENT_DIR=$(pwd)
+    
+    tmux new-session -d -s "$SESSION_NAME" -n "Session 1" "cd '$CURRENT_DIR' && ./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
     
     for ((s=2; s<=SESSIONS; s++)); do
-        tmux split-window -h -t "$SESSION_NAME" "./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
+        tmux split-window -h -t "$SESSION_NAME" "cd '$CURRENT_DIR' && ./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
         tmux select-layout -t "$SESSION_NAME" even-horizontal
     done
     
