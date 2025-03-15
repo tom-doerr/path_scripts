@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# Define prompts
+PROMPTS=(
+    "please look at context.txt. are there issues? if so what are they? where do they occur and why do they occur? please go through each issue and update the report.md and make sure we have for each issue documented why it occurs, how we can fix it or what pytest tests we could add to find out why it occurs"
+    "please go through each line in the spec and check if the code fulfills the requirement and why it does or does not fulfill it. document it in detail in the report.md"
+    "are there features in the codebase that are not part of the specs in spec.md? what are they? can we remove them? should we remove them? how much additional code do they cause? do they add a lot of complexity? are they really useful and would be appreciated? please document them in report.md"
+    "consider the current code architecture. could it be restructured someway? what are alternatives? what are alternatives that would be easy to implement? can we restructure it in a way that would reduce total lines of code? can we restructure it in a way that reduces complexity or makes it easier to work with in general? those do not need to be large things, even tiny changes can have an impact. please add report.md with your findings"
+    "please look through the content in report.md. what are the highest priority items in there? can you identify dependencies between tasks? would implementing some of those tasks make other tasks easier? please update the report with a list of tasks in a markdown table with each task containing task description, task-id, priority(1-9), the tasks it depends on, the tasks that depend on it (just enter the task ids for those two in the table). do not make the task list ordered since reprioritizing tasks is harder if reordering is required as well."
+    "please go through report.md and refactor it. are there items that should be grouped together? should some sections be restructered?"
+    "please go through report.md and check if there are duplicate section or if there is duplicate content. please remove any duplication"
+    "please go through report.md and create a plan for how we can takle the highest priority items. please update the report.md with your plan, do not implement it just yet"
+    "please go through report.md and work on the highest priority tasks"
+    "please go through report.md and check if the plan was successfully implemented. remove the plan if it was completed and mark the tasks as done. if there are issues with the implementation update the report.md accordingly"
+)
+
+show_help() {
+    echo "Usage: aider_multi_agent [options]"
+    echo
+    echo "Options:"
+    echo "  -h, --help      Show this help message and exit"
+    echo "  -i ITERATIONS   Number of iterations to run (default: 1000)"
+    echo "  -m MODEL        Model to use (default: r1)"
+    echo "  -w WEAK_MODEL   Weak model to use (default: gemini-2.0-flash-001)"
+    echo
+    echo "This script runs multiple aider agents through a series of prompts to analyze and improve code."
+}
+
+# Main script
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    show_help
+    exit 0
+fi
+
+# Parse arguments
+ITERATIONS=1000
+MODEL="r1"
+WEAK_MODEL="gemini-2.0-flash-001"
+
+while getopts "i:m:w:" opt; do
+    case $opt in
+        i) ITERATIONS=$OPTARG ;;
+        m) MODEL=$OPTARG ;;
+        w) WEAK_MODEL=$OPTARG ;;
+        *) show_help; exit 1 ;;
+    esac
+done
+
+CUSTOM_HISTORY_FILE=custom_aider_history.md
+
+for ((i=1; i<=ITERATIONS; i++)); do
+    echo "Iteration $i"' ========================= '$(date)' ============================'
+    
+    for prompt in "${PROMPTS[@]}"; do
+        rm -f $CUSTOM_HISTORY_FILE
+        for run in {1..3}; do
+            aider --yes-always \
+                --read plex.md \
+                --read ~/git/dotfiles/instruction.md \
+                --read spec.md \
+                --read context.txt \
+                --edit-format diff \
+                --model $MODEL \
+                --weak-model $WEAK_MODEL \
+                --architect \
+                --chat-history-file $CUSTOM_HISTORY_FILE \
+                --restore-chat-history \
+                report.md **/*py \
+                --message "$prompt"
+        done
+    done
+    
+    sleep 1
+done
