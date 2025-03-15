@@ -78,8 +78,8 @@ if [ "$SESSIONS" -gt 1 ]; then
     tmux new-session -d -s "$SESSION_NAME" -n "Session 1" "./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
     
     for ((s=2; s<=SESSIONS; s++)); do
-        tmux split-window -v -t "$SESSION_NAME" "./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
-        tmux select-layout -t "$SESSION_NAME" even-vertical
+        tmux split-window -h -t "$SESSION_NAME" "./$0 -i $ITERATIONS -m $MODEL -w $WEAK_MODEL"
+        tmux select-layout -t "$SESSION_NAME" even-horizontal
     done
     
     tmux attach-session -t "$SESSION_NAME"
