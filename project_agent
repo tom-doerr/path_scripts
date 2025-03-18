@@ -21,12 +21,14 @@ build_aider_args() {
     --read issues.txt
     --model ${CONFIG[MODEL]}
     --no-auto-lint
+    --no-auto-test
     --edit-format ${CONFIG[EDIT_FORMAT]}
     --no-browser
     --no-suggest-shell-commands
     --no-detect-urls
     --subtree-only
-    **/*py 
+    --architect
+    --yes-always
   )
 }
 
@@ -56,7 +58,7 @@ handle_development_tasks() {
   [[ -n "${CONFIG[WORKER_ID]}" ]] && worker_msg=" You are worker ${CONFIG[WORKER_ID]}."
   
   aider ${AIDER_ARGS} --auto-test --message \
-    "Review spec.md and issues.txt and work on the highest priority items. Only work on pylint issues if the code is rated below 9.$worker_msg"
+    "Review spec.md and issues.txt and work on the highest priority items. Only work on pylint issues if the code is rated below 9. If you don't work on linting, go through spec.md. Quote each requirement and tell me if the code fulfills it. If it doesn't fulfill it, create one or more edit blocks to fix the issue before moving on to the next spec requirement. $worker_msg"
   sleep ${CONFIG[BASE_SLEEP]}
 }
 

@@ -2,9 +2,11 @@
 
 # Configuration
 MODEL="r1"  # Default model
+EDITOR_MODEL=""  # Editor model (if different from main model)
 PROMPTS_FILE="prompts.txt"  # File containing prompts to cycle through
 ITERATIONS=1000
 SLEEP_TIME=1  # Sleep time between iterations in seconds
+GLOBAL_PROMPT=""  # Global prompt to prepend to all messages
 
 # Check if rich-cli is installed
 if ! command -v rich &> /dev/null; then
@@ -46,21 +48,28 @@ usage() {
     echo "Usage: $0 [options] [file1 [file2 ...]]"
     echo "Options:"
     echo "  -m, --model MODEL       Set the model (default: $MODEL)"
+    echo "  -e, --editor-model MODEL Set a specific editor model (optional)"
     echo "  -p, --prompts FILE      Set the prompts file (default: $PROMPTS_FILE)"
     echo "  -i, --iterations NUM    Set number of iterations (default: $ITERATIONS)"
     echo "  -s, --sleep SECONDS     Set sleep time between iterations (default: $SLEEP_TIME)"
     echo "  -n, --no-files          Run without specifying files (architect mode can add files)"
+    echo "  -g, --global-prompt TEXT Set a global prompt to prepend to all messages"
     echo "  -h, --help              Display this help message"
     exit 1
 }
 
 # Parse command line arguments
-FILES=()
+FILE_PATTERNS=()
 NO_FILES=false
+READ_FILES=()
 while [[ $# -gt 0 ]]; do
     case $1 in
         -m|--model)
             MODEL="$2"
+            shift 2
+            ;;
+        -e|--editor-model)
+            EDITOR_MODEL="$2"
             shift 2
             ;;
         -p|--prompts)
@@ -72,9 +81,21 @@ while [[ $# -gt 0 ]]; do
             fi
             shift 2
             ;;
+        -g|--global-prompt)
+            GLOBAL_PROMPT="$2"
+            shift 2
+            ;;
         -n|--no-files)
             NO_FILES=true
             shift
+            ;;
+        -r|--read)
+            if [ -f "$2" ]; then
+                READ_FILES+=("$2")
+            else
+                echo "Warning: Read file '$2' does not exist and will be ignored."
+            fi
+            shift 2
             ;;
         -i|--iterations)
             ITERATIONS="$2"
@@ -92,26 +113,42 @@ while [[ $# -gt 0 ]]; do
             usage
             ;;
         *)
-            FILES+=("$1")
+            FILE_PATTERNS+=("$1")
             shift
             ;;
     esac
 done
 
-# Check if at least one file is provided or --no-files flag is set
-if [ ${#FILES[@]} -eq 0 ] && [ "$NO_FILES" = false ]; then
+# Default read files if none specified
+if [ ${#READ_FILES[@]} -eq 0 ]; then
+    for DEFAULT_READ in "plex.md" "context.txt" "spec.md"; do
+        if [ -f "$DEFAULT_READ" ]; then
+            READ_FILES+=("$DEFAULT_READ")
+        fi
+    done
+fi
+
+# Check if at least one file pattern is provided or --no-files flag is set
+if [ ${#FILE_PATTERNS[@]} -eq 0 ] && [ "$NO_FILES" = false ]; then
     echo "Error: No files specified. Use --no-files flag if you want to run without specifying files."
     usage
 fi
 
-# Check if all specified files exist (only if files were provided)
-if [ ${#FILES[@]} -gt 0 ]; then
-    for FILE in "${FILES[@]}"; do
-        if [ ! -f "$FILE" ]; then
-            echo "Error: File does not exist: $FILE"
-            exit 1
+# Initial check for file patterns
+if [ ${#FILE_PATTERNS[@]} -gt 0 ] && [ "$NO_FILES" = false ]; then
+    # Check if at least one pattern matches something
+    FOUND_FILES=false
+    for PATTERN in "${FILE_PATTERNS[@]}"; do
+        if compgen -G "$PATTERN" > /dev/null; then
+            FOUND_FILES=true
+            break
         fi
     done
+    
+    if [ "$FOUND_FILES" = false ]; then
+        echo "Warning: None of the specified file patterns match any files."
+        echo "Files will be included if they appear later during execution."
+    fi
 fi
 
 # Function to handle script interruption
@@ -125,45 +162,103 @@ trap cleanup SIGINT SIGTERM
 
 # Main loop
 for i in $(seq 1 $ITERATIONS); do
-    # Reload prompt count on each iteration to detect changes
-    PROMPT_COUNT=$(grep -v '^\s*$' "$PROMPTS_FILE" | wc -l)
+    # Get valid prompts (non-empty lines)
+    mapfile -t VALID_PROMPTS < <(grep -v '^\s*$' "$PROMPTS_FILE")
+    PROMPT_COUNT=${#VALID_PROMPTS[@]}
     
     if [ "$PROMPT_COUNT" -eq 0 ]; then
         echo "Warning: No valid prompts found in $PROMPTS_FILE. Using default prompt."
         CURRENT_PROMPT="improve code"
     else
-        # Get a list of non-empty lines
-        VALID_PROMPTS=($(grep -v '^\s*$' "$PROMPTS_FILE"))
-        
         # Calculate which prompt to use (cycling through them)
         PROMPT_INDEX=$(( (i - 1) % PROMPT_COUNT ))
         CURRENT_PROMPT="${VALID_PROMPTS[$PROMPT_INDEX]}"
     fi
     
-    # Display the current prompt with rich formatting
-    echo -e "\n"
-    rich --print "[bold blue]Iteration $i - $(date)[/bold blue]" 
-    rich --print "[bold green]====================================================[/bold green]"
-    rich --print "[bold yellow]PROMPT:[/bold yellow] [bold white]$CURRENT_PROMPT[/bold white]"
-    rich --print "[bold green]====================================================[/bold green]"
-    
-    # Run aider with the current prompt and all files (if any)
-    if [ "$NO_FILES" = true ]; then
-        # Run without specifying files
-        aider --architect --model "$MODEL" --subtree-only \
-              --read plex.md --read context.txt --read spec.md \
-              --yes-always --no-show-model-warnings \
-              --weak-model 'openrouter/google/gemini-2.0-flash-001' \
-              --message "$CURRENT_PROMPT"
-    else
-        # Run with specified files
-        aider --architect --model "$MODEL" --subtree-only \
-              --read plex.md --read context.txt --read spec.md \
-              --yes-always --no-show-model-warnings \
-              --weak-model 'openrouter/google/gemini-2.0-flash-001' \
-              --message "$CURRENT_PROMPT" "${FILES[@]}"
+    # Combine global prompt with current prompt if global prompt is set
+    FULL_PROMPT="$CURRENT_PROMPT"
+    if [ -n "$GLOBAL_PROMPT" ]; then
+        FULL_PROMPT="$GLOBAL_PROMPT $CURRENT_PROMPT"
     fi
     
-    rich --print "[dim]Sleeping for $SLEEP_TIME seconds...[/dim]"
+    # Display the current prompt with rich formatting
+    echo -e "\n"
+    if command -v rich &> /dev/null; then
+        rich --print "[bold blue]Iteration $i - $(date)[/bold blue]" 
+        rich --print "[bold green]====================================================[/bold green]"
+        if [ -n "$GLOBAL_PROMPT" ]; then
+            rich --print "[bold magenta]GLOBAL:[/bold magenta] [white]$GLOBAL_PROMPT[/white]"
+        fi
+        rich --print "[bold yellow]PROMPT:[/bold yellow] [bold white]$CURRENT_PROMPT[/bold white]"
+        rich --print "[bold green]====================================================[/bold green]"
+    else
+        echo "Iteration $i - $(date)"
+        echo "===================================================="
+        if [ -n "$GLOBAL_PROMPT" ]; then
+            echo "GLOBAL: $GLOBAL_PROMPT"
+        fi
+        echo "PROMPT: $CURRENT_PROMPT"
+        echo "===================================================="
+    fi
+    
+    # Build read arguments
+    READ_ARGS=""
+    for READ_FILE in "${READ_FILES[@]}"; do
+        READ_ARGS="$READ_ARGS --read \"$READ_FILE\""
+    done
+    
+    # Build read arguments
+    READ_ARGS=()
+    for READ_FILE in "${READ_FILES[@]}"; do
+        READ_ARGS+=(--read "$READ_FILE")
+    done
+    
+    # Build the base command
+    AIDER_CMD=(aider --architect --model "$MODEL" --subtree-only "${READ_ARGS[@]}" 
+                --yes-always --no-show-model-warnings 
+                --weak-model 'openrouter/google/gemini-2.0-flash-001')
+    
+    # Add editor model if specified
+    if [ -n "$EDITOR_MODEL" ]; then
+        AIDER_CMD+=(--editor-model "$EDITOR_MODEL")
+    fi
+    
+    # Add message
+    AIDER_CMD+=(--message "$FULL_PROMPT")
+    
+    # Add files if needed - resolve globs on each iteration
+    if [ "$NO_FILES" = false ]; then
+        FILES=()
+        for PATTERN in "${FILE_PATTERNS[@]}"; do
+            # Use compgen to expand globs
+            while IFS= read -r FILE; do
+                if [ -f "$FILE" ]; then
+                    FILES+=("$FILE")
+                fi
+            done < <(compgen -G "$PATTERN" 2>/dev/null || echo "")
+        done
+        
+        if [ ${#FILES[@]} -gt 0 ]; then
+            AIDER_CMD+=("${FILES[@]}")
+            
+            # Display the files being processed
+            if command -v rich &> /dev/null; then
+                rich --print "[cyan]Processing files:[/cyan] [white]${FILES[*]}[/white]"
+            else
+                echo "Processing files: ${FILES[*]}"
+            fi
+        else
+            echo "Warning: No files match the specified patterns at this iteration."
+        fi
+    fi
+    
+    # Execute the command
+    "${AIDER_CMD[@]}"
+    
+    if command -v rich &> /dev/null; then
+        rich --print "[dim]Sleeping for $SLEEP_TIME seconds...[/dim]"
+    else
+        echo "Sleeping for $SLEEP_TIME seconds..."
+    fi
     sleep $SLEEP_TIME
 done
