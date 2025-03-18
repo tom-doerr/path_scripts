@@ -13,20 +13,33 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     exit 1
 fi
 
-# Function to clear the screen based on platform
-clear_screen() {
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS
-        clear
-    else
-        # Linux and others
-        printf "\033c"
-    fi
+# Function to set up the terminal for smooth updates
+setup_terminal() {
+    # Save cursor position and switch to alternate screen buffer
+    tput smcup
+    # Hide cursor
+    tput civis
+}
+
+# Function to restore terminal to normal state
+restore_terminal() {
+    # Show cursor
+    tput cnorm
+    # Return from alternate screen buffer
+    tput rmcup
+}
+
+# Function to update the screen without flickering
+update_screen() {
+    # Move to top-left corner
+    tput home
+    # Clear to end of screen (doesn't cause flickering)
+    tput ed
 }
 
 # Function to display the diff with a header
 show_diff() {
-    clear_screen
+    update_screen
 
     # Get the last commit hash and message
     LAST_COMMIT=$(git log -1 --pretty=format:"%h - %s (%cr) by %an")
@@ -45,10 +58,12 @@ show_diff() {
 }
 
 # Trap Ctrl+C to exit gracefully
-trap "echo -e '\nExiting git diff watch'; exit 0" INT
+trap "restore_terminal; echo -e '\nExiting git diff watch'; exit 0" INT
 
 # Main loop
+setup_terminal
 echo "Watching git diff, refreshing every $INTERVAL seconds. Press Ctrl+C to exit."
+sleep 1  # Give user a moment to read the initial message
 while true; do
     show_diff "$@"
     sleep $INTERVAL
