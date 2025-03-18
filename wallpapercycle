@@ -1,153 +1,334 @@
-#!/bin/bash
+#!/usr/bin/env python3
+
+import os
+import sys
+import time
+import random
+import argparse
+import subprocess
+from pathlib import Path
+from typing import List, Optional
+
+try:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn
+    from rich.table import Table
+    from rich.prompt import Prompt
+    from rich.live import Live
+    from rich import box
+except ImportError:
+    print("This script requires the 'rich' library.")
+    print("Please install it with: pip install rich")
+    sys.exit(1)
+
+# Initialize rich console
+console = Console()
 
 # Default settings
-WALLPAPER_DIR="$HOME/Pictures/Wallpapers"
-MIN_WIDTH=3840
-MIN_HEIGHT=2160
-DELAY=5
-LOOP=false
-CURRENT_SYMLINK="$WALLPAPER_DIR/current"
+DEFAULT_WALLPAPER_DIR = os.path.expanduser("~/Pictures/Wallpapers")
+DEFAULT_MIN_WIDTH = 3840
+DEFAULT_MIN_HEIGHT = 2160
+DEFAULT_DELAY = 5
+DEFAULT_CURRENT_SYMLINK = os.path.join(DEFAULT_WALLPAPER_DIR, "current")
 
-# Function to display help
-show_help() {
-    echo "Usage: $(basename "$0") [OPTIONS]"
-    echo
-    echo "Cycle through wallpapers with automatic changing."
-    echo
-    echo "Options:"
-    echo "  -h, --help           Show this help message"
-    echo "  -d, --dir DIR        Set wallpaper directory (default: $WALLPAPER_DIR)"
-    echo "  -w, --width WIDTH    Set minimum width (default: $MIN_WIDTH)"
-    echo "  -t, --height HEIGHT  Set minimum height (default: $MIN_HEIGHT)"
-    echo "  -s, --seconds SEC    Set delay in seconds (default: $DELAY)"
-    echo "  -l, --loop           Loop continuously through wallpapers"
-    echo "  -c, --current PATH   Path for current wallpaper symlink (default: $CURRENT_SYMLINK)"
-    echo
-    echo "Controls while running:"
-    echo "  q                    Quit the program"
-    echo "  n                    Skip to next wallpaper"
-    echo "  Ctrl+C               Force quit"
-    exit 0
-}
+def show_help():
+    """Display help information with rich formatting"""
+    console.print(Panel.fit(
+        "[bold cyan]Wallpaper Cycle[/bold cyan]\n\n"
+        "A beautiful way to cycle through your wallpaper collection",
+        title="About",
+        border_style="green"
+    ))
+    
+    table = Table(show_header=True, header_style="bold magenta", box=box.ROUNDED)
+    table.add_column("Option", style="dim", width=20)
+    table.add_column("Description")
+    table.add_column("Default", justify="right")
+    
+    table.add_row("-h, --help", "Show this help message", "")
+    table.add_row("-d, --dir DIR", "Set wallpaper directory", DEFAULT_WALLPAPER_DIR)
+    table.add_row("-w, --width WIDTH", "Set minimum width", str(DEFAULT_MIN_WIDTH))
+    table.add_row("-t, --height HEIGHT", "Set minimum height", str(DEFAULT_MIN_HEIGHT))
+    table.add_row("-s, --seconds SEC", "Set delay in seconds", str(DEFAULT_DELAY))
+    table.add_row("-l, --loop", "Loop continuously through wallpapers", "False")
+    table.add_row("-r, --random", "Randomize wallpaper order", "True")
+    table.add_row("-o, --once", "Set one random wallpaper and exit", "False")
+    table.add_row("-c, --current PATH", "Path for current wallpaper symlink", DEFAULT_CURRENT_SYMLINK)
+    table.add_row("-q, --quiet", "Reduce output verbosity", "False")
+    
+    console.print(table)
+    
+    controls = Table(show_header=True, header_style="bold yellow", box=box.ROUNDED)
+    controls.add_column("Key", style="dim", width=10)
+    controls.add_column("Action")
+    
+    controls.add_row("q", "Quit the program")
+    controls.add_row("n", "Skip to next wallpaper")
+    controls.add_row("Ctrl+C", "Force quit")
+    
+    console.print(Panel(controls, title="Controls while running", border_style="blue"))
 
-# Parse command line arguments
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        -h|--help)
-            show_help
-            ;;
-        -d|--dir)
-            WALLPAPER_DIR="$2"
-            shift 2
-            ;;
-        -w|--width)
-            MIN_WIDTH="$2"
-            shift 2
-            ;;
-        -t|--height)
-            MIN_HEIGHT="$2"
-            shift 2
-            ;;
-        -s|--seconds)
-            DELAY="$2"
-            shift 2
-            ;;
-        -l|--loop)
-            LOOP=true
-            shift
-            ;;
-        -c|--current)
-            CURRENT_SYMLINK="$2"
-            shift 2
-            ;;
-        *)
-            echo "Unknown option: $1"
-            show_help
-            ;;
-    esac
-done
+def parse_args():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(
+        description="Cycle through wallpapers with automatic changing.",
+        add_help=False  # We'll handle help ourselves for prettier output
+    )
+    
+    parser.add_argument("-h", "--help", action="store_true", help="Show this help message")
+    parser.add_argument("-d", "--dir", type=str, default=DEFAULT_WALLPAPER_DIR, 
+                        help=f"Set wallpaper directory (default: {DEFAULT_WALLPAPER_DIR})")
+    parser.add_argument("-w", "--width", type=int, default=DEFAULT_MIN_WIDTH,
+                        help=f"Set minimum width (default: {DEFAULT_MIN_WIDTH})")
+    parser.add_argument("-t", "--height", type=int, default=DEFAULT_MIN_HEIGHT,
+                        help=f"Set minimum height (default: {DEFAULT_MIN_HEIGHT})")
+    parser.add_argument("-s", "--seconds", type=int, default=DEFAULT_DELAY,
+                        help=f"Set delay in seconds (default: {DEFAULT_DELAY})")
+    parser.add_argument("-l", "--loop", action="store_true", 
+                        help="Loop continuously through wallpapers")
+    parser.add_argument("-r", "--random", action="store_true", default=True,
+                        help="Randomize wallpaper order (default: True)")
+    parser.add_argument("-o", "--once", action="store_true",
+                        help="Set one random wallpaper and exit")
+    parser.add_argument("-c", "--current", type=str, default=DEFAULT_CURRENT_SYMLINK,
+                        help=f"Path for current wallpaper symlink (default: {DEFAULT_CURRENT_SYMLINK})")
+    parser.add_argument("-q", "--quiet", action="store_true",
+                        help="Reduce output verbosity")
+    
+    args = parser.parse_args()
+    
+    if args.help:
+        show_help()
+        sys.exit(0)
+        
+    return args
 
-# Check if required commands are available
-for cmd in find identify awk feh; do
-    if ! command -v "$cmd" &> /dev/null; then
-        echo "Error: Required command '$cmd' not found."
-        if [ "$cmd" = "identify" ]; then
-            echo "Please install ImageMagick package."
-        elif [ "$cmd" = "feh" ]; then
-            echo "Please install feh package."
-        fi
-        exit 1
-    fi
-done
+def check_dependencies():
+    """Check if required commands are available"""
+    required_commands = ["find", "identify", "feh"]
+    missing = []
+    
+    for cmd in required_commands:
+        try:
+            subprocess.run(["which", cmd], check=True, capture_output=True)
+        except subprocess.CalledProcessError:
+            missing.append(cmd)
+    
+    if missing:
+        console.print(Panel(
+            f"[bold red]Missing required commands:[/bold red] {', '.join(missing)}\n\n"
+            "Please install the following packages:\n"
+            "- [yellow]ImageMagick[/yellow] for the 'identify' command\n"
+            "- [yellow]feh[/yellow] for setting wallpapers",
+            title="Error",
+            border_style="red"
+        ))
+        sys.exit(1)
 
-# Check if wallpaper directory exists
-if [ ! -d "$WALLPAPER_DIR" ]; then
-    echo "Error: Wallpaper directory '$WALLPAPER_DIR' not found."
-    exit 1
-fi
+def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: bool = False) -> List[str]:
+    """Find wallpapers with minimum resolution"""
+    if not quiet:
+        with console.status("[bold green]Searching for wallpapers...", spinner="dots"):
+            time.sleep(0.5)  # Give a moment to see the spinner
+            
+            if not os.path.isdir(wallpaper_dir):
+                console.print(f"[bold red]Error:[/bold red] Wallpaper directory '{wallpaper_dir}' not found.")
+                sys.exit(1)
+                
+            # Look for both regular files and symlinks with image extensions
+            cmd = [
+                "find", wallpaper_dir, 
+                "(", "-type", "f", "-o", "-type", "l", ")", "-a", 
+                "(", 
+                "-name", "*.jpg", "-o", 
+                "-name", "*.jpeg", "-o", 
+                "-name", "*.png", "-o", 
+                "-name", "*.gif", 
+                ")", 
+                "-exec", "identify", "-format", "%w %h %i\\n", "{}", ";"
+            ]
+            
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                output = result.stdout
+            except Exception as e:
+                console.print(f"[bold red]Error:[/bold red] {str(e)}")
+                sys.exit(1)
+    else:
+        if not os.path.isdir(wallpaper_dir):
+            sys.exit(1)
+            
+        cmd = [
+            "find", wallpaper_dir, 
+            "(", "-type", "f", "-o", "-type", "l", ")", "-a", 
+            "(", 
+            "-name", "*.jpg", "-o", 
+            "-name", "*.jpeg", "-o", 
+            "-name", "*.png", "-o", 
+            "-name", "*.gif", 
+            ")", 
+            "-exec", "identify", "-format", "%w %h %i\\n", "{}", ";"
+        ]
+        
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            output = result.stdout
+        except Exception:
+            sys.exit(1)
+    
+    # Filter by resolution
+    wallpapers = []
+    for line in output.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split()
+        if len(parts) >= 3:
+            try:
+                width = int(parts[0])
+                height = int(parts[1])
+                path = " ".join(parts[2:])  # Handle paths with spaces
+                
+                if width >= min_width and height >= min_height:
+                    wallpapers.append(path)
+            except ValueError:
+                continue
+    
+    return wallpapers
 
-# Function to find wallpapers
-find_wallpapers() {
-    # Look for both regular files and symlinks with image extensions
-    find "$WALLPAPER_DIR" \( -type f -o -type l \) -a \( -name "*.jpg" -o -name "*.jpeg" -o -name "*.png" -o -name "*.gif" \) -exec identify -format '%w %h %i\n' {} \; 2>/dev/null | 
-    awk -v min_w="$MIN_WIDTH" -v min_h="$MIN_HEIGHT" '$1 >= min_w && $2 >= min_h {print $3}'
-}
+def display_countdown(seconds: int, quiet: bool = False) -> bool:
+    """Display countdown with progress bar, return True if user wants to skip"""
+    if quiet:
+        # Simple sleep with key check in quiet mode
+        for _ in range(seconds):
+            time.sleep(1)
+            if os.read(0, 1) in (b'q', b'n'):
+                return True
+        return False
+        
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]Changing wallpaper in"),
+        BarColumn(bar_width=40),
+        TextColumn("[bold]{task.percentage:.0f}%"),
+        TimeRemainingColumn(),
+        TextColumn("[yellow](press 'q' to quit, 'n' for next)[/yellow]"),
+        console=console,
+        transient=True
+    ) as progress:
+        task = progress.add_task("", total=seconds)
+        
+        for _ in range(seconds):
+            progress.update(task, advance=1)
+            
+            # Check for key press
+            import select
+            if select.select([sys.stdin], [], [], 1)[0]:
+                key = sys.stdin.read(1)
+                if key == 'q':
+                    console.print("[bold red]Quitting wallpaper cycle.[/bold red]")
+                    sys.exit(0)
+                elif key == 'n':
+                    console.print("[bold yellow]Skipping to next wallpaper.[/bold yellow]")
+                    return True
+    
+    return False
 
-# Function to display countdown
-countdown() {
-    local remaining=$1
-    while [ $remaining -gt 0 ]; do
-        echo -ne "\rChanging wallpaper in $remaining seconds... (press 'q' to quit, 'n' for next) "
-        read -t 1 -n 1 input
-        if [[ "$input" == "q" ]]; then
-            echo -e "\nQuitting wallpaper cycle."
-            exit 0
-        elif [[ "$input" == "n" ]]; then
-            echo -e "\nSkipping to next wallpaper."
-            return 0
-        fi
-        ((remaining--))
-    done
-    echo -e "\r                                                                      \r"
-    return 0
-}
+def set_wallpaper(path: str, current_symlink: str, quiet: bool = False):
+    """Set wallpaper using feh and update symlink"""
+    if not quiet:
+        console.print(f"Setting wallpaper: [cyan]{path}[/cyan]")
+    
+    try:
+        # Set wallpaper
+        subprocess.run(["feh", "--bg-fill", path], check=True, capture_output=True)
+        
+        # Update symlink
+        if current_symlink:
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(current_symlink), exist_ok=True)
+            
+            # Remove existing symlink if it exists
+            if os.path.exists(current_symlink):
+                os.remove(current_symlink)
+                
+            # Create new symlink
+            os.symlink(path, current_symlink)
+    except Exception as e:
+        if not quiet:
+            console.print(f"[bold red]Error:[/bold red] {str(e)}")
+        sys.exit(1)
 
-# Main loop
-while true; do
+def main():
+    """Main function"""
+    # Parse arguments
+    args = parse_args()
+    
+    # Check dependencies
+    check_dependencies()
+    
     # Find wallpapers
-    wallpapers=$(find_wallpapers)
-
-    if [ -z "$wallpapers" ]; then
-        echo "No suitable wallpapers found in '$WALLPAPER_DIR' with minimum resolution ${MIN_WIDTH}x${MIN_HEIGHT}."
-        exit 1
-    fi
-
-    # Convert to array
-    mapfile -t wallpaper_array <<< "$wallpapers"
-
-    echo "Found ${#wallpaper_array[@]} suitable wallpapers."
-
-    # Shuffle the array for random order
-    shuffled_array=( $(shuf -e "${wallpaper_array[@]}") )
-
-    # Cycle through wallpapers in random order
-    for wp in "${shuffled_array[@]}"; do
-        echo "Setting wallpaper: $wp"
-        feh --bg-fill "$wp"
-        
-        # Update the current symlink
-        ln -sf "$wp" "$CURRENT_SYMLINK"
-        
-        # Wait with countdown
-        countdown "$DELAY"
-    done
-
-    echo "Finished cycling through all wallpapers."
+    wallpapers = find_wallpapers(args.dir, args.width, args.height, args.quiet)
     
-    # Exit if not looping
-    if [ "$LOOP" = false ]; then
-        break
-    fi
+    if not wallpapers:
+        if not args.quiet:
+            console.print(Panel(
+                f"No suitable wallpapers found in '{args.dir}' with minimum resolution {args.width}x{args.height}.",
+                title="Error",
+                border_style="red"
+            ))
+        sys.exit(1)
     
-    echo "Restarting cycle..."
-done
+    if not args.quiet:
+        console.print(f"[bold green]Found {len(wallpapers)} suitable wallpapers.[/bold green]")
+    
+    # Handle once mode (set one random wallpaper and exit)
+    if args.once:
+        wallpaper = random.choice(wallpapers)
+        set_wallpaper(wallpaper, args.current, args.quiet)
+        sys.exit(0)
+    
+    # Main loop
+    while True:
+        # Randomize if requested
+        if args.random:
+            random.shuffle(wallpapers)
+        
+        # Cycle through wallpapers
+        for wallpaper in wallpapers:
+            # Set wallpaper and update symlink
+            set_wallpaper(wallpaper, args.current, args.quiet)
+            
+            # Wait with countdown
+            skip = display_countdown(args.seconds, args.quiet)
+            if skip:
+                continue
+        
+        if not args.quiet:
+            console.print("[bold green]Finished cycling through all wallpapers.[/bold green]")
+        
+        # Exit if not looping
+        if not args.loop:
+            break
+        
+        if not args.quiet:
+            console.print("[bold blue]Restarting cycle...[/bold blue]")
+    
+if __name__ == "__main__":
+    try:
+        # Set terminal to raw mode to capture keystrokes
+        import tty
+        import termios
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        tty.setraw(fd)
+        
+        main()
+    except KeyboardInterrupt:
+        console.print("\n[bold red]Program interrupted by user.[/bold red]")
+    finally:
+        # Restore terminal settings
+        try:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        except:
+            pass
