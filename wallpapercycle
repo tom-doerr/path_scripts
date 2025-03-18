@@ -13,8 +13,11 @@ mapfile -t wallpaper_array <<< "$wallpapers"
 
 echo "Found ${#wallpaper_array[@]} suitable wallpapers."
 
-# Cycle through wallpapers
-for wp in "${wallpaper_array[@]}"; do
+# Shuffle the array for random order
+shuffled_array=( $(shuf -e "${wallpaper_array[@]}") )
+
+# Cycle through wallpapers in random order
+for wp in "${shuffled_array[@]}"; do
     echo "Setting wallpaper: $wp"
     feh --bg-fill "$wp"
     
