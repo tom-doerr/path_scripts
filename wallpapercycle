@@ -69,7 +69,7 @@ def show_help():
     controls.add_column("Action")
     
     controls.add_row("q", "Quit the program")
-    controls.add_row("n", "Skip to next wallpaper")
+    controls.add_row("n or Enter", "Skip to next wallpaper")
     controls.add_row("f", "Add current wallpaper to favorites")
     controls.add_row("Ctrl+C", "Force quit")
     
