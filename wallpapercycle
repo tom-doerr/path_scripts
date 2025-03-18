@@ -363,7 +363,7 @@ def display_countdown(seconds: int, quiet: bool = False) -> bool:
                 if key == 'q':
                     console.print("[bold red]Quitting wallpaper cycle.[/bold red]")
                     sys.exit(0)
-                elif key == 'n':
+                elif key == 'n' or key == '\n':
                     console.print("[bold yellow]Skipping to next wallpaper.[/bold yellow]")
                     return True
                 elif key == 'f':
