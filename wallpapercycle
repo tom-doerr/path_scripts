@@ -27,8 +27,8 @@ console = Console()
 
 # Default settings
 DEFAULT_WALLPAPER_DIR = os.path.expanduser("~/Pictures/Wallpapers")
-DEFAULT_MIN_WIDTH = 3840
-DEFAULT_MIN_HEIGHT = 2160
+DEFAULT_MIN_WIDTH = 1920  # Lowered from 3840 (4K) to 1920 (Full HD)
+DEFAULT_MIN_HEIGHT = 1080  # Lowered from 2160 to 1080
 DEFAULT_DELAY = 5
 DEFAULT_CURRENT_SYMLINK = os.path.join(DEFAULT_WALLPAPER_DIR, "current")
 DEFAULT_SYMLINKS_ONLY = True
@@ -99,6 +99,8 @@ def parse_args():
                         help="Reduce output verbosity")
     parser.add_argument("-a", "--all", action="store_false", dest="symlinks_only", default=DEFAULT_SYMLINKS_ONLY,
                         help="Include all image files, not just symlinks")
+    parser.add_argument("-D", "--debug", action="store_true",
+                        help="Show debug information")
     
     args = parser.parse_args()
     
@@ -130,7 +132,7 @@ def check_dependencies():
         ))
         sys.exit(1)
 
-def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: bool = False, symlinks_only: bool = True) -> List[str]:
+def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: bool = False, symlinks_only: bool = True, debug: bool = False) -> List[str]:
     """Find wallpapers with minimum resolution"""
     if not quiet:
         with console.status("[bold green]Searching for wallpapers...", spinner="dots"):
@@ -142,29 +144,28 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
                 
             # Look for symlinks only or both regular files and symlinks
             if symlinks_only:
-                file_type = ["-type", "l"]
                 if not quiet:
                     console.print("[blue]Looking for symlinks only...[/blue]")
+                # Simpler find command for symlinks
+                cmd = [
+                    "find", wallpaper_dir, "-type", "l", 
+                    "-exec", "identify", "-format", "%w %h %i\\n", "{}", "\\;"
+                ]
             else:
-                file_type = ["-type", "f", "-o", "-type", "l"]
-                
-            cmd = [
-                "find", wallpaper_dir,
-                "(", 
-            ] + file_type + [
-                ")", "-a", 
-                "(", 
-                "-name", "*.jpg", "-o", 
-                "-name", "*.jpeg", "-o", 
-                "-name", "*.png", "-o", 
-                "-name", "*.gif", 
-                ")", 
-                "-exec", "identify", "-format", "%w %h %i\\n", "{}", "\\;"
-            ]
+                # Command for all image files
+                cmd = [
+                    "find", wallpaper_dir,
+                    "\\(", "-type", "f", "-o", "-type", "l", "\\)",
+                    "-exec", "identify", "-format", "%w %h %i\\n", "{}", "\\;"
+                ]
             
             try:
+                if debug:
+                    console.print(f"[dim]Debug: Running command:[/dim] {' '.join(cmd)}")
                 result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 output = result.stdout
+                if debug and result.stderr:
+                    console.print(f"[yellow]Debug: stderr output:[/yellow] {result.stderr}")
             except Exception as e:
                 console.print(f"[bold red]Error:[/bold red] {str(e)}")
                 sys.exit(1)
@@ -174,32 +175,33 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
             
         # Look for symlinks only or both regular files and symlinks
         if symlinks_only:
-            file_type = ["-type", "l"]
+            # Simpler find command for symlinks
+            cmd = [
+                "find", wallpaper_dir, "-type", "l", 
+                "-exec", "identify", "-format", "%w %h %i\\n", "{}", "\\;"
+            ]
         else:
-            file_type = ["-type", "f", "-o", "-type", "l"]
-            
-        cmd = [
-            "find", wallpaper_dir,
-            "(",
-        ] + file_type + [
-            ")", "-a", 
-            "(", 
-            "-name", "*.jpg", "-o", 
-            "-name", "*.jpeg", "-o", 
-            "-name", "*.png", "-o", 
-            "-name", "*.gif", 
-            ")", 
-            "-exec", "identify", "-format", "%w %h %i\\n", "{}", "\\;"
-        ]
+            # Command for all image files
+            cmd = [
+                "find", wallpaper_dir,
+                "\\(", "-type", "f", "-o", "-type", "l", "\\)",
+                "-exec", "identify", "-format", "%w %h %i\\n", "{}", "\\;"
+            ]
         
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             output = result.stdout
+            if debug and result.stderr:
+                print(f"Debug: stderr output: {result.stderr}")
         except Exception:
             sys.exit(1)
     
     # Filter by resolution
     wallpapers = []
+    
+    if debug and not quiet:
+        console.print(f"[dim]Debug: Raw output lines: {len(output.splitlines())}[/dim]")
+    
     for line in output.splitlines():
         if not line.strip():
             continue
@@ -211,8 +213,13 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
                 height = int(parts[1])
                 path = parts[2]  # The rest is the path
                 
+                if debug and not quiet:
+                    console.print(f"[dim]Debug: Found image: {path} ({width}x{height})[/dim]")
+                
                 if width >= min_width and height >= min_height:
                     wallpapers.append(path)
+                elif debug and not quiet:
+                    console.print(f"[yellow]Debug: Image too small: {path} ({width}x{height})[/yellow]")
         except (ValueError, IndexError):
             # If parsing fails, log it if not in quiet mode
             if not quiet:
@@ -293,7 +300,7 @@ def main():
     check_dependencies()
     
     # Find wallpapers
-    wallpapers = find_wallpapers(args.dir, args.width, args.height, args.quiet, args.symlinks_only)
+    wallpapers = find_wallpapers(args.dir, args.width, args.height, args.quiet, args.symlinks_only, args.debug)
     
     if not wallpapers:
         if not args.quiet:
