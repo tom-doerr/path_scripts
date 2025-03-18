@@ -83,8 +83,8 @@ while true; do
         echo -e "\033[1;32mNew commit detected, updated diff.\033[0m" >&2
     fi
     
-    # Simple status update
-    echo -e "\033[1;36mLast check: $(date '+%H:%M:%S') | Press Ctrl+C to exit\033[0m"
+    # Update status on the same line (overwrite previous status)
+    echo -ne "\r\033[K\033[1;36mLast check: $(date '+%H:%M:%S') | Press Ctrl+C to exit\033[0m"
     
     # Wait before next check
     sleep $INTERVAL
