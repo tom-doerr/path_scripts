@@ -16,25 +16,21 @@ fi
 # Get the initial HEAD commit hash
 LAST_KNOWN_COMMIT=$(git rev-parse HEAD 2>/dev/null)
 
-# Use a simpler approach with direct output to terminal
+# Use a more compatible approach for terminal handling
 setup_display() {
     # Function to clear screen without flickering
     clear_screen() {
-        tput clear
+        clear
     }
     
     # Clean up function
     cleanup() {
-        tput cnorm  # Show cursor
         echo -e "\nExiting git diff watch"
         exit 0
     }
     
     # Set trap for cleanup
     trap cleanup INT TERM EXIT
-    
-    # Hide cursor for cleaner display
-    tput civis
 }
 
 # Function to check if there's a new commit
@@ -87,9 +83,8 @@ while true; do
         echo -e "\033[1;32mNew commit detected, updated diff.\033[0m" >&2
     fi
     
-    # Brief status update without clearing screen
-    tput cup $(($(tput lines) - 1)) 0  # Move to bottom line
-    echo -e "\033[K\033[1;36mLast check: $(date '+%H:%M:%S') | Press Ctrl+C to exit\033[0m"
+    # Simple status update
+    echo -e "\033[1;36mLast check: $(date '+%H:%M:%S') | Press Ctrl+C to exit\033[0m"
     
     # Wait before next check
     sleep $INTERVAL
