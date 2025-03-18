@@ -77,12 +77,34 @@ def run_tests(worktree_path):
     return result.returncode == 0
 
 
-def run_aider(worktree_path, task):
+def run_aider(worktree_path, task, model="r1"):
     """Run aider with the given task."""
     print(f"\n=== Running aider with task: {task} ===\n")
+    
+    # Check for instruction file in dotfiles
+    instruction_file = os.path.expanduser("~/dotfiles/instruction.md")
+    plex_file = "plex.md"
+    context_file = "context.txt"
+    
+    read_args = []
+    if os.path.exists(instruction_file):
+        read_args.append(f"--read {instruction_file}")
+    
+    # Check for plex.md and context.txt in the worktree
+    if os.path.exists(os.path.join(worktree_path, plex_file)):
+        read_args.append(f"--read {plex_file}")
+    
+    if os.path.exists(os.path.join(worktree_path, context_file)):
+        read_args.append(f"--read {context_file}")
+    
+    read_args_str = " ".join(read_args)
+    
     # Using subprocess.run directly to allow interactive session
     subprocess.run(
-        f"aider --message '{task}'",
+        f"aider --architect --model {model} --subtree-only {read_args_str} "
+        f"--yes-always --no-show-model-warnings "
+        f"--weak-model 'openrouter/google/gemini-2.0-flash-001' "
+        f"--message '{task}' **/*.py",
         cwd=worktree_path,
         shell=True,
         text=True
@@ -134,6 +156,7 @@ def main():
 Examples:
   %(prog)s "Add user authentication feature"
   %(prog)s -p /path/to/repo "Fix bug in login form"
+  %(prog)s --model claude-3-opus "Implement new feature"
         """
     )
     
@@ -142,6 +165,8 @@ Examples:
                         help="Path to the main git repository (default: current directory)")
     parser.add_argument("--no-push", action="store_true", 
                         help="Don't push changes back to main repository")
+    parser.add_argument("--model", default="r1",
+                        help="Model to use with aider (default: r1)")
     
     args = parser.parse_args()
     
@@ -159,7 +184,7 @@ Examples:
     # Main loop
     while True:
         # Run aider
-        run_aider(worktree_path, args.task)
+        run_aider(worktree_path, args.task, args.model)
         
         # Run tests
         print("\n=== Running tests ===\n")
