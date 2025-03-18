@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# git-diff-watch - Continuously display the last git commit diff with color
-# Usage: git-diff-watch [check_interval_seconds] [additional_git_diff_args]
+# watch-git-diff - Continuously display the last git commit diff with color
+# Usage: watch-git-diff [check_interval_seconds] [additional_git_diff_args]
 
 # Default check interval in seconds
 INTERVAL=${1:-2}
