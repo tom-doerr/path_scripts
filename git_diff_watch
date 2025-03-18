@@ -13,86 +13,53 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     exit 1
 fi
 
-# Use less as a pager with auto-refresh capability
-setup_pager() {
-    # Create a named pipe for communication with less
-    PIPE_FILE=$(mktemp -u)
-    mkfifo "$PIPE_FILE"
-    
-    # Create a control pipe to detect when less exits
-    CONTROL_PIPE=$(mktemp -u)
-    mkfifo "$CONTROL_PIPE"
-    
-    # Start less in a way that it refreshes content automatically
-    # -K keeps the content on screen when less exits
-    # -R processes ANSI color codes
-    # -S chops long lines
-    # -X doesn't send termcap init/deinit strings
-    # -F exits if content fits on one screen
-    # +F starts in "follow" mode
-    less -KRSXFq +F "$PIPE_FILE" &
-    LESS_PID=$!
-    
-    # Monitor less process in background
-    {
-        # Wait for less to exit
-        wait $LESS_PID 2>/dev/null
-        # Signal the main script to exit
-        echo "exit" > "$CONTROL_PIPE"
-    } &
-    
-    # Open the pipes for writing/reading
-    exec 3>"$PIPE_FILE"
-    exec 4<"$CONTROL_PIPE"
+# Use a simpler approach with direct output to terminal
+setup_display() {
+    # Function to clear screen without flickering
+    clear_screen() {
+        tput clear
+    }
     
     # Clean up function
     cleanup() {
-        exec 3>&-
-        exec 4<&-
-        kill $LESS_PID 2>/dev/null
-        rm -f "$PIPE_FILE" "$CONTROL_PIPE"
+        tput cnorm  # Show cursor
+        echo -e "\nExiting git diff watch"
         exit 0
     }
     
     # Set trap for cleanup
     trap cleanup INT TERM EXIT
+    
+    # Hide cursor for cleaner display
+    tput civis
 }
 
 # Function to display the diff with a header
 show_diff() {
+    clear_screen
+    
     # Get the last commit hash and message
     LAST_COMMIT=$(git log -1 --pretty=format:"%h - %s (%cr) by %an")
 
-    # Generate the content with header and diff
-    {
-        echo -e "\033[1;36m=== Last Commit Diff (Updated: $(date '+%Y-%m-%d %H:%M:%S')) ===\033[0m"
-        echo -e "\033[1;33m$LAST_COMMIT\033[0m"
-        echo -e "\033[1;36m=======================================================\033[0m"
-        echo ""
-        
-        # Show the diff with color
-        git --no-pager diff HEAD~1 HEAD --color=always "$@"
-        
-        echo ""
-        echo -e "\033[1;36m=== Press Ctrl+C to exit, 'q' to quit ===\033[0m"
-        
-        # Add a form feed character to clear the less buffer for the next update
-        echo -e "\f"
-    } >&3
+    # Print header with timestamp
+    echo -e "\033[1;36m=== Last Commit Diff (Updated: $(date '+%Y-%m-%d %H:%M:%S')) ===\033[0m"
+    echo -e "\033[1;33m$LAST_COMMIT\033[0m"
+    echo -e "\033[1;36m=======================================================\033[0m"
+    echo ""
+    
+    # Show the diff with color
+    git --no-pager diff HEAD~1 HEAD --color=always "$@"
+    
+    echo ""
+    echo -e "\033[1;36m=== Press Ctrl+C to exit ===\033[0m"
 }
 
 # Main execution
 echo "Starting git diff watch, refreshing every $INTERVAL seconds..."
-setup_pager
+setup_display
 
 # Main loop
 while true; do
-    # Check if less has exited (user pressed 'q')
-    if read -t 0 exit_signal <&4; then
-        echo "User exited with 'q'"
-        exit 0
-    fi
-    
     show_diff "$@"
     sleep $INTERVAL
 done
