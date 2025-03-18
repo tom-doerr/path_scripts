@@ -231,12 +231,16 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
     # Using subprocess.run directly to allow interactive session
     console.print(f"[bold yellow]Starting aider session...[/bold yellow]")
     
-    # Find all Python files in the worktree
+    # Check if there are Python files in the repository
     result = run_command("git ls-files '*.py'", cwd=worktree_path)
-    python_files = [f for f in result.stdout.strip().split('\n') if f]
+    has_python_files = bool(result.stdout.strip())
+    
+    # Instead of listing individual files, we'll use the repository root
+    # This allows aider to work with the entire repository structure
+    python_files = ["."]
     
     # If no Python files found, create a placeholder file
-    if not python_files:
+    if not has_python_files:
         console.print("[dim]No Python files found in repository, creating placeholder...[/dim]")
         placeholder_file = os.path.join(worktree_path, "placeholder.py")
         with open(placeholder_file, "w") as f:
@@ -245,46 +249,31 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
         # Add and commit the placeholder file
         run_command("git add placeholder.py", cwd=worktree_path)
         run_command("git commit -m 'Add placeholder Python file'", cwd=worktree_path)
-        
-        python_files = ["placeholder.py"]
     
     # Create the message with the task at the end
     message = f"Improve code quality and fix any issues found in tests or linting. " \
               f"TDD! Add tests for task first before making changes." \
               f"Task: {task}"
     
-    # Run aider in the worktree directory
-    aider_cmd = [
-        "aider",
-        "--architect",
-        f"--model", model,
-        f"--weak-model", weak_model
-    ]
-    
-    # Add read arguments
-    for read_arg in read_args:
-        aider_cmd.extend(read_arg.split())
+    # Build the aider command as a string directly
+    aider_cmd = f"aider --architect --model {model} --weak-model '{weak_model}' {read_args_str}"
     
     # Add remaining arguments
-    aider_cmd.extend([
-        "--yes-always",
-        "--no-show-model-warnings",
-        "--no-show-release-notes",
-        f"--chat-history-file", history_file,
-        "--restore-chat-history",
-        "--edit-format", "diff",
-        "--auto-lint", "--lint-cmd", "pylint",
-        "--auto-test", "--test-cmd", "python3.11 -m pytest",
-        "--message", message
-    ])
+    aider_cmd += (
+        f" --yes-always --no-show-model-warnings --no-show-release-notes"
+        f" --chat-history-file {history_file} --restore-chat-history"
+        f" --edit-format diff --auto-lint --lint-cmd 'pylint'"
+        f" --auto-test --test-cmd 'python3.11 -m pytest'"
+        f" --message '{message}'"
+    )
     
-    # Add Python files
-    aider_cmd.extend(python_files)
+    # Add the repository root to work with all files
+    aider_cmd += " ."
     
     # Run aider with proper environment
     console.print(f"[dim]Running aider in {worktree_path}[/dim]")
     subprocess.run(
-        " ".join(aider_cmd),  # Convert list to string for shell=True
+        aider_cmd,
         cwd=worktree_path,
         shell=True,
         text=True
