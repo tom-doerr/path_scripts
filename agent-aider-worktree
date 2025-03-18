@@ -159,7 +159,7 @@ def generate_context(worktree_path):
     console.print("[dim]Context file generated[/dim]")
 
 
-def run_aider(worktree_path, task, model="r1"):
+def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
     """Run aider with the given task."""
     console.print(Panel(f"[bold]Running aider with task:[/bold]\n{task}", style="cyan"))
     
@@ -167,43 +167,98 @@ def run_aider(worktree_path, task, model="r1"):
     instruction_file = os.path.expanduser("~/dotfiles/instruction.md")
     plex_file = "plex.md"
     context_file = "context.txt"
+    issues_file = os.path.join(worktree_path, "issues.txt")
+    notes_file = os.path.join(worktree_path, "notes.md")
     
-    read_args = []
-    if os.path.exists(instruction_file):
-        read_args.append(f"--read {instruction_file}")
-        console.print(f"[dim]Using instruction file: {instruction_file}[/dim]")
+    # Create notes.md if it doesn't exist
+    if not os.path.exists(notes_file):
+        with open(notes_file, "w") as f:
+            f.write("# Notes\n\n")
     
-    # Check for plex.md and context.txt in the worktree
-    if os.path.exists(os.path.join(worktree_path, plex_file)):
-        read_args.append(f"--read {plex_file}")
-        console.print(f"[dim]Using plex file: {plex_file}[/dim]")
+    # Setup history file
+    history_file = os.path.join(worktree_path, "custom_aider_history.md")
     
-    if os.path.exists(os.path.join(worktree_path, context_file)):
-        read_args.append(f"--read {context_file}")
-        console.print(f"[dim]Using context file: {context_file}[/dim]")
+    # Inner loop for multiple aider runs
+    for i in range(1, inner_loop_count + 1):
+        console.print(f"[bold cyan]Inner loop iteration {i}/{inner_loop_count}[/bold cyan]")
+        
+        # Run black formatter
+        console.print("[dim]Running black formatter...[/dim]")
+        run_command("black .", cwd=worktree_path, check=False)
+        
+        # Run tests and linting to generate issues.txt
+        console.print("[dim]Running tests and linting for issues.txt...[/dim]")
+        run_command(
+            f"export COLUMNS=120; export APP_ENV=development; "
+            f"pytest --timeout=1 --cov=$(git ls-files '*.py') 2>&1 | tail -n400 > {issues_file}",
+            cwd=worktree_path,
+            check=False
+        )
+        run_command(
+            f"export APP_ENV=development; "
+            f"pylint $(git ls-files '*.py') 2>&1 | tail -n400 >> {issues_file}",
+            cwd=worktree_path,
+            check=False
+        )
+        
+        # Prepare read arguments
+        read_args = []
+        if os.path.exists(instruction_file):
+            read_args.append(f"--read {instruction_file}")
+            console.print(f"[dim]Using instruction file: {instruction_file}[/dim]")
+        
+        if os.path.exists(os.path.join(worktree_path, plex_file)):
+            read_args.append(f"--read {plex_file}")
+            console.print(f"[dim]Using plex file: {plex_file}[/dim]")
+        
+        if os.path.exists(context_file):
+            read_args.append(f"--read {context_file}")
+            console.print(f"[dim]Using context file: {context_file}[/dim]")
+        
+        read_args.append(f"--read {issues_file}")
+        read_args.append(f"--file {notes_file}")
+        read_args_str = " ".join(read_args)
+        
+        # Set weak model
+        weak_model = "openrouter/google/gemini-2.0-flash-001"
+        
+        # Using subprocess.run directly to allow interactive session
+        console.print(f"[bold yellow]Starting aider session (iteration {i}/{inner_loop_count})...[/bold yellow]")
+        
+        # Find all Python files in the worktree
+        result = run_command("git ls-files '*.py'", cwd=worktree_path)
+        python_files = result.stdout.strip().split('\n')
+        
+        # Filter out empty entries and join with spaces
+        python_files = [f for f in python_files if f]
+        python_files_str = " ".join(python_files)
+        
+        subprocess.run(
+            f"aider --architect --model {model} "
+            f"--weak-model '{weak_model}' "
+            f"{read_args_str} "
+            f"--yes-always --no-show-model-warnings --no-show-release-notes "
+            f"--chat-history-file {history_file} "
+            f"--restore-chat-history "
+            f"--edit-format 'diff' "
+            f"--auto-lint --lint-cmd 'pylint' "
+            f"--auto-test --test-cmd 'python3.11 -m pytest' "
+            f"--message 'Work on fixing the errors. If there are no test errors, improve test coverage. "
+            f"Keep notes in notes.md of e.g. todos, what you did, issues, plans, and things to keep in mind' "
+            f"{python_files_str}",
+            cwd=worktree_path,
+            shell=True,
+            text=True
+        )
+        
+        console.print(f"[bold yellow]Aider session {i}/{inner_loop_count} completed[/bold yellow]")
+        console.print(f"[dim]{'=' * 50} {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} {'=' * 50}[/dim]")
+        
+        # Small delay between iterations
+        if i < inner_loop_count:
+            time.sleep(1)
     
-    read_args_str = " ".join(read_args)
-    
-    # Find all Python files in the worktree
-    result = run_command("git ls-files '*.py'", cwd=worktree_path)
-    python_files = result.stdout.strip().split('\n')
-    
-    # Filter out empty entries and join with spaces
-    python_files = [f for f in python_files if f]
-    python_files_str = " ".join(python_files)
-    
-    # Using subprocess.run directly to allow interactive session
-    console.print("[bold yellow]Starting aider session...[/bold yellow]")
-    subprocess.run(
-        f"aider --architect --model {model} --subtree-only {read_args_str} "
-        f"--yes-always --no-show-model-warnings "
-        f"--weak-model 'openrouter/google/gemini-2.0-flash-001' "
-        f"--message '{task}' {python_files_str}",
-        cwd=worktree_path,
-        shell=True,
-        text=True
-    )
-    console.print("[bold yellow]Aider session completed[/bold yellow]")
+    console.print("[bold green]All inner loop iterations completed[/bold green]")
 
 
 def merge_and_push(worktree_path, main_repo_path, branch_name, main_branch):
@@ -258,6 +313,7 @@ Examples:
   %(prog)s "Add user authentication feature"
   %(prog)s -p /path/to/repo "Fix bug in login form"
   %(prog)s --model claude-3-opus "Implement new feature"
+  %(prog)s --inner-loop 5 "Refactor database code"
         """
     )
     
@@ -266,10 +322,12 @@ Examples:
                         help="Path to the main git repository (default: current directory)")
     parser.add_argument("--no-push", action="store_true", 
                         help="Don't push changes back to main repository")
-    parser.add_argument("--model", default="r1",
-                        help="Model to use with aider (default: r1)")
+    parser.add_argument("--model", default="openrouter/deepseek/deepseek-r1",
+                        help="Model to use with aider (default: openrouter/deepseek/deepseek-r1)")
     parser.add_argument("--max-iterations", type=int, default=10,
                         help="Maximum number of iterations to run (default: 10)")
+    parser.add_argument("--inner-loop", type=int, default=3,
+                        help="Number of inner loop iterations to run (default: 3)")
     
     args = parser.parse_args()
     
@@ -315,8 +373,8 @@ Examples:
         # Generate context file
         generate_context(worktree_path)
         
-        # Run aider
-        run_aider(worktree_path, args.task, args.model)
+        # Run aider with inner loop
+        run_aider(worktree_path, args.task, args.model, args.inner_loop)
         
         # Run tests
         tests_pass = run_tests(worktree_path)
