@@ -283,9 +283,8 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
     # Create the message
     message = f"Improve code quality and fix any issues found in tests or linting. Task: {task}"
     
-    # Check if pytest is installed before setting up test command
-    pytest_check = run_command("which pytest", shell=True, check=False)
-    test_cmd = "--auto-test --test-cmd 'python -m pytest'" if pytest_check.returncode == 0 else ""
+    # Always set pytest test command
+    test_cmd = "--auto-test --test-cmd 'python -m pytest'"
     
     # Build the aider command
     aider_cmd = (
