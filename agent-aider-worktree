@@ -280,9 +280,10 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
         f" --message '{message}'"
     )
     
-    # Instead of passing all files, just use the repository root
-    # This is more reliable and avoids command line length issues
-    aider_cmd += " ."
+    # Pass all files as arguments to aider
+    # Properly quote paths to handle spaces
+    file_args = " ".join([f'"{f}"' for f in all_files])
+    aider_cmd += f" {file_args}"
     
     # Run aider with proper environment
     console.print(f"[dim]Running aider in {worktree_path}[/dim]")
