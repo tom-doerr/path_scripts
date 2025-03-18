@@ -231,13 +231,28 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
     # Using subprocess.run directly to allow interactive session
     console.print(f"[bold yellow]Starting aider session...[/bold yellow]")
     
-    # Check if there are Python files in the repository
-    result = run_command("git ls-files '*.py'", cwd=worktree_path)
-    has_python_files = bool(result.stdout.strip())
+    # List all files in the repository with their full paths
+    console.print("[dim]Listing all files in the repository...[/dim]")
+    result = run_command("git ls-files", cwd=worktree_path)
+    all_files = [f for f in result.stdout.strip().split('\n') if f]
     
-    # Instead of listing individual files, we'll use the repository root
+    # Display the files with their full paths
+    if all_files:
+        file_table = Table(title="Repository Files")
+        file_table.add_column("File Path", style="cyan")
+        
+        for file_path in all_files:
+            full_path = os.path.join(worktree_path, file_path)
+            file_table.add_row(full_path)
+        
+        console.print(file_table)
+    
+    # Check if there are Python files in the repository
+    python_files = [f for f in all_files if f.endswith('.py')]
+    has_python_files = bool(python_files)
+    
+    # We'll use the repository root for aider
     # This allows aider to work with the entire repository structure
-    python_files = ["."]
     
     # If no Python files found, create a placeholder file
     if not has_python_files:
