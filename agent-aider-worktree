@@ -186,7 +186,6 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
     instruction_file = os.path.expanduser("~/dotfiles/instruction.md")
     plex_file = "plex.md"
     context_file = "context.txt"
-    issues_file = os.path.join(worktree_path, "issues.txt")
     
     # Setup history file
     history_file = os.path.join(worktree_path, "custom_aider_history.md")
@@ -194,21 +193,6 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
     # Run black formatter
     console.print("[dim]Running black formatter...[/dim]")
     run_command("black .", cwd=worktree_path, check=False)
-    
-    # Run tests and linting to generate issues.txt
-    console.print("[dim]Running tests and linting for issues.txt...[/dim]")
-    run_command(
-        f"export COLUMNS=120; export APP_ENV=development; "
-        f"pytest --timeout=1 --cov=$(git ls-files '*.py') 2>&1 | tail -n400 > {issues_file}",
-        cwd=worktree_path,
-        check=False
-    )
-    run_command(
-        f"export APP_ENV=development; "
-        f"pylint $(git ls-files '*.py') 2>&1 | tail -n400 >> {issues_file}",
-        cwd=worktree_path,
-        check=False
-    )
         
     # Prepare read arguments
     read_args = []
@@ -225,7 +209,6 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
         read_args.append(f"--read {worktree_context_file}")
         console.print(f"[dim]Using context file: {worktree_context_file}[/dim]")
     
-    read_args.append(f"--read {issues_file}")
     read_args_str = " ".join(read_args)
     
     # Set weak model
