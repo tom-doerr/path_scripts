@@ -591,7 +591,8 @@ def handle_success(worktree_path, main_repo_path, branch_name, main_branch, task
             total_time = str(datetime.now() - start_time).split('.')[0]
             console.print(Panel(
                 f"[bold]Task completed successfully in {iteration} iterations![/bold]\n"
-                f"Total time: {total_time}",
+                f"Total time: {total_time}\n"
+                f"Original task: {task}",
                 style="green"
             ))
             return True
@@ -658,7 +659,8 @@ def main():
             if iteration > args.max_iterations:
                 console.print(Panel(
                     f"[bold]Reached maximum number of iterations ({args.max_iterations})[/bold]\n"
-                    f"Total time spent: {str(datetime.now() - start_time).split('.')[0]}",
+                    f"Total time spent: {str(datetime.now() - start_time).split('.')[0]}\n"
+                    f"Original task: {args.task}",
                     style="yellow"
                 ))
                 break
