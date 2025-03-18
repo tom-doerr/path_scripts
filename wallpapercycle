@@ -149,7 +149,7 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
                 # Simpler find command for symlinks
                 cmd = [
                     "find", wallpaper_dir, "-type", "l", 
-                    "-exec", "identify", "-format", "%w %h %i\\n", "{}", "\\;"
+                    "-exec", "identify", "-format", "%w %h %i\\n", "{}", ";"
                 ]
             else:
                 # Command for all image files
@@ -162,8 +162,45 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
             try:
                 if debug:
                     console.print(f"[dim]Debug: Running command:[/dim] {' '.join(cmd)}")
-                result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-                output = result.stdout
+                
+                # Try using shell=True as a fallback if the list approach doesn't work
+                try:
+                    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                    output = result.stdout
+                    
+                    # If we got an error, try shell=True approach
+                    if result.stderr and "missing argument to `-exec'" in result.stderr:
+                        if debug:
+                            console.print("[yellow]Debug: Trying shell=True approach[/yellow]")
+                        
+                        # Build shell command
+                        if symlinks_only:
+                            shell_cmd = f"find {wallpaper_dir} -type l -exec identify -format '%w %h %i\\n' {{}} \\;"
+                        else:
+                            shell_cmd = f"find {wallpaper_dir} \\( -type f -o -type l \\) -exec identify -format '%w %h %i\\n' {{}} \\;"
+                        
+                        if debug:
+                            console.print(f"[dim]Debug: Shell command:[/dim] {shell_cmd}")
+                            
+                        result = subprocess.run(shell_cmd, shell=True, capture_output=True, text=True, check=False)
+                        output = result.stdout
+                
+                except Exception as e:
+                    if debug:
+                        console.print(f"[yellow]Debug: Exception in first attempt: {str(e)}[/yellow]")
+                    
+                    # Try the shell=True approach as fallback
+                    if symlinks_only:
+                        shell_cmd = f"find {wallpaper_dir} -type l -exec identify -format '%w %h %i\\n' {{}} \\;"
+                    else:
+                        shell_cmd = f"find {wallpaper_dir} \\( -type f -o -type l \\) -exec identify -format '%w %h %i\\n' {{}} \\;"
+                    
+                    if debug:
+                        console.print(f"[dim]Debug: Fallback shell command:[/dim] {shell_cmd}")
+                        
+                    result = subprocess.run(shell_cmd, shell=True, capture_output=True, text=True, check=False)
+                    output = result.stdout
+                
                 if debug and result.stderr:
                     console.print(f"[yellow]Debug: stderr output:[/yellow] {result.stderr}")
             except Exception as e:
@@ -184,13 +221,37 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
             # Command for all image files
             cmd = [
                 "find", wallpaper_dir,
-                "\\(", "-type", "f", "-o", "-type", "l", "\\)",
-                "-exec", "identify", "-format", "%w %h %i\\n", "{}", "\\;"
+                "(", "-type", "f", "-o", "-type", "l", ")",
+                "-exec", "identify", "-format", "%w %h %i\\n", "{}", ";"
             ]
         
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-            output = result.stdout
+            # Try using shell=True as a fallback if the list approach doesn't work
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                output = result.stdout
+                
+                # If we got an error, try shell=True approach
+                if result.stderr and "missing argument to `-exec'" in result.stderr:
+                    # Build shell command
+                    if symlinks_only:
+                        shell_cmd = f"find {wallpaper_dir} -type l -exec identify -format '%w %h %i\\n' {{}} \\;"
+                    else:
+                        shell_cmd = f"find {wallpaper_dir} \\( -type f -o -type l \\) -exec identify -format '%w %h %i\\n' {{}} \\;"
+                        
+                    result = subprocess.run(shell_cmd, shell=True, capture_output=True, text=True, check=False)
+                    output = result.stdout
+            
+            except Exception:
+                # Try the shell=True approach as fallback
+                if symlinks_only:
+                    shell_cmd = f"find {wallpaper_dir} -type l -exec identify -format '%w %h %i\\n' {{}} \\;"
+                else:
+                    shell_cmd = f"find {wallpaper_dir} \\( -type f -o -type l \\) -exec identify -format '%w %h %i\\n' {{}} \\;"
+                    
+                result = subprocess.run(shell_cmd, shell=True, capture_output=True, text=True, check=False)
+                output = result.stdout
+            
             if debug and result.stderr:
                 print(f"Debug: stderr output: {result.stderr}")
         except Exception:
@@ -202,6 +263,34 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
     if debug and not quiet:
         console.print(f"[dim]Debug: Raw output lines: {len(output.splitlines())}[/dim]")
     
+    # If we got no output from the find+identify command, try a fallback approach
+    if not output.strip():
+        if debug and not quiet:
+            console.print("[yellow]Debug: No output from find+identify, trying fallback approach[/yellow]")
+        
+        # Fallback: Just list the symlinks and skip resolution check
+        if symlinks_only:
+            try:
+                # List all symlinks in the directory
+                if debug and not quiet:
+                    console.print("[dim]Debug: Listing all symlinks in directory[/dim]")
+                
+                # Use os.walk to find all symlinks
+                for root, dirs, files in os.walk(wallpaper_dir):
+                    for name in files + dirs:
+                        full_path = os.path.join(root, name)
+                        if os.path.islink(full_path):
+                            # Check if it's an image file by extension
+                            ext = os.path.splitext(name)[1].lower()
+                            if ext in ['.jpg', '.jpeg', '.png', '.gif']:
+                                if debug and not quiet:
+                                    console.print(f"[dim]Debug: Found image symlink: {full_path}[/dim]")
+                                wallpapers.append(full_path)
+            except Exception as e:
+                if debug and not quiet:
+                    console.print(f"[yellow]Debug: Error in fallback approach: {str(e)}[/yellow]")
+    
+    # Process the output from find+identify if we got any
     for line in output.splitlines():
         if not line.strip():
             continue
