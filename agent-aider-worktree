@@ -400,7 +400,7 @@ def merge_and_push(worktree_path, main_repo_path, branch_name, main_branch, task
         if not tests_pass:
             console.print("[bold yellow]Tests failed after merge. Running aider to fix issues...[/bold yellow]")
             fix_task = f"Fix the failing tests after merging with main. Original task: {task}"
-            run_aider(worktree_path, fix_task, inner_loop_count=1)
+            run_aider(worktree_path, fix_task, args, model=args.model, inner_loop_count=1)
             
             # Check if tests pass now
             tests_pass = run_tests(worktree_path)
