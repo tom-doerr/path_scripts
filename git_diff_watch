@@ -19,6 +19,10 @@ setup_pager() {
     PIPE_FILE=$(mktemp -u)
     mkfifo "$PIPE_FILE"
     
+    # Create a control pipe to detect when less exits
+    CONTROL_PIPE=$(mktemp -u)
+    mkfifo "$CONTROL_PIPE"
+    
     # Start less in a way that it refreshes content automatically
     # -K keeps the content on screen when less exits
     # -R processes ANSI color codes
@@ -29,14 +33,24 @@ setup_pager() {
     less -KRSXFq +F "$PIPE_FILE" &
     LESS_PID=$!
     
-    # Open the pipe for writing
+    # Monitor less process in background
+    {
+        # Wait for less to exit
+        wait $LESS_PID 2>/dev/null
+        # Signal the main script to exit
+        echo "exit" > "$CONTROL_PIPE"
+    } &
+    
+    # Open the pipes for writing/reading
     exec 3>"$PIPE_FILE"
+    exec 4<"$CONTROL_PIPE"
     
     # Clean up function
     cleanup() {
         exec 3>&-
+        exec 4<&-
         kill $LESS_PID 2>/dev/null
-        rm -f "$PIPE_FILE"
+        rm -f "$PIPE_FILE" "$CONTROL_PIPE"
         exit 0
     }
     
@@ -73,6 +87,12 @@ setup_pager
 
 # Main loop
 while true; do
+    # Check if less has exited (user pressed 'q')
+    if read -t 0 exit_signal <&4; then
+        echo "User exited with 'q'"
+        exit 0
+    fi
+    
     show_diff "$@"
     sleep $INTERVAL
 done
