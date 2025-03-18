@@ -338,20 +338,6 @@ def _prepare_files_for_aider(worktree_path, args):
     # Check if there are Python files in the repository
     python_files = [f for f in all_files if f.endswith('.py') and should_include(f)]
     
-    # If no Python files found, create a placeholder file
-    if not python_files:
-        console.print("[dim]No Python files found in repository, creating placeholder...[/dim]")
-        placeholder_file = os.path.join(worktree_path, "placeholder.py")
-        with open(placeholder_file, "w") as f:
-            f.write("# Placeholder file\n# TODO: Add your Python code here\n")
-        
-        # Add and commit the placeholder file
-        run_command("git add placeholder.py", cwd=worktree_path, check=False)
-        run_command("git commit -m 'Add placeholder Python file'", cwd=worktree_path, check=False)
-        
-        # Update our file lists
-        python_files = ["placeholder.py"]
-    
     # Determine which files to include
     if args.no_python_files:
         return []
