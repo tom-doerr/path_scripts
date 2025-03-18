@@ -432,7 +432,7 @@ def _update_worktree(worktree_path, main_branch, branch_name, task, args):
         conflict_args = SimpleNamespace(
             model=args.model,
             no_python_files=False,
-            all_files=True,
+            all_files=True,  # Always include all files for conflict resolution
             inner_loop=1,
             max_iterations=1
         )
@@ -489,7 +489,7 @@ def _merge_to_main(main_repo_path, main_branch, branch_name):
         run_aider(main_repo_path, conflict_task, SimpleNamespace(
             model=DEFAULT_MODEL,
             no_python_files=False,
-            all_files=True,
+            all_files=True,  # Always include all files for conflict resolution
             inner_loop=1,
             max_iterations=1
         ), model=DEFAULT_MODEL)
