@@ -78,7 +78,7 @@ def create_worktree(repo_path, task_name):
     safe_task_name = safe_task_name[:50]  # Limit length
     
     # Add timestamp to make it unique
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S%f")[:-3]  # Millis precision
     worktree_path = os.path.join(worktree_base, f"{safe_task_name}_{timestamp}")
     
     # Get the current branch
@@ -137,7 +137,7 @@ def generate_context(worktree_path):
                 check=False
             )
             # Write up to 500 lines of test output
-            test_output = result.stdout.strip().split('\n')[-500:]
+            test_output = (result.stdout or "").strip().split('\n')[-500:]
             f.write('\n'.join(test_output) + '\n')
         else:
             console.print("[dim]No tests directory found, skipping test execution[/dim]")
@@ -168,7 +168,8 @@ def generate_context(worktree_path):
             f.write("\nFocus on code that causes this test to fail: \n")
             # Find failing tests from the test output
             failing_tests = []
-            for line in result.stdout.split('\n'):
+            test_result = run_command("python -m pytest", cwd=worktree_path)
+            for line in test_result.stdout.split('\n'):
                 if 'tests/test' in line and ('FAILED' in line or 'ERROR' in line):
                     failing_tests.append(line)
             
@@ -296,7 +297,7 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
         f" --chat-history-file {history_file} --restore-chat-history"
         f" --edit-format diff --auto-lint --lint-cmd 'pylint'"
         f" --auto-test --test-cmd 'python3.11 -m pytest'"
-        f" --message '{message}'"
+        f" --message {message}"
     )
     
     # Add files with proper shell escaping
@@ -351,7 +352,7 @@ def merge_and_push(worktree_path, main_repo_path, branch_name, main_branch, task
             
             # Run aider with conflict resolution task
             conflict_task = f"Resolve these merge conflicts: {conflict_status.stdout}. Preserve functionality from both branches. Original task: {task}"
-            run_aider(worktree_path, conflict_task, args, inner_loop_count=1)
+            run_aider(worktree_path, conflict_task, args, model=args.model, inner_loop_count=1)
             
             # Verify conflict resolution
             post_conflict_check = run_command("git status --porcelain", cwd=worktree_path)
@@ -542,6 +543,10 @@ Examples:
                     f"Total time: {total_time}",
                     style="green"
                 ))
+                # Clean up worktree if not pushing
+                console.print("[yellow]Cleaning up worktree...[/yellow]")
+                run_command(f"git worktree remove {worktree_path} --force", cwd=main_repo_path)
+                run_command(f"git branch -D {branch_name}", cwd=main_repo_path)
                 break
         else:
             console.print("[yellow]Tests failed. Running aider again...[/yellow]")
