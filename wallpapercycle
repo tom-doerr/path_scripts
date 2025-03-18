@@ -17,6 +17,10 @@ echo "Found ${#wallpaper_array[@]} suitable wallpapers."
 for wp in "${wallpaper_array[@]}"; do
     echo "Setting wallpaper: $wp"
     feh --bg-fill "$wp"
+    
+    # Update the current symlink
+    ln -sf "$wp" ~/Pictures/Wallpapers/current
+    
     read -p "Press Enter for next wallpaper or Ctrl+C to stop"
 done
 
