@@ -317,19 +317,34 @@ def merge_and_push(worktree_path, main_repo_path, branch_name, main_branch, task
         console.print("[bold blue]Updating worktree with latest changes...[/bold blue]")
         run_command(f"git pull origin {main_branch}", cwd=worktree_path, check=False)
         
-        # Check for merge conflicts
-        status = run_command("git status", cwd=worktree_path)
-        if "You have unmerged paths" in status.stdout or "fix conflicts" in status.stdout:
+        # Check for merge conflicts using git's merge-check
+        console.print("[bold blue]Checking for potential merge conflicts...[/bold blue]")
+        merge_check = run_command(f"git merge --no-commit --no-ff {branch_name}", cwd=main_repo_path, check=False)
+        
+        # Look for conflict markers in files
+        conflict_files = run_command("git diff --check", cwd=worktree_path)
+        has_conflicts = merge_check.returncode != 0 or "missing" in merge_check.stdout
+        
+        if has_conflicts or conflict_files.stdout:
             console.print("[bold red]Merge conflicts detected. Running aider to resolve conflicts...[/bold red]")
             
-            # Run aider to resolve conflicts
-            conflict_task = f"Please resolve the merge conflicts in this repository. Look at the git status output and fix the conflicts. Original task: {task}"
-            run_aider(worktree_path, conflict_task, inner_loop_count=1)
+            # Get detailed conflict status
+            conflict_status = run_command("git status --porcelain", cwd=worktree_path)
+            console.print(f"[dim]Conflict state:\n{conflict_status.stdout}[/dim]")
             
-            # Check if conflicts were resolved
-            status = run_command("git status", cwd=worktree_path)
-            if "You have unmerged paths" in status.stdout or "fix conflicts" in status.stdout:
-                console.print("[bold red]Merge conflicts could not be automatically resolved.[/bold red]")
+            # Run aider with conflict resolution task
+            conflict_task = f"Resolve these merge conflicts: {conflict_status.stdout}. Preserve functionality from both branches. Original task: {task}"
+            run_aider(worktree_path, conflict_task, args, inner_loop_count=1)
+            
+            # Verify conflict resolution
+            post_conflict_check = run_command("git status --porcelain", cwd=worktree_path)
+            conflict_markers = run_command("grep -rn '<<<<<<<' .", cwd=worktree_path, check=False)
+            
+            if post_conflict_check.returncode != 0 or conflict_markers.returncode == 0:
+                console.print("[bold red]Unresolved issues detected:[/bold red]")
+                if conflict_markers.returncode == 0:
+                    console.print(f"[red]Remaining conflict markers:\n{conflict_markers.stdout}[/red]")
+                console.print(f"[red]Uncommitted changes:\n{post_conflict_check.stdout}[/red]")
                 return False
         
         # Commit any changes from the merge
