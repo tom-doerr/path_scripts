@@ -194,7 +194,7 @@ def _add_test_results_to_context(f, worktree_path):
             
         console.print("[dim]Running tests for context...[/dim]")
         result = run_command(
-            "python -m pytest --timeout=10 tests/test*py",
+            "python -m pytest --timeout=10",
             cwd=worktree_path,
             check=False,
             shell=True
@@ -283,8 +283,6 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
     # Create the message
     message = f"Improve code quality and fix any issues found in tests or linting. Task: {task}"
     
-    # Always set pytest test command
-    test_cmd = "--auto-test --test-cmd 'python -m pytest'"
     
     # Build the aider command
     aider_cmd = (
@@ -299,7 +297,7 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
         f"--restore-chat-history "
         f"--edit-format diff "
         f"--auto-lint --lint-cmd pylint "
-        f"{test_cmd} "
+        f"--auto-test --test-cmd pytest "
         f"--message {quote(message)} "
         f"{' '.join(files_to_include)}"
     )
