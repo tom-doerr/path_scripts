@@ -391,22 +391,16 @@ Examples:
             style="blue"
         ))
         
-        # Run tests first to check if they already pass
-        console.print("[bold blue]Checking if tests already pass...[/bold blue]")
-        tests_pass = run_tests(worktree_path)
+        # Generate context file
+        generate_context(worktree_path)
         
-        if tests_pass:
-            console.print("[bold green]Tests already pass! No need to run aider.[/bold green]")
-        else:
-            # Generate context file
-            generate_context(worktree_path)
-            
-            # Run aider with a single iteration
-            console.print("[bold blue]Running aider to fix failing tests...[/bold blue]")
-            run_aider(worktree_path, args.task, args.model, 1)
-            
-            # Check if tests pass after aider run
-            tests_pass = run_tests(worktree_path)
+        # Run aider
+        console.print("[bold blue]Running aider to improve code and fix issues...[/bold blue]")
+        run_aider(worktree_path, args.task, args.model, 1)
+        
+        # Check if tests pass after aider run
+        console.print("[bold blue]Checking if tests pass...[/bold blue]")
+        tests_pass = run_tests(worktree_path)
         
         if tests_pass:
             # Commit any remaining changes
