@@ -328,22 +328,14 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
     
     # Run aider with proper environment
     console.print(f"[dim]Running aider in {worktree_path}[/dim]")
-    # Use Popen with timeout and non-interactive mode
+    # Run aider with live output
     process = subprocess.Popen(
         aider_cmd.split(),
         cwd=worktree_path,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
         env={**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONINSPECT": "0"}
     )
-    
-    try:
-        stdout, stderr = process.communicate(timeout=600)  # 10 minute timeout
-    except subprocess.TimeoutExpired:
-        process.kill()
-        stdout, stderr = process.communicate()
-        console.print("[bold red]Aider session timed out after 10 minutes[/bold red]")
+    process.wait()
     
     console.print(f"[bold yellow]Aider session completed[/bold yellow]")
     console.print(f"[dim]{'=' * 50} {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} {'=' * 50}[/dim]")
