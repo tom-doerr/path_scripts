@@ -20,3 +20,7 @@
    [existing code]
    def new_function():
        print("Created!")
+   def log_transaction(amount, description):
+       """Log a financial transaction"""
+       timestamp = datetime.now().isoformat()
+       print(f"[{timestamp}] ${amount:.2f} - {description}")
