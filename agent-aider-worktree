@@ -108,16 +108,25 @@ def generate_context(worktree_path):
     context_file = os.path.join(worktree_path, "context.txt")
     context_tmp = os.path.join(worktree_path, "context.txt.tmp")
     
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(context_file), exist_ok=True)
+    
     # Start with date header
     run_command(f"echo '=============`date`===================' > {context_tmp}", cwd=worktree_path)
     
-    # Run tests and capture output
-    console.print("[dim]Running tests for context...[/dim]")
-    run_command(
-        f"pytest --testmon --timeout=10 tests/test*py 2>&1 | tail -n 500 >> {context_tmp}",
-        cwd=worktree_path,
-        check=False
-    )
+    # Check if tests directory exists
+    tests_dir = os.path.join(worktree_path, "tests")
+    if os.path.exists(tests_dir) and os.path.isdir(tests_dir):
+        # Run tests and capture output
+        console.print("[dim]Running tests for context...[/dim]")
+        run_command(
+            f"pytest --testmon --timeout=10 tests/test*py 2>&1 | tail -n 500 >> {context_tmp}",
+            cwd=worktree_path,
+            check=False
+        )
+    else:
+        console.print("[dim]No tests directory found, skipping test execution[/dim]")
+        run_command(f"echo 'No tests directory found' >> {context_tmp}", cwd=worktree_path)
     
     # Add separator
     run_command(
@@ -125,24 +134,31 @@ def generate_context(worktree_path):
         cwd=worktree_path
     )
     
-    # Run pylint and capture output
-    console.print("[dim]Running pylint for context...[/dim]")
-    run_command(
-        f"pylint $(git ls-files 'src/*.py') 2>&1 | tail -n100 >> {context_tmp}",
-        cwd=worktree_path,
-        check=False
-    )
+    # Find Python files to lint
+    result = run_command("git ls-files '*.py'", cwd=worktree_path)
+    if result.stdout.strip():
+        # Run pylint on all Python files
+        console.print("[dim]Running pylint for context...[/dim]")
+        run_command(
+            f"pylint $(git ls-files '*.py') 2>&1 | tail -n100 >> {context_tmp}",
+            cwd=worktree_path,
+            check=False
+        )
+    else:
+        console.print("[dim]No Python files found, skipping linting[/dim]")
+        run_command(f"echo 'No Python files found for linting' >> {context_tmp}", cwd=worktree_path)
     
-    # Add focus on failing tests
-    run_command(
-        f"echo 'Focus on code that causes this test to fail: ' >> {context_tmp}",
-        cwd=worktree_path
-    )
-    run_command(
-        f"cat {context_tmp} | grep 'tests/test.*py:' | shuf -n 1 >> {context_tmp}",
-        cwd=worktree_path,
-        check=False
-    )
+    # Add focus on failing tests if tests directory exists
+    if os.path.exists(tests_dir) and os.path.isdir(tests_dir):
+        run_command(
+            f"echo 'Focus on code that causes this test to fail: ' >> {context_tmp}",
+            cwd=worktree_path
+        )
+        run_command(
+            f"cat {context_tmp} | grep 'tests/test.*py:' | shuf -n 1 >> {context_tmp}",
+            cwd=worktree_path,
+            check=False
+        )
     
     # Add focus directive
     run_command(
@@ -150,8 +166,11 @@ def generate_context(worktree_path):
         cwd=worktree_path
     )
     
-    # Add test files content
-    run_command(f"cat tests/*py >> {context_tmp}", cwd=worktree_path, check=False)
+    # Add test files content if they exist
+    if os.path.exists(tests_dir) and os.path.isdir(tests_dir):
+        test_files = os.listdir(tests_dir)
+        if test_files:
+            run_command(f"cat tests/*py >> {context_tmp}", cwd=worktree_path, check=False)
     
     # Move temp file to final location
     run_command(f"mv {context_tmp} {context_file}", cwd=worktree_path)
@@ -211,9 +230,10 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
             read_args.append(f"--read {plex_file}")
             console.print(f"[dim]Using plex file: {plex_file}[/dim]")
         
-        if os.path.exists(context_file):
-            read_args.append(f"--read {context_file}")
-            console.print(f"[dim]Using context file: {context_file}[/dim]")
+        worktree_context_file = os.path.join(worktree_path, context_file)
+        if os.path.exists(worktree_context_file):
+            read_args.append(f"--read {worktree_context_file}")
+            console.print(f"[dim]Using context file: {worktree_context_file}[/dim]")
         
         read_args.append(f"--read {issues_file}")
         read_args.append(f"--file {notes_file}")
@@ -231,6 +251,15 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
         
         # Filter out empty entries and join with spaces
         python_files = [f for f in python_files if f]
+        
+        # If no Python files found, create a placeholder file
+        if not python_files:
+            console.print("[dim]No Python files found in repository, creating placeholder...[/dim]")
+            placeholder_file = os.path.join(worktree_path, "placeholder.py")
+            with open(placeholder_file, "w") as f:
+                f.write("# Placeholder file\n# TODO: Add your Python code here\n")
+            python_files = ["placeholder.py"]
+        
         python_files_str = " ".join(python_files)
         
         subprocess.run(
@@ -275,8 +304,17 @@ def merge_and_push(worktree_path, main_repo_path, branch_name, main_branch):
     # Check for merge conflicts
     status = run_command("git status", cwd=worktree_path)
     if "You have unmerged paths" in status.stdout or "fix conflicts" in status.stdout:
-        console.print("[bold red]Merge conflicts detected. Please resolve them with aider.[/bold red]")
-        return False
+        console.print("[bold red]Merge conflicts detected. Running aider to resolve conflicts...[/bold red]")
+        
+        # Run aider to resolve conflicts
+        conflict_task = "Please resolve the merge conflicts in this repository. Look at the git status output and fix the conflicts."
+        run_aider(worktree_path, conflict_task, inner_loop_count=1)
+        
+        # Check if conflicts were resolved
+        status = run_command("git status", cwd=worktree_path)
+        if "You have unmerged paths" in status.stdout or "fix conflicts" in status.stdout:
+            console.print("[bold red]Merge conflicts could not be automatically resolved.[/bold red]")
+            return False
     
     # Commit any changes from the merge
     run_command("git commit -am 'Merge from main'", cwd=worktree_path, check=False)
