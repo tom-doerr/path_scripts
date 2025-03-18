@@ -190,11 +190,6 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
     # Setup history file
     history_file = os.path.join(worktree_path, "custom_aider_history.md")
     
-    # Clear previous chat history if it exists
-    if os.path.exists(history_file):
-        console.print("[dim]Clearing previous chat history...[/dim]")
-        open(history_file, 'w').close()  # Empty the file
-    
     # Run black formatter
     console.print("[dim]Running black formatter...[/dim]")
     run_command("black .", cwd=worktree_path, check=False)
@@ -250,6 +245,7 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
         f"{read_args_str} "
         f"--yes-always --no-show-model-warnings --no-show-release-notes "
         f"--chat-history-file {history_file} "
+        f"--restore-chat-history "
         f"--edit-format 'diff' "
         f"--auto-lint --lint-cmd 'pylint' "
         f"--auto-test --test-cmd 'python3.11 -m pytest' "
@@ -381,6 +377,12 @@ Examples:
             f"[bold]Iteration {iteration}/{args.max_iterations}[/bold]\nTotal time: {elapsed_str}",
             style="blue"
         ))
+        
+        # Clear previous chat history at the beginning of each outer iteration
+        history_file = os.path.join(worktree_path, "custom_aider_history.md")
+        if os.path.exists(history_file):
+            console.print("[dim]Clearing previous chat history for new iteration...[/dim]")
+            open(history_file, 'w').close()  # Empty the file
         
         # Generate context file
         generate_context(worktree_path)
