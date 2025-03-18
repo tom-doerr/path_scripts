@@ -184,13 +184,21 @@ def run_aider(worktree_path, task, model="r1"):
     
     read_args_str = " ".join(read_args)
     
+    # Find all Python files in the worktree
+    result = run_command("git ls-files '*.py'", cwd=worktree_path)
+    python_files = result.stdout.strip().split('\n')
+    
+    # Filter out empty entries and join with spaces
+    python_files = [f for f in python_files if f]
+    python_files_str = " ".join(python_files)
+    
     # Using subprocess.run directly to allow interactive session
     console.print("[bold yellow]Starting aider session...[/bold yellow]")
     subprocess.run(
         f"aider --architect --model {model} --subtree-only {read_args_str} "
         f"--yes-always --no-show-model-warnings "
         f"--weak-model 'openrouter/google/gemini-2.0-flash-001' "
-        f"--message '{task}' **/*.py",
+        f"--message '{task}' {python_files_str}",
         cwd=worktree_path,
         shell=True,
         text=True
