@@ -34,14 +34,17 @@ def run_command(cmd, cwd=None, capture_output=True, check=True, env=None):
             transient=True,
         ) as progress:
             task = progress.add_task(f"[cyan]{cmd}[/cyan]", total=None)
+            # Use explicit command array and timeout
             result = subprocess.run(
-                cmd,
+                cmd.split(),
                 cwd=cwd,
-                shell=True,
                 text=True,
                 capture_output=capture_output,
                 check=check,
-                env=command_env
+                env=command_env,
+                timeout=300,  # 5 minute timeout
+                input="\n",   # Send newline to avoid interactive prompts
+                universal_newlines=True
             )
             progress.update(task, completed=True)
         return result
@@ -325,12 +328,22 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
     
     # Run aider with proper environment
     console.print(f"[dim]Running aider in {worktree_path}[/dim]")
-    subprocess.run(
-        aider_cmd,
+    # Use Popen with timeout and non-interactive mode
+    process = subprocess.Popen(
+        aider_cmd.split(),
         cwd=worktree_path,
-        shell=True,
-        text=True
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env={**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONINSPECT": "0"}
     )
+    
+    try:
+        stdout, stderr = process.communicate(timeout=600)  # 10 minute timeout
+    except subprocess.TimeoutExpired:
+        process.kill()
+        stdout, stderr = process.communicate()
+        console.print("[bold red]Aider session timed out after 10 minutes[/bold red]")
     
     console.print(f"[bold yellow]Aider session completed[/bold yellow]")
     console.print(f"[dim]{'=' * 50} {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} {'=' * 50}[/dim]")
@@ -448,7 +461,7 @@ Examples:
                         help="Path to the main git repository (default: current directory)")
     parser.add_argument("--no-push", action="store_true", 
                         help="Don't push changes back to main repository")
-    parser.add_argument("--model", default="r1",
+    parser.add_argument("--model", default="openrouter/deepseek/deepseek-r1-distill-qwen-32b",
                         help="Model to use with aider (default: r1)")
     parser.add_argument("--max-iterations", type=int, default=10,
                         help="Maximum number of iterations to run (default: 10)")
