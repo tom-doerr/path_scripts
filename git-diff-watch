@@ -22,15 +22,6 @@ setup_display() {
     clear_screen() {
         clear
     }
-    
-    # Clean up function
-    cleanup() {
-        echo -e "\nExiting git diff watch"
-        exit 0
-    }
-    
-    # Set trap for cleanup
-    trap cleanup INT TERM EXIT
 }
 
 # Function to check if there's a new commit
@@ -64,7 +55,7 @@ show_diff() {
     git --no-pager diff HEAD~1 HEAD --color=always "$@"
     
     echo ""
-    echo -e "\033[1;36m=== Press Ctrl+C to exit ===\033[0m"
+    echo -e "\033[1;36m=== Press Ctrl+C or 'q' to exit ===\033[0m"
 }
 
 # Main execution
@@ -73,6 +64,29 @@ setup_display
 
 # Show initial diff
 show_diff "$@"
+
+# Function to check for 'q' keypress without blocking
+check_for_quit() {
+    # Check if input is available (non-blocking)
+    if read -t 0.1 -N 1 key; then
+        if [[ "$key" == "q" ]]; then
+            echo -e "\nUser pressed 'q'. Exiting..."
+            exit 0
+        fi
+    fi
+}
+
+# Set terminal to read input without requiring Enter key
+old_stty_settings=$(stty -g)
+stty -icanon min 1 time 0
+
+# Ensure terminal settings are restored on exit
+cleanup() {
+    stty "$old_stty_settings"
+    echo -e "\nExiting git diff watch"
+    exit 0
+}
+trap cleanup INT TERM EXIT
 
 # Main loop
 while true; do
@@ -84,8 +98,14 @@ while true; do
     fi
     
     # Update status on the same line (overwrite previous status)
-    echo -ne "\r\033[K\033[1;36mLast check: $(date '+%H:%M:%S') | Press Ctrl+C to exit\033[0m"
+    echo -ne "\r\033[K\033[1;36mLast check: $(date '+%H:%M:%S') | Press Ctrl+C to exit or 'q' to quit\033[0m"
     
-    # Wait before next check
-    sleep $INTERVAL
+    # Check for 'q' keypress
+    check_for_quit
+    
+    # Wait before next check (with smaller intervals to check for keypress)
+    for ((i=0; i<$INTERVAL*10; i++)); do
+        check_for_quit
+        sleep 0.1
+    done
 done
