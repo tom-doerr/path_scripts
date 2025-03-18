@@ -263,10 +263,12 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
         all_files.append("placeholder.py")
         full_paths.append(os.path.join(worktree_path, "placeholder.py"))
     
-    # Create the message with the task at the end
+    # Create the message with proper escaping
+    from shlex import quote
+    safe_task = task.replace("'", "'\\''")  # Escape single quotes
     message = f"Improve code quality and fix any issues found in tests or linting. " \
-              f"TDD! Add tests for task first before making changes." \
-              f"Task: {task}"
+              f"TDD! Add tests for task first before making changes. " \
+              f"Task: {quote(safe_task)}"
     
     # Build the aider command base
     aider_cmd = f"aider --architect --model {model} --weak-model '{weak_model}' {read_args_str}"
@@ -280,13 +282,14 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
         f" --message '{message}'"
     )
     
-    # Add files based on command line options
+    # Add files with proper shell escaping
+    from shlex import quote
     if args.no_python_files:
         file_args = ""
     elif args.all_files:
-        file_args = " ".join([f'"{f}"' for f in all_files])
+        file_args = " ".join([quote(f) for f in all_files])
     else:
-        file_args = " ".join([f'"{f}"' for f in python_files])
+        file_args = " ".join([quote(f) for f in python_files])
     aider_cmd += f" {file_args}"
     
     # Run aider with proper environment
