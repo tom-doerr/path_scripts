@@ -130,6 +130,13 @@ def create_worktree(repo_path, task_name):
 def run_tests(worktree_path):
     """Run pytest and return True if all tests pass."""
     console.print(Panel("[bold]Running Tests[/bold]", style="blue"))
+    
+    # Check if pytest is installed
+    pytest_check = run_command("which pytest", shell=True, check=False)
+    if pytest_check.returncode != 0:
+        console.print("[bold red]Error: pytest not found. Please install pytest.[/bold red]")
+        return False
+    
     result = run_command("pytest", cwd=worktree_path, check=False)
     
     if result.returncode == 0:
@@ -177,6 +184,13 @@ def _add_test_results_to_context(f, worktree_path):
     """Add test results to the context file."""
     tests_dir = os.path.join(worktree_path, "tests")
     if os.path.exists(tests_dir) and os.path.isdir(tests_dir):
+        # Check if pytest is installed
+        pytest_check = run_command("which pytest", shell=True, check=False)
+        if pytest_check.returncode != 0:
+            console.print("[dim]pytest not found, skipping test execution[/dim]")
+            f.write("pytest not installed, skipping test execution\n")
+            return
+            
         console.print("[dim]Running tests for context...[/dim]")
         result = run_command(
             "python -m pytest --timeout=10 tests/test*py",
@@ -268,6 +282,10 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
     # Create the message
     message = f"Improve code quality and fix any issues found in tests or linting. Task: {task}"
     
+    # Check if pytest is installed before setting up test command
+    pytest_check = run_command("which pytest", shell=True, check=False)
+    test_cmd = "--auto-test --test-cmd 'python -m pytest'" if pytest_check.returncode == 0 else ""
+    
     # Build the aider command
     aider_cmd = (
         f"aider --architect "
@@ -281,7 +299,7 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
         f"--restore-chat-history "
         f"--edit-format diff "
         f"--auto-lint --lint-cmd pylint "
-        f"--auto-test --test-cmd 'python -m pytest' "
+        f"{test_cmd} "
         f"--message {quote(message)} "
         f"{' '.join(files_to_include)}"
     )
