@@ -32,6 +32,7 @@ DEFAULT_MIN_HEIGHT = 1080  # Lowered from 2160 to 1080
 DEFAULT_DELAY = 5
 DEFAULT_CURRENT_SYMLINK = os.path.join(DEFAULT_WALLPAPER_DIR, "current")
 DEFAULT_SYMLINKS_ONLY = True
+DEFAULT_FAVORITES_FILE = os.path.join(DEFAULT_WALLPAPER_DIR, ".favorites")
 
 def show_help():
     """Display help information with rich formatting"""
@@ -58,6 +59,8 @@ def show_help():
     table.add_row("-c, --current PATH", "Path for current wallpaper symlink", DEFAULT_CURRENT_SYMLINK)
     table.add_row("-q, --quiet", "Reduce output verbosity", "False")
     table.add_row("-a, --all", "Include all image files, not just symlinks", "False")
+    table.add_row("-f, --favorites", "Use only favorite wallpapers", "False")
+    table.add_row("-F, --add-favorite", "Add current wallpaper to favorites", "False")
     
     console.print(table)
     
@@ -67,6 +70,7 @@ def show_help():
     
     controls.add_row("q", "Quit the program")
     controls.add_row("n", "Skip to next wallpaper")
+    controls.add_row("f", "Add current wallpaper to favorites")
     controls.add_row("Ctrl+C", "Force quit")
     
     console.print(Panel(controls, title="Controls while running", border_style="blue"))
@@ -99,6 +103,10 @@ def parse_args():
                         help="Reduce output verbosity")
     parser.add_argument("-a", "--all", action="store_false", dest="symlinks_only", default=DEFAULT_SYMLINKS_ONLY,
                         help="Include all image files, not just symlinks")
+    parser.add_argument("-f", "--favorites", action="store_true",
+                        help="Use only favorite wallpapers")
+    parser.add_argument("-F", "--add-favorite", action="store_true",
+                        help="Add current wallpaper to favorites")
     parser.add_argument("-D", "--debug", action="store_true",
                         help="Show debug information")
     
@@ -302,6 +310,12 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
                 height = int(parts[1])
                 path = parts[2]  # The rest is the path
                 
+                # Skip the current symlink to avoid recursion
+                if os.path.basename(path) == os.path.basename(CURRENT_SYMLINK):
+                    if debug and not quiet:
+                        console.print(f"[yellow]Debug: Skipping current symlink: {path}[/yellow]")
+                    continue
+                
                 if debug and not quiet:
                     console.print(f"[dim]Debug: Found image: {path} ({width}x{height})[/dim]")
                 
@@ -352,8 +366,46 @@ def display_countdown(seconds: int, quiet: bool = False) -> bool:
                 elif key == 'n':
                     console.print("[bold yellow]Skipping to next wallpaper.[/bold yellow]")
                     return True
+                elif key == 'f':
+                    # Add current wallpaper to favorites
+                    if os.path.exists(DEFAULT_CURRENT_SYMLINK):
+                        current = os.path.realpath(DEFAULT_CURRENT_SYMLINK)
+                        save_favorite(current, DEFAULT_FAVORITES_FILE, quiet)
+                    else:
+                        if not quiet:
+                            console.print("[yellow]No current wallpaper set[/yellow]")
     
     return False
+
+def load_favorites(favorites_file: str) -> List[str]:
+    """Load favorite wallpapers from file"""
+    if not os.path.exists(favorites_file):
+        return []
+    
+    try:
+        with open(favorites_file, 'r') as f:
+            return [line.strip() for line in f if line.strip()]
+    except Exception:
+        return []
+
+def save_favorite(path: str, favorites_file: str, quiet: bool = False):
+    """Save a wallpaper path to favorites file"""
+    favorites = load_favorites(favorites_file)
+    
+    # Don't add duplicates
+    if path in favorites:
+        if not quiet:
+            console.print(f"[yellow]Wallpaper already in favorites: {path}[/yellow]")
+        return
+    
+    try:
+        with open(favorites_file, 'a') as f:
+            f.write(f"{path}\n")
+        if not quiet:
+            console.print(f"[green]Added to favorites: {path}[/green]")
+    except Exception as e:
+        if not quiet:
+            console.print(f"[bold red]Error saving favorite:[/bold red] {str(e)}")
 
 def set_wallpaper(path: str, current_symlink: str, quiet: bool = False):
     """Set wallpaper using feh and update symlink"""
@@ -388,8 +440,29 @@ def main():
     # Check dependencies
     check_dependencies()
     
-    # Find wallpapers
-    wallpapers = find_wallpapers(args.dir, args.width, args.height, args.quiet, args.symlinks_only, args.debug)
+    # Handle adding current wallpaper to favorites
+    if args.add_favorite:
+        if os.path.exists(DEFAULT_CURRENT_SYMLINK):
+            current = os.path.realpath(DEFAULT_CURRENT_SYMLINK)
+            save_favorite(current, DEFAULT_FAVORITES_FILE, args.quiet)
+        else:
+            if not args.quiet:
+                console.print("[bold red]Error:[/bold red] No current wallpaper set")
+        sys.exit(0)
+    
+    # Use favorites if requested
+    if args.favorites:
+        favorites = load_favorites(DEFAULT_FAVORITES_FILE)
+        if not favorites:
+            if not args.quiet:
+                console.print("[bold yellow]No favorites found.[/bold yellow] Add favorites with --add-favorite")
+            sys.exit(1)
+        wallpapers = favorites
+        if not args.quiet:
+            console.print(f"[bold green]Using {len(wallpapers)} favorite wallpapers.[/bold green]")
+    else:
+        # Find wallpapers
+        wallpapers = find_wallpapers(args.dir, args.width, args.height, args.quiet, args.symlinks_only, args.debug)
     
     if not wallpapers:
         if not args.quiet:
@@ -436,20 +509,28 @@ def main():
             console.print("[bold blue]Restarting cycle...[/bold blue]")
     
 if __name__ == "__main__":
+    # Store original terminal settings
+    fd = sys.stdin.fileno()
+    old_settings = None
+    
     try:
-        # Set terminal to raw mode to capture keystrokes
-        import tty
-        import termios
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-        tty.setraw(fd)
+        # Only set raw mode if stdin is a terminal
+        if os.isatty(fd):
+            import tty
+            import termios
+            old_settings = termios.tcgetattr(fd)
+            tty.setraw(fd)
         
         main()
     except KeyboardInterrupt:
         console.print("\n[bold red]Program interrupted by user.[/bold red]")
+    except Exception as e:
+        console.print(f"\n[bold red]Error:[/bold red] {str(e)}")
     finally:
-        # Restore terminal settings
-        try:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        except:
-            pass
+        # Restore terminal settings if we changed them
+        if old_settings:
+            try:
+                import termios
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            except:
+                pass
