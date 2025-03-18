@@ -65,7 +65,8 @@ def run_command(cmd, cwd=None, capture_output=True, check=True, env=None, shell=
         if capture_output:
             console.print(f"[bold red]Command failed:[/bold red] {cmd}")
             console.print(f"[red]Error:[/red] {e.stderr}")
-        return e
+        # Return a CompletedProcess with error info instead of exception object
+        return subprocess.CompletedProcess([], 1, "", str(e))
 
 
 # Git repository utilities
