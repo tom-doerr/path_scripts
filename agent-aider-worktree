@@ -231,18 +231,23 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
     # Using subprocess.run directly to allow interactive session
     console.print(f"[bold yellow]Starting aider session...[/bold yellow]")
     
-    # List all files in the repository with their full paths
+    # List all files in the repository
     console.print("[dim]Listing all files in the repository...[/dim]")
     result = run_command("git ls-files", cwd=worktree_path)
     all_files = [f for f in result.stdout.strip().split('\n') if f]
+    
+    # Get full paths for all files
+    full_paths = []
+    for file_path in all_files:
+        full_path = os.path.join(worktree_path, file_path)
+        full_paths.append(full_path)
     
     # Display the files with their full paths
     if all_files:
         file_table = Table(title="Repository Files")
         file_table.add_column("File Path", style="cyan")
         
-        for file_path in all_files:
-            full_path = os.path.join(worktree_path, file_path)
+        for full_path in full_paths:
             file_table.add_row(full_path)
         
         console.print(file_table)
@@ -250,9 +255,6 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
     # Check if there are Python files in the repository
     python_files = [f for f in all_files if f.endswith('.py')]
     has_python_files = bool(python_files)
-    
-    # We'll use the repository root for aider
-    # This allows aider to work with the entire repository structure
     
     # If no Python files found, create a placeholder file
     if not has_python_files:
@@ -264,13 +266,17 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
         # Add and commit the placeholder file
         run_command("git add placeholder.py", cwd=worktree_path)
         run_command("git commit -m 'Add placeholder Python file'", cwd=worktree_path)
+        
+        # Update our file lists
+        all_files.append("placeholder.py")
+        full_paths.append(os.path.join(worktree_path, "placeholder.py"))
     
     # Create the message with the task at the end
     message = f"Improve code quality and fix any issues found in tests or linting. " \
               f"TDD! Add tests for task first before making changes." \
               f"Task: {task}"
     
-    # Build the aider command as a string directly
+    # Build the aider command base
     aider_cmd = f"aider --architect --model {model} --weak-model '{weak_model}' {read_args_str}"
     
     # Add remaining arguments
@@ -282,8 +288,10 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
         f" --message '{message}'"
     )
     
-    # Add the repository root to work with all files
-    aider_cmd += " ."
+    # Add all files with their full paths
+    # We need to escape spaces and special characters in paths
+    file_paths_str = " ".join([f'"{path}"' for path in full_paths])
+    aider_cmd += f" {file_paths_str}"
     
     # Run aider with proper environment
     console.print(f"[dim]Running aider in {worktree_path}[/dim]")
