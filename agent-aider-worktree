@@ -251,6 +251,11 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
     
     python_files_str = " ".join(python_files)
     
+    # Create the message with the task at the end
+    message = f"Work on fixing the errors. If there are no test errors, improve test coverage. " \
+              f"Focus on improving code quality and fixing any issues found in tests or linting. " \
+              f"Task: {task}"
+    
     subprocess.run(
         f"aider --architect --model {model} "
         f"--weak-model '{weak_model}' "
@@ -261,8 +266,7 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
         f"--edit-format 'diff' "
         f"--auto-lint --lint-cmd 'pylint' "
         f"--auto-test --test-cmd 'python3.11 -m pytest' "
-        f"--message 'Work on fixing the errors. If there are no test errors, improve test coverage. "
-        f"Focus on improving code quality and fixing any issues found in tests or linting' "
+        f"--message '{message}' "
         f"{python_files_str}",
         cwd=worktree_path,
         shell=True,
@@ -290,7 +294,7 @@ def merge_and_push(worktree_path, main_repo_path, branch_name, main_branch):
         console.print("[bold red]Merge conflicts detected. Running aider to resolve conflicts...[/bold red]")
         
         # Run aider to resolve conflicts
-        conflict_task = "Please resolve the merge conflicts in this repository. Look at the git status output and fix the conflicts."
+        conflict_task = f"Please resolve the merge conflicts in this repository. Look at the git status output and fix the conflicts. Original task: {task}"
         run_aider(worktree_path, conflict_task, inner_loop_count=1)
         
         # Check if conflicts were resolved
