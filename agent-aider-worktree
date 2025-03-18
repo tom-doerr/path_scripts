@@ -192,7 +192,7 @@ def generate_context(worktree_path):
     console.print("[dim]Context file generated[/dim]")
 
 
-def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
+def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
     """Run aider with the given task."""
     console.print(Panel(f"[bold]Running aider with task:[/bold]\n{task}", style="cyan"))
     
@@ -464,7 +464,7 @@ Examples:
         
         # Run aider
         console.print("[bold blue]Running aider to improve code and fix issues...[/bold blue]")
-        run_aider(worktree_path, args.task, args.model, 1)
+        run_aider(worktree_path, args.task, args, args.model, 1)
         
         # Check if tests pass after aider run
         console.print("[bold blue]Checking if tests pass...[/bold blue]")
