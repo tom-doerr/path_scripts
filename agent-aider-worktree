@@ -214,13 +214,23 @@ Examples:
                 merge_success = merge_and_push(worktree_path, main_repo_path, branch_name, main_branch)
                 
                 if merge_success:
-                    print("\n🎉 Task completed successfully!")
+                    total_time = str(datetime.now() - start_time).split('.')[0]
+                    print(f"\n🎉 Task completed successfully in {iteration} iterations!")
+                    print(f"Total time: {total_time}")
                     break
                 else:
                     print("\nMerge conflicts detected. Running aider again to resolve conflicts...")
+                    iteration += 1
+                    if iteration > args.max_iterations:
+                        print(f"\n⚠️ Reached maximum number of iterations ({args.max_iterations})")
+                        print(f"Total time spent: {str(datetime.now() - start_time).split('.')[0]}")
+                        print("Exiting without completing the task.")
+                        break
                     continue
             else:
-                print("\n🎉 Task completed successfully! (No push requested)")
+                total_time = str(datetime.now() - start_time).split('.')[0]
+                print(f"\n🎉 Task completed successfully in {iteration} iterations!")
+                print(f"Total time: {total_time}")
                 break
         else:
             print("\n❌ Tests failed. Running aider again...")
