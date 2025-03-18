@@ -146,19 +146,20 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
                 if not quiet:
                     console.print("[blue]Looking for symlinks only...[/blue]")
             else:
-                file_type = ["(", "-type", "f", "-o", "-type", "l", ")"]
+                file_type = ["-type", "f", "-o", "-type", "l"]
                 
             cmd = [
-                "find", wallpaper_dir
+                "find", wallpaper_dir,
+                "(", 
             ] + file_type + [
-                "-a", 
+                ")", "-a", 
                 "(", 
                 "-name", "*.jpg", "-o", 
                 "-name", "*.jpeg", "-o", 
                 "-name", "*.png", "-o", 
                 "-name", "*.gif", 
                 ")", 
-                "-exec", "identify", "-format", "%w %h %i\\n", "{}", ";"
+                "-exec", "identify", "-format", "%w %h %i\\n", "{}", "\\;"
             ]
             
             try:
@@ -175,19 +176,20 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
         if symlinks_only:
             file_type = ["-type", "l"]
         else:
-            file_type = ["(", "-type", "f", "-o", "-type", "l", ")"]
+            file_type = ["-type", "f", "-o", "-type", "l"]
             
         cmd = [
-            "find", wallpaper_dir
+            "find", wallpaper_dir,
+            "(",
         ] + file_type + [
-            "-a", 
+            ")", "-a", 
             "(", 
             "-name", "*.jpg", "-o", 
             "-name", "*.jpeg", "-o", 
             "-name", "*.png", "-o", 
             "-name", "*.gif", 
             ")", 
-            "-exec", "identify", "-format", "%w %h %i\\n", "{}", ";"
+            "-exec", "identify", "-format", "%w %h %i\\n", "{}", "\\;"
         ]
         
         try:
@@ -201,17 +203,21 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
     for line in output.splitlines():
         if not line.strip():
             continue
-        parts = line.split()
-        if len(parts) >= 3:
-            try:
+        try:
+            # First try to extract width and height
+            parts = line.split(' ', 2)  # Split into 3 parts: width, height, path
+            if len(parts) >= 3:
                 width = int(parts[0])
                 height = int(parts[1])
-                path = " ".join(parts[2:])  # Handle paths with spaces
+                path = parts[2]  # The rest is the path
                 
                 if width >= min_width and height >= min_height:
                     wallpapers.append(path)
-            except ValueError:
-                continue
+        except (ValueError, IndexError):
+            # If parsing fails, log it if not in quiet mode
+            if not quiet:
+                console.print(f"[yellow]Warning: Could not parse line: {line}[/yellow]")
+            continue
     
     return wallpapers
 
