@@ -324,8 +324,21 @@ def _prepare_files_for_aider(worktree_path, args):
     result = run_command("git ls-files", cwd=worktree_path)
     all_files = [f for f in result.stdout.strip().split('\n') if f]
     
+    # Exclude problematic files
+    excluded_patterns = [
+        "custom_aider_history.md",
+        "aider_history.md",
+        ".aider*",
+        "context.txt"
+    ]
+    
+    def should_include(filename):
+        return not any(re.search(pattern, filename) for pattern in excluded_patterns)
+    
+    filtered_files = [f for f in all_files if should_include(f)]
+    
     # Check if there are Python files in the repository
-    python_files = [f for f in all_files if f.endswith('.py')]
+    python_files = [f for f in filtered_files if f.endswith('.py')]
     
     # If no Python files found, create a placeholder file
     if not python_files:
@@ -345,7 +358,7 @@ def _prepare_files_for_aider(worktree_path, args):
     if args.no_python_files:
         return []
     
-    files = all_files if args.all_files else python_files
+    files = filtered_files if args.all_files else python_files
     # Limit number of files to avoid command line length issues
     return [quote(f) for f in files[:20]]
 
