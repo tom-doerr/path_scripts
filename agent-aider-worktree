@@ -335,10 +335,8 @@ def _prepare_files_for_aider(worktree_path, args):
     def should_include(filename):
         return not any(re.search(pattern, filename) for pattern in excluded_patterns)
     
-    filtered_files = [f for f in all_files if should_include(f)]
-    
     # Check if there are Python files in the repository
-    python_files = [f for f in filtered_files if f.endswith('.py')]
+    python_files = [f for f in all_files if f.endswith('.py') and should_include(f)]
     
     # If no Python files found, create a placeholder file
     if not python_files:
@@ -358,9 +356,8 @@ def _prepare_files_for_aider(worktree_path, args):
     if args.no_python_files:
         return []
     
-    files = filtered_files if args.all_files else python_files
     # Limit number of files to avoid command line length issues
-    return [quote(f) for f in files[:20]]
+    return [quote(f) for f in python_files[:20]]
 
 
 # Git merge and push operations
@@ -432,7 +429,6 @@ def _update_worktree(worktree_path, main_branch, branch_name, task, args):
         conflict_args = SimpleNamespace(
             model=args.model,
             no_python_files=False,
-            all_files=True,  # Always include all files for conflict resolution
             inner_loop=1,
             max_iterations=1
         )
@@ -489,7 +485,6 @@ def _merge_to_main(main_repo_path, main_branch, branch_name):
         run_aider(main_repo_path, conflict_task, SimpleNamespace(
             model=DEFAULT_MODEL,
             no_python_files=False,
-            all_files=True,  # Always include all files for conflict resolution
             inner_loop=1,
             max_iterations=1
         ), model=DEFAULT_MODEL)
@@ -539,8 +534,6 @@ Examples:
                         help="Maximum number of iterations to run (default: 10)")
     parser.add_argument("--inner-loop", type=int, default=3,
                         help="Number of inner loop iterations to run (default: 3)")
-    parser.add_argument("--all-files", action="store_true",
-                        help="Include all files in the repository instead of just Python files")
     parser.add_argument("--no-python-files", action="store_true",
                         help="Disable automatic inclusion of Python files")
     
