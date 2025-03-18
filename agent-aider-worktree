@@ -562,6 +562,7 @@ def display_configuration(args, worktree_path, branch_name):
     config_table.add_row("Branch", branch_name)
     config_table.add_row("Model", args.model)
     config_table.add_row("Max Iterations", str(args.max_iterations))
+    config_table.add_row("Inner Loop", str(args.inner_loop))
     config_table.add_row("Push Changes", "No" if args.no_push else "Yes")
     console.print(config_table)
 
