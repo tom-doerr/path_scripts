@@ -367,7 +367,13 @@ def merge_and_push(worktree_path, main_repo_path, branch_name, main_branch, task
         
         # Look for conflict markers in files
         conflict_files = run_command("git diff --check", cwd=worktree_path)
-        has_conflicts = merge_check.returncode != 0 or "CONFLICT" in merge_check.stdout
+        # More robust conflict detection
+        has_conflicts = any([
+            merge_check.returncode != 0,
+            "CONFLICT" in merge_check.stdout,
+            "CONFLICT" in merge_check.stderr,
+            conflict_files.stdout.strip() != ""
+        ])
         
         if has_conflicts or conflict_files.stdout:
             console.print("[bold red]Merge conflicts detected. Running aider to resolve conflicts...[/bold red]")
@@ -376,15 +382,41 @@ def merge_and_push(worktree_path, main_repo_path, branch_name, main_branch, task
             conflict_status = run_command("git status --porcelain", cwd=worktree_path)
             console.print(f"[dim]Conflict state:\n{conflict_status.stdout}[/dim]")
             
-            # Run aider with conflict resolution task
-            conflict_task = f"Resolve these merge conflicts: {conflict_status.stdout}. Preserve functionality from both branches. Original task: {task}"
-            run_aider(worktree_path, conflict_task, args, model=args.model, inner_loop_count=1)
+            # Create minimal args for conflict resolution
+            from types import SimpleNamespace
+            conflict_args = SimpleNamespace(
+                model=args.model,
+                no_python_files=False,
+                all_files=False,
+                inner_loop=1,
+                max_iterations=3
+            )
+            
+            # Specific conflict resolution prompt
+            conflict_task = f"""Resolve merge conflicts while keeping both functionalities:
+            {conflict_status.stdout}
+            
+            1. Remove all conflict markers (<<<<<<<, =======, >>>>>>>)
+            2. Keep changes from both branches where possible
+            3. Ensure merged code matches original task: {task}"""
+            
+            run_aider(worktree_path, conflict_task, conflict_args, model=args.model, inner_loop_count=1)
             
             # Verify conflict resolution
             post_conflict_check = run_command("git status --porcelain", cwd=worktree_path)
             conflict_markers = run_command("grep -rn '<<<<<<<' .", cwd=worktree_path, check=False)
             
-            if post_conflict_check.returncode != 0 or conflict_markers.returncode == 0:
+            # Validate merge resolution
+            def validate_merge_resolution():
+                # Check for remaining conflict markers
+                markers = run_command("grep -rnE '<<<<<<<|=======|>>>>>>>' .", 
+                                    cwd=worktree_path, 
+                                    check=False)
+                # Verify clean git status
+                status = run_command("git status --porcelain", cwd=worktree_path)
+                return markers.returncode == 1 and status.stdout.strip() == ""
+            
+            if not validate_merge_resolution():
                 console.print("[bold red]Unresolved issues detected:[/bold red]")
                 if conflict_markers.returncode == 0:
                     console.print(f"[red]Remaining conflict markers:\n{conflict_markers.stdout}[/red]")
