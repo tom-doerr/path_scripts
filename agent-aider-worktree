@@ -187,12 +187,6 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
     plex_file = "plex.md"
     context_file = "context.txt"
     issues_file = os.path.join(worktree_path, "issues.txt")
-    notes_file = os.path.join(worktree_path, "notes.md")
-    
-    # Create notes.md if it doesn't exist
-    if not os.path.exists(notes_file):
-        with open(notes_file, "w") as f:
-            f.write("# Notes\n\n")
     
     # Setup history file
     history_file = os.path.join(worktree_path, "custom_aider_history.md")
@@ -236,7 +230,6 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
             console.print(f"[dim]Using context file: {worktree_context_file}[/dim]")
         
         read_args.append(f"--read {issues_file}")
-        read_args.append(f"--file {notes_file}")
         read_args_str = " ".join(read_args)
         
         # Set weak model
@@ -273,7 +266,7 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
             f"--auto-lint --lint-cmd 'pylint' "
             f"--auto-test --test-cmd 'python3.11 -m pytest' "
             f"--message 'Work on fixing the errors. If there are no test errors, improve test coverage. "
-            f"Keep notes in notes.md of e.g. todos, what you did, issues, plans, and things to keep in mind' "
+            f"Focus on improving code quality and fixing any issues found in tests or linting' "
             f"{python_files_str}",
             cwd=worktree_path,
             shell=True,
