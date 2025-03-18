@@ -346,8 +346,8 @@ Examples:
                         help="Path to the main git repository (default: current directory)")
     parser.add_argument("--no-push", action="store_true", 
                         help="Don't push changes back to main repository")
-    parser.add_argument("--model", default="openrouter/deepseek/deepseek-r1",
-                        help="Model to use with aider (default: openrouter/deepseek/deepseek-r1)")
+    parser.add_argument("--model", default="r1",
+                        help="Model to use with aider (default: r1)")
     parser.add_argument("--max-iterations", type=int, default=10,
                         help="Maximum number of iterations to run (default: 10)")
     parser.add_argument("--inner-loop", type=int, default=3,
