@@ -285,7 +285,8 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
     
     # Create the message with proper shell escaping
     from shlex import quote
-    message = f"Improve code quality and fix any issues found in tests or linting. " \
+    message = f"It's okay to have file duplication since you can't move or delete files or run any other commands. I will remove the duplicate files for you. Maybe just empty them and mark them for deletion with a # TODO: delete this file comment. " \
+    f"Improve code quality and fix any issues found in tests or linting. " \
               f"TDD! Add tests for task first before making changes. " \
               f"Task: {quote(task)}"
     
