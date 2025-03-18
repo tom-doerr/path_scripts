@@ -534,7 +534,9 @@ Examples:
         
         if tests_pass:
             # Commit any remaining changes
-            run_command("git add -A && git commit -m 'Final changes' || true", cwd=worktree_path)
+            # Commit changes separately to avoid shell operator issues
+            run_command("git add -A", cwd=worktree_path, check=False)
+            run_command("git commit -m 'Final changes'", cwd=worktree_path, check=False)
             
             if not args.no_push:
                 # Try to merge and push
