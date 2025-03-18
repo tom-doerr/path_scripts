@@ -102,6 +102,63 @@ def run_tests(worktree_path):
     return result.returncode == 0
 
 
+def generate_context(worktree_path):
+    """Generate context.txt with test results and linting information."""
+    console.print(Panel("[bold]Generating context.txt[/bold]", style="blue"))
+    context_file = os.path.join(worktree_path, "context.txt")
+    context_tmp = os.path.join(worktree_path, "context.txt.tmp")
+    
+    # Start with date header
+    run_command(f"echo '=============`date`===================' > {context_tmp}", cwd=worktree_path)
+    
+    # Run tests and capture output
+    console.print("[dim]Running tests for context...[/dim]")
+    run_command(
+        f"pytest --testmon --timeout=10 tests/test*py 2>&1 | tail -n 500 >> {context_tmp}",
+        cwd=worktree_path,
+        check=False
+    )
+    
+    # Add separator
+    run_command(
+        f"echo '\\n\\n\\n\\n\\n=====================================================================' >> {context_tmp}",
+        cwd=worktree_path
+    )
+    
+    # Run pylint and capture output
+    console.print("[dim]Running pylint for context...[/dim]")
+    run_command(
+        f"pylint $(git ls-files 'src/*.py') 2>&1 | tail -n100 >> {context_tmp}",
+        cwd=worktree_path,
+        check=False
+    )
+    
+    # Add focus on failing tests
+    run_command(
+        f"echo 'Focus on code that causes this test to fail: ' >> {context_tmp}",
+        cwd=worktree_path
+    )
+    run_command(
+        f"cat {context_tmp} | grep 'tests/test.*py:' | shuf -n 1 >> {context_tmp}",
+        cwd=worktree_path,
+        check=False
+    )
+    
+    # Add focus directive
+    run_command(
+        f"echo 'Focus on fixing the linting issues\\nFocus on fixing bugs' | shuf -n 1 >> {context_tmp}",
+        cwd=worktree_path
+    )
+    
+    # Add test files content
+    run_command(f"cat tests/*py >> {context_tmp}", cwd=worktree_path, check=False)
+    
+    # Move temp file to final location
+    run_command(f"mv {context_tmp} {context_file}", cwd=worktree_path)
+    
+    console.print("[dim]Context file generated[/dim]")
+
+
 def run_aider(worktree_path, task, model="r1"):
     """Run aider with the given task."""
     console.print(Panel(f"[bold]Running aider with task:[/bold]\n{task}", style="cyan"))
@@ -246,6 +303,9 @@ Examples:
             f"[bold]Iteration {iteration}/{args.max_iterations}[/bold]\nTotal time: {elapsed_str}",
             style="blue"
         ))
+        
+        # Generate context file
+        generate_context(worktree_path)
         
         # Run aider
         run_aider(worktree_path, args.task, args.model)
