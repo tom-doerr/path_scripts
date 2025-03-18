@@ -253,6 +253,7 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
     
     # Create the message with the task at the end
     message = f"Improve code quality and fix any issues found in tests or linting. " \
+              f"TDD! Add tests for task first before making changes." \
               f"Task: {task}"
     
     subprocess.run(
