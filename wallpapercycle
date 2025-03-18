@@ -311,7 +311,7 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
                 path = parts[2]  # The rest is the path
                 
                 # Skip the current symlink to avoid recursion
-                if os.path.basename(path) == os.path.basename(CURRENT_SYMLINK):
+                if os.path.basename(path) == os.path.basename(DEFAULT_CURRENT_SYMLINK):
                     if debug and not quiet:
                         console.print(f"[yellow]Debug: Skipping current symlink: {path}[/yellow]")
                     continue
