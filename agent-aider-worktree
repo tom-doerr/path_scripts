@@ -396,28 +396,24 @@ def _update_main_branch(main_repo_path, main_branch):
 def _update_worktree(worktree_path, main_branch, branch_name, task, args):
     """Update worktree with latest changes and resolve conflicts."""
     console.print("[bold blue]Updating worktree with latest changes...[/bold blue]")
-    run_command(f"git pull origin {main_branch}", cwd=worktree_path, check=False)
     
     # Commit any pending changes in worktree
     run_command("git add -A", cwd=worktree_path)
     run_command("git commit -m 'Commit changes before merge'", cwd=worktree_path, check=False)
     
-    # Simple conflict detection
-    console.print("[bold blue]Checking for potential merge conflicts...[/bold blue]")
-    merge_test = run_command(
-        f"git merge-tree $(git merge-base HEAD {main_branch}) HEAD {main_branch}",
-        cwd=worktree_path,
-        shell=True,
-        check=False
-    )
+    # Attempt to merge directly
+    console.print(f"[bold blue]Merging changes from {main_branch}...[/bold blue]")
+    merge_result = run_command(f"git merge origin/{main_branch}", cwd=worktree_path, check=False)
     
-    has_conflicts = "changed in both" in merge_test.stdout
+    # Check if there are conflicts
+    status_result = run_command("git status --porcelain", cwd=worktree_path)
+    has_conflicts = "UU" in status_result.stdout
     
-    if has_conflicts:
-        console.print("[bold yellow]Potential merge conflicts detected.[/bold yellow]")
+    if has_conflicts or merge_result.returncode != 0:
+        console.print("[bold yellow]Merge conflicts detected. Running aider to resolve them.[/bold yellow]")
         
         # Create conflict resolution task
-        conflict_task = f"Resolve merge conflicts while preserving functionality. Original task: {task}"
+        conflict_task = f"Resolve all git merge conflicts while preserving functionality. Original task: {task}"
         
         # Create minimal args for conflict resolution
         conflict_args = SimpleNamespace(
@@ -436,6 +432,10 @@ def _update_worktree(worktree_path, main_branch, branch_name, task, args):
         if "UU" in status_result.stdout:
             console.print("[bold red]Unresolved conflicts remain after aider run.[/bold red]")
             return False
+        
+        # Commit the resolved conflicts
+        run_command("git add -A", cwd=worktree_path)
+        run_command("git commit -m 'Resolved merge conflicts'", cwd=worktree_path, check=False)
     
     return True
 
@@ -467,9 +467,30 @@ def _merge_to_main(main_repo_path, main_branch, branch_name):
         
     merge_result = run_command(f"git merge --no-ff {branch_name}", cwd=main_repo_path, check=False)
     if merge_result.returncode != 0:
-        console.print("[bold red]Merge conflict detected. Please resolve manually.[/bold red]")
-        run_command("git merge --abort", cwd=main_repo_path, check=False)
-        return False
+        console.print("[bold yellow]Merge conflict detected in main repo. Running aider to resolve...[/bold yellow]")
+        
+        # Create a task for resolving conflicts
+        conflict_task = "Resolve all git merge conflicts while preserving functionality"
+        
+        # Run aider to help resolve conflicts
+        run_aider(main_repo_path, conflict_task, SimpleNamespace(
+            model=DEFAULT_MODEL,
+            no_python_files=False,
+            all_files=True,
+            inner_loop=1,
+            max_iterations=1
+        ), model=DEFAULT_MODEL)
+        
+        # Check if conflicts were resolved
+        status_result = run_command("git status --porcelain", cwd=main_repo_path)
+        if "UU" in status_result.stdout:
+            console.print("[bold red]Unresolved conflicts remain. Aborting merge.[/bold red]")
+            run_command("git merge --abort", cwd=main_repo_path, check=False)
+            return False
+        
+        # Commit the resolved conflicts
+        run_command("git add -A", cwd=main_repo_path)
+        run_command("git commit -m 'Resolved merge conflicts'", cwd=main_repo_path, check=False)
         
     push_result = run_command("git push", cwd=main_repo_path, check=False)
     if push_result.returncode != 0:
