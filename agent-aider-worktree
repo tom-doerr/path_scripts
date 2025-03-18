@@ -7,6 +7,7 @@ import sys
 import time
 from pathlib import Path
 from datetime import datetime
+import pytest
 
 from rich.console import Console
 from rich.panel import Panel
@@ -288,27 +289,38 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
               f"TDD! Add tests for task first before making changes. " \
               f"Task: {quote(task)}"
     
-    # Build the aider command base
-    aider_cmd = f"aider --architect --model {model} --weak-model '{weak_model}' {read_args_str}"
+    # Build the aider command with proper quoting
+    from shlex import quote
+    aider_cmd = [
+        "aider",
+        "--architect",
+        "--model", quote(model),
+        "--weak-model", quote(weak_model)
+    ]
+    
+    # Add read arguments
+    aider_cmd.extend(read_args_str.split())
     
     # Add remaining arguments
-    aider_cmd += (
-        f" --yes-always --no-show-model-warnings --no-show-release-notes"
-        f" --chat-history-file {history_file} --restore-chat-history"
-        f" --edit-format diff --auto-lint --lint-cmd 'pylint'"
-        f" --auto-test --test-cmd 'python3.11 -m pytest'"
-        f" --message {message}"
-    )
+    aider_cmd.extend([
+        "--yes-always",
+        "--no-show-model-warnings",
+        "--no-show-release-notes",
+        "--chat-history-file", quote(history_file),
+        "--restore-chat-history",
+        "--edit-format", "diff",
+        "--auto-lint", "--lint-cmd", "pylint",
+        "--auto-test", "--test-cmd", "python3.11 -m pytest",
+        "--message", quote(message)
+    ])
     
     # Add files with proper shell escaping
-    from shlex import quote
-    if args.no_python_files:
-        file_args = ""
-    elif args.all_files:
-        file_args = " ".join([quote(f) for f in all_files])
-    else:
-        file_args = " ".join([quote(f) for f in python_files])
-    aider_cmd += f" {file_args}"
+    if not args.no_python_files:
+        files = all_files if args.all_files else python_files
+        aider_cmd.extend([quote(f) for f in files])
+    
+    # Convert to string for shell=True
+    aider_cmd = " ".join(aider_cmd)
     
     # Run aider with proper environment
     console.print(f"[dim]Running aider in {worktree_path}[/dim]")
