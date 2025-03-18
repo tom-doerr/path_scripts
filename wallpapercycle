@@ -31,6 +31,7 @@ DEFAULT_MIN_WIDTH = 3840
 DEFAULT_MIN_HEIGHT = 2160
 DEFAULT_DELAY = 5
 DEFAULT_CURRENT_SYMLINK = os.path.join(DEFAULT_WALLPAPER_DIR, "current")
+DEFAULT_SYMLINKS_ONLY = True
 
 def show_help():
     """Display help information with rich formatting"""
@@ -56,6 +57,7 @@ def show_help():
     table.add_row("-o, --once", "Set one random wallpaper and exit", "False")
     table.add_row("-c, --current PATH", "Path for current wallpaper symlink", DEFAULT_CURRENT_SYMLINK)
     table.add_row("-q, --quiet", "Reduce output verbosity", "False")
+    table.add_row("-a, --all", "Include all image files, not just symlinks", "False")
     
     console.print(table)
     
@@ -95,6 +97,8 @@ def parse_args():
                         help=f"Path for current wallpaper symlink (default: {DEFAULT_CURRENT_SYMLINK})")
     parser.add_argument("-q", "--quiet", action="store_true",
                         help="Reduce output verbosity")
+    parser.add_argument("-a", "--all", action="store_false", dest="symlinks_only", default=DEFAULT_SYMLINKS_ONLY,
+                        help="Include all image files, not just symlinks")
     
     args = parser.parse_args()
     
@@ -126,7 +130,7 @@ def check_dependencies():
         ))
         sys.exit(1)
 
-def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: bool = False) -> List[str]:
+def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: bool = False, symlinks_only: bool = True) -> List[str]:
     """Find wallpapers with minimum resolution"""
     if not quiet:
         with console.status("[bold green]Searching for wallpapers...", spinner="dots"):
@@ -136,10 +140,18 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
                 console.print(f"[bold red]Error:[/bold red] Wallpaper directory '{wallpaper_dir}' not found.")
                 sys.exit(1)
                 
-            # Look for both regular files and symlinks with image extensions
+            # Look for symlinks only or both regular files and symlinks
+            if symlinks_only:
+                file_type = ["-type", "l"]
+                if not quiet:
+                    console.print("[blue]Looking for symlinks only...[/blue]")
+            else:
+                file_type = ["(", "-type", "f", "-o", "-type", "l", ")"]
+                
             cmd = [
-                "find", wallpaper_dir, 
-                "(", "-type", "f", "-o", "-type", "l", ")", "-a", 
+                "find", wallpaper_dir
+            ] + file_type + [
+                "-a", 
                 "(", 
                 "-name", "*.jpg", "-o", 
                 "-name", "*.jpeg", "-o", 
@@ -159,9 +171,16 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
         if not os.path.isdir(wallpaper_dir):
             sys.exit(1)
             
+        # Look for symlinks only or both regular files and symlinks
+        if symlinks_only:
+            file_type = ["-type", "l"]
+        else:
+            file_type = ["(", "-type", "f", "-o", "-type", "l", ")"]
+            
         cmd = [
-            "find", wallpaper_dir, 
-            "(", "-type", "f", "-o", "-type", "l", ")", "-a", 
+            "find", wallpaper_dir
+        ] + file_type + [
+            "-a", 
             "(", 
             "-name", "*.jpg", "-o", 
             "-name", "*.jpeg", "-o", 
@@ -268,7 +287,7 @@ def main():
     check_dependencies()
     
     # Find wallpapers
-    wallpapers = find_wallpapers(args.dir, args.width, args.height, args.quiet)
+    wallpapers = find_wallpapers(args.dir, args.width, args.height, args.quiet, args.symlinks_only)
     
     if not wallpapers:
         if not args.quiet:
