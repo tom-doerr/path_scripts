@@ -72,7 +72,9 @@ def create_worktree(repo_path, task_name):
     os.makedirs(worktree_base, exist_ok=True)
     
     # Create a sanitized directory name from the task
+    # Sanitize task name to prevent path traversal
     safe_task_name = "".join(c if c.isalnum() else "_" for c in task_name)
+    safe_task_name = safe_task_name.lstrip("-_.")  # Prevent hidden files/dirs
     safe_task_name = safe_task_name[:50]  # Limit length
     
     # Add timestamp to make it unique
@@ -104,6 +106,11 @@ def run_tests(worktree_path):
         console.print(Panel("[bold]All Tests Passed![/bold]", style="green"))
     else:
         console.print(Panel("[bold]Tests Failed[/bold]", style="red"))
+        if result.stdout:
+            console.print(Panel.fit(
+                "[bold]Test Output:[/bold]\n" + "\n".join(result.stdout.split("\n")[-10:]), 
+                style="red"
+            ))
     
     return result.returncode == 0
 
@@ -183,7 +190,11 @@ def generate_context(worktree_path):
                     test_file_path = os.path.join(tests_dir, test_file)
                     f.write(f"\n# {test_file}\n")
                     with open(test_file_path, 'r') as tf:
-                        f.write(tf.read())
+                        for line in tf:
+                            f.write(line)
+                            if f.tell() > 1000000:  # Limit to 1MB per test file
+                                f.write("\n# ... (content truncated due to size)")
+                                break
     
     # Move temp file to final location
     import shutil
@@ -255,9 +266,16 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
         with open(placeholder_file, "w") as f:
             f.write("# Placeholder file\n# TODO: Add your Python code here\n")
         
-        # Add and commit the placeholder file
-        run_command("git add placeholder.py", cwd=worktree_path)
-        run_command("git commit -m 'Add placeholder Python file'", cwd=worktree_path)
+        # Add and commit the placeholder file with error checking
+        add_result = run_command("git add placeholder.py", cwd=worktree_path)
+        if add_result.returncode != 0:
+            console.print("[red]Failed to add placeholder file[/red]")
+            return False
+        
+        commit_result = run_command("git commit -m 'Add placeholder Python file'", cwd=worktree_path)
+        if commit_result.returncode != 0:
+            console.print("[red]Failed to commit placeholder file[/red]")
+            return False
         
         # Update our file lists
         all_files.append("placeholder.py")
@@ -265,9 +283,9 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
     
     # Create the message with proper shell escaping
     from shlex import quote
-    message = f'Improve code quality and fix any issues found in tests or linting. ' \
-              f'TDD! Add tests for task first before making changes. ' \
-              f'Task: {quote(task)}'
+    message = f"Improve code quality and fix any issues found in tests or linting. " \
+              f"TDD! Add tests for task first before making changes. " \
+              f"Task: {quote(task)}"
     
     # Build the aider command base
     aider_cmd = f"aider --architect --model {model} --weak-model '{weak_model}' {read_args_str}"
@@ -322,7 +340,7 @@ def merge_and_push(worktree_path, main_repo_path, branch_name, main_branch, task
         
         # Look for conflict markers in files
         conflict_files = run_command("git diff --check", cwd=worktree_path)
-        has_conflicts = merge_check.returncode != 0 or "missing" in merge_check.stdout
+        has_conflicts = merge_check.returncode != 0 or "CONFLICT" in merge_check.stdout
         
         if has_conflicts or conflict_files.stdout:
             console.print("[bold red]Merge conflicts detected. Running aider to resolve conflicts...[/bold red]")
