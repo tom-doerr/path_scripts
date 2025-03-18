@@ -333,7 +333,7 @@ def _prepare_files_for_aider(worktree_path, args):
 
 
 # Git merge and push operations
-def merge_and_push(worktree_path, main_repo_path, branch_name, main_branch, task):
+def merge_and_push(worktree_path, main_repo_path, branch_name, main_branch, task, args):
     """Merge changes from main, then push if no conflicts."""
     try:
         # Update main branch
@@ -341,7 +341,7 @@ def merge_and_push(worktree_path, main_repo_path, branch_name, main_branch, task
             return False
         
         # Update and commit in worktree
-        if not _update_worktree(worktree_path, main_branch, branch_name, task):
+        if not _update_worktree(worktree_path, main_branch, branch_name, task, args):
             return False
         
         # Push changes to branch
@@ -375,7 +375,7 @@ def _update_main_branch(main_repo_path, main_branch):
     return True
 
 
-def _update_worktree(worktree_path, main_branch, branch_name, task):
+def _update_worktree(worktree_path, main_branch, branch_name, task, args):
     """Update worktree with latest changes and resolve conflicts."""
     console.print("[bold blue]Updating worktree with latest changes...[/bold blue]")
     run_command(f"git pull origin {main_branch}", cwd=worktree_path, check=False)
@@ -412,6 +412,12 @@ def _update_worktree(worktree_path, main_branch, branch_name, task):
         
         # Run aider to help resolve conflicts
         run_aider(worktree_path, conflict_task, conflict_args, model=args.model)
+        
+        # Verify conflicts were resolved
+        status_result = run_command("git status --porcelain", cwd=worktree_path)
+        if "UU" in status_result.stdout:
+            console.print("[bold red]Unresolved conflicts remain after aider run.[/bold red]")
+            return False
     
     return True
 
@@ -549,7 +555,7 @@ def handle_success(worktree_path, main_repo_path, branch_name, main_branch, task
     
     if not args.no_push:
         # Try to merge and push
-        merge_success = merge_and_push(worktree_path, main_repo_path, branch_name, main_branch, task)
+        merge_success = merge_and_push(worktree_path, main_repo_path, branch_name, main_branch, task, args)
         
         if merge_success:
             total_time = str(datetime.now() - start_time).split('.')[0]
