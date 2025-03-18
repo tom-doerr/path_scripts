@@ -263,12 +263,11 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
         all_files.append("placeholder.py")
         full_paths.append(os.path.join(worktree_path, "placeholder.py"))
     
-    # Create the message with proper escaping
+    # Create the message with proper shell escaping
     from shlex import quote
-    safe_task = task.replace("'", "'\\''")  # Escape single quotes
-    message = f"Improve code quality and fix any issues found in tests or linting. " \
-              f"TDD! Add tests for task first before making changes. " \
-              f"Task: {quote(safe_task)}"
+    message = f'Improve code quality and fix any issues found in tests or linting. ' \
+              f'TDD! Add tests for task first before making changes. ' \
+              f'Task: {quote(task)}'
     
     # Build the aider command base
     aider_cmd = f"aider --architect --model {model} --weak-model '{weak_model}' {read_args_str}"
