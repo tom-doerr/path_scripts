@@ -280,9 +280,11 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
         f" --message '{message}'"
     )
     
-    # Pass all files as arguments to aider
-    # Properly quote paths to handle spaces
-    file_args = " ".join([f'"{f}"' for f in all_files])
+    # Add either Python files or all files based on command line option
+    if args.all_files:
+        file_args = " ".join([f'"{f}"' for f in all_files])
+    else:
+        file_args = " ".join([f'"{f}"' for f in python_files])
     aider_cmd += f" {file_args}"
     
     # Run aider with proper environment
@@ -401,6 +403,8 @@ Examples:
                         help="Maximum number of iterations to run (default: 10)")
     parser.add_argument("--inner-loop", type=int, default=3,
                         help="Number of inner loop iterations to run (default: 3)")
+    parser.add_argument("--all-files", action="store_true",
+                        help="Include all files in the repository instead of just Python files")
     
     args = parser.parse_args()
     
@@ -430,6 +434,7 @@ Examples:
     config_table.add_row("Model", args.model)
     config_table.add_row("Max Iterations", str(args.max_iterations))
     config_table.add_row("Push Changes", "No" if args.no_push else "Yes")
+    config_table.add_row("Include All Files", "Yes" if args.all_files else "No (Python only)")
     console.print(config_table)
     
     # Main loop
