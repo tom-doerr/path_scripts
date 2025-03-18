@@ -215,7 +215,7 @@ def find_wallpapers(wallpaper_dir: str, min_width: int, min_height: int, quiet: 
             # Simpler find command for symlinks
             cmd = [
                 "find", wallpaper_dir, "-type", "l", 
-                "-exec", "identify", "-format", "%w %h %i\\n", "{}", "\\;"
+                "-exec", "identify", "-format", "%w %h %i\\n", "{}", ";"
             ]
         else:
             # Command for all image files
