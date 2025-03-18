@@ -482,6 +482,7 @@ Examples:
                     total_time = str(datetime.now() - start_time).split('.')[0]
                     console.print(Panel(
                         f"[bold]Task completed successfully in {iteration} iterations![/bold]\n"
+                        f"Task: {args.task}\n"
                         f"Total time: {total_time}",
                         style="green"
                     ))
@@ -493,6 +494,7 @@ Examples:
                         console.print(Panel(
                             f"[bold]Reached maximum number of iterations ({args.max_iterations})[/bold]\n"
                             f"Total time spent: {str(datetime.now() - start_time).split('.')[0]}\n"
+                            f"Task: {args.task}\n"
                             "Exiting without completing the task.",
                             style="red"
                         ))
