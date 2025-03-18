@@ -252,8 +252,7 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
     python_files_str = " ".join(python_files)
     
     # Create the message with the task at the end
-    message = f"Work on fixing the errors. If there are no test errors, improve test coverage. " \
-              f"Focus on improving code quality and fixing any issues found in tests or linting. " \
+    message = f"Improve code quality and fix any issues found in tests or linting. " \
               f"Task: {task}"
     
     subprocess.run(
