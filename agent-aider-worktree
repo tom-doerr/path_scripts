@@ -284,8 +284,9 @@ def run_aider(worktree_path, task, model="r1", inner_loop_count=3):
     # Run aider with proper environment
     console.print(f"[dim]Running aider in {worktree_path}[/dim]")
     subprocess.run(
-        aider_cmd,
+        " ".join(aider_cmd),  # Convert list to string for shell=True
         cwd=worktree_path,
+        shell=True,
         text=True
     )
     
