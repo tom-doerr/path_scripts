@@ -24,7 +24,11 @@ for wp in "${shuffled_array[@]}"; do
     # Update the current symlink
     ln -sf "$wp" ~/Pictures/Wallpapers/current
     
-    read -p "Press Enter for next wallpaper, 'q' to quit, or Ctrl+C to stop: " input
+    # Display message about how to quit
+    echo "Press 'q' to quit, or Ctrl+C to stop. Changing wallpaper in 5 seconds..."
+    
+    # Wait for input with timeout
+    read -t 5 -n 1 input
     if [[ "$input" == "q" ]]; then
         echo "Quitting wallpaper cycle."
         exit 0
