@@ -1,38 +1,153 @@
 #!/bin/bash
 
-# Find wallpapers that are at least 3840x2160 (4K)
-wallpapers=$(find ~/Pictures/Wallpapers -type l -exec identify -format '%w %h %i\n' {} \; 2>/dev/null | awk '$1 >= 3840 && $2 >= 2160 {print $3}')
+# Default settings
+WALLPAPER_DIR="$HOME/Pictures/Wallpapers"
+MIN_WIDTH=3840
+MIN_HEIGHT=2160
+DELAY=5
+LOOP=false
+CURRENT_SYMLINK="$WALLPAPER_DIR/current"
 
-if [ -z "$wallpapers" ]; then
-    echo "No suitable wallpapers found."
-    exit 1
-fi
+# Function to display help
+show_help() {
+    echo "Usage: $(basename "$0") [OPTIONS]"
+    echo
+    echo "Cycle through wallpapers with automatic changing."
+    echo
+    echo "Options:"
+    echo "  -h, --help           Show this help message"
+    echo "  -d, --dir DIR        Set wallpaper directory (default: $WALLPAPER_DIR)"
+    echo "  -w, --width WIDTH    Set minimum width (default: $MIN_WIDTH)"
+    echo "  -t, --height HEIGHT  Set minimum height (default: $MIN_HEIGHT)"
+    echo "  -s, --seconds SEC    Set delay in seconds (default: $DELAY)"
+    echo "  -l, --loop           Loop continuously through wallpapers"
+    echo "  -c, --current PATH   Path for current wallpaper symlink (default: $CURRENT_SYMLINK)"
+    echo
+    echo "Controls while running:"
+    echo "  q                    Quit the program"
+    echo "  n                    Skip to next wallpaper"
+    echo "  Ctrl+C               Force quit"
+    exit 0
+}
 
-# Convert to array
-mapfile -t wallpaper_array <<< "$wallpapers"
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            show_help
+            ;;
+        -d|--dir)
+            WALLPAPER_DIR="$2"
+            shift 2
+            ;;
+        -w|--width)
+            MIN_WIDTH="$2"
+            shift 2
+            ;;
+        -t|--height)
+            MIN_HEIGHT="$2"
+            shift 2
+            ;;
+        -s|--seconds)
+            DELAY="$2"
+            shift 2
+            ;;
+        -l|--loop)
+            LOOP=true
+            shift
+            ;;
+        -c|--current)
+            CURRENT_SYMLINK="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            show_help
+            ;;
+    esac
+done
 
-echo "Found ${#wallpaper_array[@]} suitable wallpapers."
-
-# Shuffle the array for random order
-shuffled_array=( $(shuf -e "${wallpaper_array[@]}") )
-
-# Cycle through wallpapers in random order
-for wp in "${shuffled_array[@]}"; do
-    echo "Setting wallpaper: $wp"
-    feh --bg-fill "$wp"
-    
-    # Update the current symlink
-    ln -sf "$wp" ~/Pictures/Wallpapers/current
-    
-    # Display message about how to quit
-    echo "Press 'q' to quit, or Ctrl+C to stop. Changing wallpaper in 5 seconds..."
-    
-    # Wait for input with timeout
-    read -t 5 -n 1 input
-    if [[ "$input" == "q" ]]; then
-        echo "Quitting wallpaper cycle."
-        exit 0
+# Check if required commands are available
+for cmd in find identify awk feh; do
+    if ! command -v "$cmd" &> /dev/null; then
+        echo "Error: Required command '$cmd' not found."
+        if [ "$cmd" = "identify" ]; then
+            echo "Please install ImageMagick package."
+        elif [ "$cmd" = "feh" ]; then
+            echo "Please install feh package."
+        fi
+        exit 1
     fi
 done
 
-echo "Finished cycling through all wallpapers."
+# Check if wallpaper directory exists
+if [ ! -d "$WALLPAPER_DIR" ]; then
+    echo "Error: Wallpaper directory '$WALLPAPER_DIR' not found."
+    exit 1
+fi
+
+# Function to find wallpapers
+find_wallpapers() {
+    # Look for both regular files and symlinks with image extensions
+    find "$WALLPAPER_DIR" \( -type f -o -type l \) -a \( -name "*.jpg" -o -name "*.jpeg" -o -name "*.png" -o -name "*.gif" \) -exec identify -format '%w %h %i\n' {} \; 2>/dev/null | 
+    awk -v min_w="$MIN_WIDTH" -v min_h="$MIN_HEIGHT" '$1 >= min_w && $2 >= min_h {print $3}'
+}
+
+# Function to display countdown
+countdown() {
+    local remaining=$1
+    while [ $remaining -gt 0 ]; do
+        echo -ne "\rChanging wallpaper in $remaining seconds... (press 'q' to quit, 'n' for next) "
+        read -t 1 -n 1 input
+        if [[ "$input" == "q" ]]; then
+            echo -e "\nQuitting wallpaper cycle."
+            exit 0
+        elif [[ "$input" == "n" ]]; then
+            echo -e "\nSkipping to next wallpaper."
+            return 0
+        fi
+        ((remaining--))
+    done
+    echo -e "\r                                                                      \r"
+    return 0
+}
+
+# Main loop
+while true; do
+    # Find wallpapers
+    wallpapers=$(find_wallpapers)
+
+    if [ -z "$wallpapers" ]; then
+        echo "No suitable wallpapers found in '$WALLPAPER_DIR' with minimum resolution ${MIN_WIDTH}x${MIN_HEIGHT}."
+        exit 1
+    fi
+
+    # Convert to array
+    mapfile -t wallpaper_array <<< "$wallpapers"
+
+    echo "Found ${#wallpaper_array[@]} suitable wallpapers."
+
+    # Shuffle the array for random order
+    shuffled_array=( $(shuf -e "${wallpaper_array[@]}") )
+
+    # Cycle through wallpapers in random order
+    for wp in "${shuffled_array[@]}"; do
+        echo "Setting wallpaper: $wp"
+        feh --bg-fill "$wp"
+        
+        # Update the current symlink
+        ln -sf "$wp" "$CURRENT_SYMLINK"
+        
+        # Wait with countdown
+        countdown "$DELAY"
+    done
+
+    echo "Finished cycling through all wallpapers."
+    
+    # Exit if not looping
+    if [ "$LOOP" = false ]; then
+        break
+    fi
+    
+    echo "Restarting cycle..."
+done
