@@ -192,3 +192,45 @@ if __name__ == "__main__":
         response = agent.stream_reasoning(prompt)
         print("\nFinal response:")
         print(response)
+#!/usr/bin/env python3
+"""Core Agent functionality for model interaction and reasoning."""
+
+import os
+import sys
+import json
+from typing import Dict, List, Optional, Any, Tuple, Callable
+import xml.etree.ElementTree as ET
+import litellm
+from rich.console import Console
+
+from repository import analyze_repository
+
+class Agent:
+    """Main agent class for handling model interactions and reasoning."""
+    
+    def __init__(self, model_name: str = "openrouter/deepseek/deepseek-r1"):
+        """
+        Initialize the agent with a specific model.
+        
+        Args:
+            model_name: The name of the LLM to use
+        """
+        self.console = Console()
+        self.model_name = model_name
+        self.plan_tree = None
+        self.repository_info: Dict[str, Any] = {}
+        self.config = {
+            "stream_reasoning": True,
+            "verbose": True
+        }
+        self.stream_callback: Optional[Callable[[str, bool], None]] = None
+    
+    def initialize(self, repo_path: str = ".") -> None:
+        """
+        Initialize the agent with repository information.
+        
+        Args:
+            repo_path: Path to the repository to analyze
+        """
+        self.repository_info = analyze_repository(repo_path)
+        print(f"Agent initialized for repository: {repo_path}")
