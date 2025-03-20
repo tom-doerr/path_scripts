@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """XML parsing and formatting utilities."""
 
+import json
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as minidom
 from typing import Optional, Dict, Any, List
