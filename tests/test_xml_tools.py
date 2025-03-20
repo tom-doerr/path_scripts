@@ -45,7 +45,14 @@ def test_extract_xml_multiple_matches():
 
 def test_pretty_format_xml():
     """Test XML formatting produces indented output."""
-    compressed_xml = "<response><message>Test</message></response>"
+    compressed_xml = "<response><message>Test</message><data><item>1</item></data></response>"
     formatted = pretty_format_xml(compressed_xml)
-    assert "    <message>" in formatted
-    assert "\n" in formatted
+    # Check indentation
+    assert formatted == (
+        '<response>\n'
+        '  <message>Test</message>\n'
+        '  <data>\n'
+        '    <item>1</item>\n'
+        '  </data>\n'
+        '</response>'
+    )

@@ -108,7 +108,7 @@ def pretty_format_xml(xml_string: str) -> str:
     """
     try:
         # Parse the XML safely
-        parser = ET.XMLParser(resolve_entities=False)
+        parser = ET.XMLParser()
         root = ET.fromstring(xml_string, parser=parser)
 
         # Function to recursively format XML
