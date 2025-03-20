@@ -925,12 +925,12 @@ def main():
             ))
     else:
         # Standard approach - just run with max_iterations
-        run_with_iterations(main_repo_path, args, args.max_iterations, start_time)
-                
-    except Exception as e:
-        console.print(f"[bold red]Error:[/bold red] {str(e)}")
-        console.print(f"[dim]{traceback.format_exc()}[/dim]")
-        sys.exit(1)
+        try:
+            run_with_iterations(main_repo_path, args, args.max_iterations, start_time)
+        except Exception as e:
+            console.print(f"[bold red]Error:[/bold red] {str(e)}")
+            console.print(f"[dim]{traceback.format_exc()}[/dim]")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
