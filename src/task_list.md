@@ -16,6 +16,11 @@
    - Status: Completed
    - Notes: Implemented with safety checks and auto-run capability for safe commands
 
+4. **Add Chat History** - Implement conversation history for the chat interface.
+   - Priority: HIGH
+   - Status: Completed
+   - Notes: Added persistent chat history with timestamps and context information
+
 ## High Priority Tasks
 
 1. **Fix Reasoning Token Display** - Improve how reasoning tokens are displayed during streaming.
@@ -62,10 +67,10 @@
    - Status: Not started
    - Notes: Consider supporting JSON, YAML, and Markdown formats
 
-2. **Add Command History** - Implement command history in the interface.
+2. **Add Vim-like Interface** - Implement vim-like navigation and editing in the interface.
    - Priority: LOW
    - Status: Not started
-   - Notes: Allow users to recall and edit previous commands
+   - Notes: Would allow using j/k to navigate history and i/Esc for editing mode
 
 3. **Add Textual UI Integration** - Consider integrating with Textual for a more advanced TUI.
    - Priority: LOW

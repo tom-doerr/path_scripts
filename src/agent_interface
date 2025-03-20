@@ -3,6 +3,8 @@
 
 import os
 import sys
+import json
+import datetime
 import subprocess
 from typing import List, Optional
 import xml.etree.ElementTree as ET
@@ -28,6 +30,9 @@ class AgentInterface:
             "r1": "deepseek/deepseek-reasoner",
             "claude": "openrouter/anthropic/claude-3.7-sonnet"
         }
+        self.chat_history = []
+        self.history_file = "chat_history.json"
+        self.load_chat_history()
     
     def display_welcome(self):
         """Display welcome message and instructions"""
@@ -52,6 +57,8 @@ class AgentInterface:
         self.console.print("[bold green]/execute-ready[/bold green]", "- Execute all ready tasks in dependency order")
         self.console.print("[bold green]/modify-plan[/bold green]", "- Let the agent suggest modifications to the plan")
         self.console.print("[bold green]/model <model_name>[/bold green]", "- Change the model (aliases: flash, r1, claude)")
+        self.console.print("[bold green]/history [count][/bold green]", "- Display chat history (default: last 10 messages)")
+        self.console.print("[bold green]/clear-history[/bold green]", "- Clear the chat history")
         self.console.print("[bold green]/help[/bold green]", "- Show this help")
         self.console.print("[bold green]/exit[/bold green]", "- Exit the interface")
         self.console.print("")
@@ -448,6 +455,68 @@ class AgentInterface:
             except Exception as e:
                 self.console.print(f"[bold red]Error modifying plan: {e}[/bold red]")
         
+        elif cmd == "history":
+            # Display chat history
+            count = 10  # Default to last 10 messages
+            if args and args[0].isdigit():
+                count = int(args[0])
+            
+            if not self.chat_history:
+                self.console.print("[bold yellow]No chat history available[/bold yellow]")
+                return
+            
+            # Get the specified number of messages from the end of history
+            messages_to_show = self.chat_history[-count:] if len(self.chat_history) > count else self.chat_history
+            
+            self.console.print(f"[bold blue]Chat History (last {len(messages_to_show)} messages):[/bold blue]")
+            for i, msg in enumerate(messages_to_show):
+                role = msg["role"]
+                content = msg["content"]
+                timestamp = msg.get("timestamp", "")
+                
+                # Format timestamp if available
+                time_str = ""
+                if timestamp:
+                    try:
+                        dt = datetime.datetime.fromisoformat(timestamp)
+                        time_str = f"[dim]{dt.strftime('%Y-%m-%d %H:%M:%S')}[/dim]"
+                    except:
+                        time_str = f"[dim]{timestamp}[/dim]"
+                
+                # Format based on role
+                if role == "user":
+                    self.console.print(f"\n{time_str}")
+                    self.console.print(f"[bold green]User:[/bold green] {content}")
+                else:
+                    self.console.print(f"\n{time_str}")
+                    
+                    # For assistant messages, try to extract and format the message part
+                    message_xml = self.agent.extract_xml_from_response(content, "message")
+                    if message_xml:
+                        try:
+                            root = ET.fromstring(message_xml)
+                            message_text = root.text if root.text else ""
+                            self.console.print(f"[bold blue]Assistant:[/bold blue]")
+                            self.console.print(Markdown(message_text))
+                        except ET.ParseError:
+                            self.console.print(f"[bold blue]Assistant:[/bold blue] {content[:100]}...")
+                    else:
+                        self.console.print(f"[bold blue]Assistant:[/bold blue] {content[:100]}...")
+        
+        elif cmd == "clear-history":
+            confirm = Prompt.ask(
+                "Are you sure you want to clear the chat history?", 
+                choices=["y", "n"], 
+                default="n"
+            )
+            
+            if confirm.lower() == "y":
+                self.chat_history = []
+                self.save_chat_history()
+                self.console.print("[bold green]Chat history cleared[/bold green]")
+            else:
+                self.console.print("[bold yellow]Operation cancelled[/bold yellow]")
+                
         elif cmd == "model":
             if not args:
                 self.console.print(f"[bold blue]Current model:[/bold blue] {self.agent.model_name}")
@@ -978,6 +1047,25 @@ class AgentInterface:
                 self.console.print(f"[bold red]Error: {stderr}[/bold red]")
             return False
     
+    def load_chat_history(self):
+        """Load chat history from file if it exists"""
+        try:
+            if os.path.exists(self.history_file):
+                with open(self.history_file, 'r') as f:
+                    self.chat_history = json.load(f)
+                    self.console.print(f"[dim]Loaded {len(self.chat_history)} previous messages[/dim]")
+        except Exception as e:
+            self.console.print(f"[dim]Could not load chat history: {e}[/dim]")
+            self.chat_history = []
+    
+    def save_chat_history(self):
+        """Save chat history to file"""
+        try:
+            with open(self.history_file, 'w') as f:
+                json.dump(self.chat_history, f, indent=2)
+        except Exception as e:
+            self.console.print(f"[dim]Could not save chat history: {e}[/dim]")
+    
     def chat_with_model(self, message: str):
         """Send a message directly to the model and handle the response"""
         # Initialize agent if not already done
@@ -985,11 +1073,30 @@ class AgentInterface:
             with self.console.status("[bold blue]Initializing agent...[/bold blue]"):
                 self.agent.initialize()
         
+        # Add user message to history
+        timestamp = datetime.datetime.now().isoformat()
+        self.chat_history.append({
+            "role": "user",
+            "content": message,
+            "timestamp": timestamp
+        })
+        
         self.console.print(f"[bold blue]Sending message to model ({self.agent.model_name})...[/bold blue]")
+        
+        # Get current date, time and timezone
+        now = datetime.datetime.now()
+        timezone = datetime.datetime.now().astimezone().tzinfo
         
         # Construct a prompt that instructs the model to respond in XML format
         prompt = f"""
         You are an AI assistant that can respond to user queries and also perform actions.
+        
+        CURRENT DATE: {now.strftime('%Y-%m-%d')}
+        CURRENT TIME: {now.strftime('%H:%M:%S')}
+        TIMEZONE: {timezone}
+        
+        CONVERSATION HISTORY:
+        {self._format_history_for_prompt()}
         
         USER MESSAGE: {message}
         
@@ -1041,12 +1148,36 @@ class AgentInterface:
         except KeyboardInterrupt:
             self.console.print("\n[bold yellow]Operation cancelled by user[/bold yellow]")
     
+    def _format_history_for_prompt(self):
+        """Format chat history for inclusion in the prompt"""
+        # Limit history to last 10 messages to avoid context overflow
+        recent_history = self.chat_history[-10:] if len(self.chat_history) > 10 else self.chat_history
+        
+        formatted_history = []
+        for msg in recent_history[:-1]:  # Exclude the current message which is added separately
+            role = msg["role"].upper()
+            content = msg["content"]
+            formatted_history.append(f"{role}: {content}")
+        
+        return "\n".join(formatted_history)
+    
     def process_chat_response(self, response: str):
         """Process the XML response from the model chat"""
         # Extract different parts of the response
         message_xml = self.agent.extract_xml_from_response(response, "message")
         actions_xml = self.agent.extract_xml_from_response(response, "actions")
         shell_commands_xml = self.agent.extract_xml_from_response(response, "shell_commands")
+        
+        # Add response to history
+        timestamp = datetime.datetime.now().isoformat()
+        self.chat_history.append({
+            "role": "assistant",
+            "content": response,
+            "timestamp": timestamp
+        })
+        
+        # Save updated history
+        self.save_chat_history()
         
         # Process message if present
         if message_xml:
