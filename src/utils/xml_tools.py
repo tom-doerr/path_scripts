@@ -144,3 +144,88 @@ if __name__ == "__main__":
     # Simple test when run directly
     test_xml = """<root><child attr="value">Text</child><empty/></root>"""
     print(pretty_format_xml(test_xml))
+"""XML utility functions."""
+
+import xml.etree.ElementTree as ET
+from typing import Dict, Any, Optional
+
+def extract_xml_from_response(response: str, tag_name: str) -> Optional[str]:
+    """Extract XML content for a specific tag from the response"""
+    try:
+        # Look for XML content in the response
+        start_tag = f"<{tag_name}"
+        end_tag = f"</{tag_name}>"
+        
+        start_index = response.find(start_tag)
+        end_index = response.find(end_tag, start_index) + len(end_tag)
+        
+        if start_index != -1 and end_index != -1:
+            return response[start_index:end_index]
+        return None
+    except Exception as e:
+        print(f"Error extracting XML: {e}")
+        return None
+
+def format_xml_response(content_dict: Dict[str, Any]) -> str:
+    """Format a dictionary as XML response"""
+    xml_parts = ["<response>"]
+    
+    for key, value in content_dict.items():
+        if value is not None:
+            xml_parts.append(f"  <{key}>{value}</{key}>")
+    
+    xml_parts.append("</response>")
+    return "\n".join(xml_parts)
+
+def pretty_format_xml(xml_string: str) -> str:
+    """Format XML string in a cleaner way than minidom."""
+    try:
+        # Parse the XML
+        root = ET.fromstring(xml_string)
+        
+        # Define a recursive function to format elements
+        def format_elem(elem, level=0):
+            indent = "  " * level
+            result = f"{indent}<{elem.tag}"
+            
+            # Add attributes
+            for name, value in elem.attrib.items():
+                result += f' {name}="{value}"'
+            
+            # Check if element has children or text
+            if len(elem) == 0 and (elem.text is None or elem.text.strip() == ""):
+                result += "/>\n"
+            else:
+                result += ">"
+                
+                # Add text if present and not just whitespace
+                if elem.text and elem.text.strip():
+                    if "\n" in elem.text:
+                        # For multiline text, add a newline after the opening tag
+                        result += "\n"
+                        # Indent each line of the text
+                        text_lines = elem.text.split("\n")
+                        for line in text_lines:
+                            if line.strip():  # Skip empty lines
+                                result += f"{indent}  {line.strip()}\n"
+                    else:
+                        result += elem.text
+                
+                # Add children
+                if len(elem) > 0:
+                    result += "\n"
+                    for child in elem:
+                        result += format_elem(child, level + 1)
+                    result += f"{indent}"
+                
+                result += f"</{elem.tag}>\n"
+            
+            return result
+        
+        # Start formatting from the root
+        formatted_xml = format_elem(root)
+        return formatted_xml
+        
+    except Exception as e:
+        print(f"Error formatting XML: {e}")
+        return xml_string  # Return original if formatting fails

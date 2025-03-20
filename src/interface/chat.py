@@ -6,8 +6,8 @@ from rich.markdown import Markdown
 from rich.syntax import Syntax
 from rich.prompt import Prompt
 
-from interface.actions import execute_action, execute_file_edit, execute_shell_command
-from utils.xml_schema import get_schema
+from src.interface.actions import execute_action, execute_file_edit, execute_shell_command
+from src.utils.xml_schema import get_schema
 
 def process_chat_message(
     formatted_message: str, 

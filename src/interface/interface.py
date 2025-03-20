@@ -11,10 +11,10 @@ from rich.console import Console
 from rich.prompt import Prompt
 
 # Import other interface modules
-from interface.commands import process_command
-from interface.display import display_welcome, get_system_info
-from interface.actions import execute_action, execute_file_edit, execute_shell_command
-from agent.core import Agent
+from src.interface.commands import process_command
+from src.interface.display import display_welcome, get_system_info
+from src.interface.actions import execute_action, execute_file_edit, execute_shell_command
+from src.agent.core import Agent
 
 class AgentInterface:
     def __init__(self):

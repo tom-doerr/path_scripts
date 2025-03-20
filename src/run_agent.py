@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from interface.interface import main
+from src.interface.interface import main
 
 if __name__ == "__main__":
     main()
