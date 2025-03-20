@@ -96,6 +96,8 @@ class AgentInterface:
         self.console.print("[bold green]/model <model_name>[/bold green]", "- Change the model (aliases: flash, r1, claude)")
         self.console.print("[bold green]/history [count][/bold green]", "- Display chat history (default: last 10 messages)")
         self.console.print("[bold green]/clear-history[/bold green]", "- Clear the chat history")
+        self.console.print("[bold green]/memory[/bold green]", "- Display the agent's persistent memory")
+        self.console.print("[bold green]/clear-memory[/bold green]", "- Clear the agent's persistent memory")
         self.console.print("[bold green]/paste[/bold green]", "- Enter multiline paste mode (end with /end)")
         self.console.print("[bold green]/end[/bold green]", "- End multiline paste mode")
         self.console.print("[bold green]/help[/bold green]", "- Show this help")
@@ -103,6 +105,12 @@ class AgentInterface:
         self.console.print("")
         self.console.print("[italic]Any text not starting with / will be sent directly to the model as a chat message[/italic]")
         self.console.print("[italic]For multiline input, use /paste to start and /end to finish[/italic]")
+        self.console.print("")
+        self.console.print("[bold]XML Input Format:[/bold]")
+        self.console.print("You can also send messages in XML format for more structured input:")
+        self.console.print("")
+        self.console.print("[bold cyan]<user_message>Your message here</user_message>[/bold cyan]")
+        self.console.print("[bold cyan]<file_request path=\"path/to/file.py\">Request to see a file</file_request>[/bold cyan]")
     
     def execute_action(self, action_element):
         """Execute a single action from the XML"""
@@ -381,6 +389,39 @@ class AgentInterface:
                     self.console.print("[yellow]No input to process[/yellow]")
             else:
                 self.console.print("[yellow]Not in paste mode[/yellow]")
+            return
+        
+        # Handle memory commands
+        if cmd == "memory":
+            memory_content = self._load_persistent_memory()
+            try:
+                # Format the XML for display
+                memory_root = ET.fromstring(memory_content)
+                formatted_memory = self.agent.pretty_format_xml(ET.tostring(memory_root, encoding='unicode'))
+                
+                # Display as syntax-highlighted XML
+                self.console.print("[bold blue]Agent Memory:[/bold blue]")
+                self.console.print(Syntax(formatted_memory, "xml", theme="monokai"))
+            except ET.ParseError as e:
+                self.console.print(f"[bold red]Error parsing memory XML: {e}[/bold red]")
+                self.console.print(memory_content)
+            return
+            
+        if cmd == "clear-memory":
+            confirm = Prompt.ask(
+                "Are you sure you want to clear the agent's memory?", 
+                choices=["y", "n"], 
+                default="n"
+            )
+            
+            if confirm.lower() == "y":
+                # Create default memory structure
+                default_memory = "<memory>\n  <facts>\n  </facts>\n  <preferences>\n  </preferences>\n</memory>"
+                with open("agent_memory.xml", 'w') as f:
+                    f.write(default_memory)
+                self.console.print("[bold green]Agent memory cleared[/bold green]")
+            else:
+                self.console.print("[bold yellow]Operation cancelled[/bold yellow]")
             return
         
         if cmd == "help":
@@ -1185,11 +1226,17 @@ class AgentInterface:
             with self.console.status("[bold blue]Initializing agent...[/bold blue]"):
                 self.agent.initialize()
         
+        # Format user message as XML if it's not already
+        if not message.strip().startswith("<"):
+            formatted_message = f"<user_message>{message}</user_message>"
+        else:
+            formatted_message = message
+        
         # Add user message to history
         timestamp = datetime.datetime.now().isoformat()
         self.chat_history.append({
             "role": "user",
-            "content": message,
+            "content": formatted_message,
             "timestamp": timestamp
         })
         self.save_chat_history()
@@ -1199,6 +1246,9 @@ class AgentInterface:
         # Get current date, time and timezone
         now = datetime.datetime.now()
         timezone = datetime.datetime.now().astimezone().tzinfo
+        
+        # Load persistent memory if it exists
+        memory_content = self._load_persistent_memory()
         
         # Construct a prompt that instructs the model to respond in XML format
         prompt = f"""
@@ -1213,7 +1263,10 @@ class AgentInterface:
           <conversation_history>
             {self._format_history_for_prompt()}
           </conversation_history>
-          <user_message>{message}</user_message>
+          <persistent_memory>
+            {memory_content}
+          </persistent_memory>
+          {formatted_message}
         </context>
         
         You are an AI assistant that can respond to user queries and also perform actions.
@@ -1254,8 +1307,26 @@ class AgentInterface:
           <command safe_to_autorun="false">rm -rf some_directory</command>
         </shell_commands>
         
+        5. Memory updates:
+        <memory_updates>
+          <edit>
+            <search>Old information to replace</search>
+            <replace>Updated information</replace>
+          </edit>
+          <add>New information to remember</add>
+        </memory_updates>
+        
+        6. Execution status:
+        <execution_status complete="true|false" needs_user_input="true|false">
+          <message>Status message explaining what's done or what's needed</message>
+        </execution_status>
+        
         You can include multiple response types in a single reply.
         For shell commands, set safe_to_autorun="true" only for commands that are completely safe and have no destructive potential.
+        
+        When you need to update your persistent memory, use the memory_updates tag to edit or add information.
+        
+        Use the execution_status tag to indicate if you've completed the task or need more input from the user.
         """
         
         try:
@@ -1507,6 +1578,106 @@ class AgentInterface:
         
         return "\n".join(formatted_history)
     
+    def _load_persistent_memory(self):
+        """Load persistent memory from file"""
+        memory_file = "agent_memory.xml"
+        try:
+            if os.path.exists(memory_file):
+                with open(memory_file, 'r') as f:
+                    return f.read()
+            else:
+                # Create default memory structure
+                default_memory = "<memory>\n  <facts>\n  </facts>\n  <preferences>\n  </preferences>\n</memory>"
+                with open(memory_file, 'w') as f:
+                    f.write(default_memory)
+                return default_memory
+        except Exception as e:
+            self.console.print(f"[dim]Could not load persistent memory: {e}[/dim]")
+            return "<memory></memory>"
+    
+    def _update_persistent_memory(self, memory_updates_xml):
+        """Update persistent memory based on model's instructions"""
+        if not memory_updates_xml:
+            return
+            
+        try:
+            memory_file = "agent_memory.xml"
+            current_memory = self._load_persistent_memory()
+            
+            # Parse the updates
+            updates_root = ET.fromstring(memory_updates_xml)
+            
+            # Parse current memory
+            try:
+                memory_root = ET.fromstring(current_memory)
+            except ET.ParseError:
+                # If parsing fails, create a new memory structure
+                memory_root = ET.Element("memory")
+                facts = ET.SubElement(memory_root, "facts")
+                preferences = ET.SubElement(memory_root, "preferences")
+            
+            # Process edits
+            for edit in updates_root.findall("./edit"):
+                search_elem = edit.find("search")
+                replace_elem = edit.find("replace")
+                
+                if search_elem is not None and replace_elem is not None:
+                    search_text = search_elem.text if search_elem.text else ""
+                    replace_text = replace_elem.text if replace_elem.text else ""
+                    
+                    # Convert memory to string for search/replace
+                    memory_str = ET.tostring(memory_root, encoding='unicode')
+                    
+                    if search_text in memory_str:
+                        # Replace the text
+                        memory_str = memory_str.replace(search_text, replace_text)
+                        
+                        # Parse the updated memory
+                        memory_root = ET.fromstring(memory_str)
+            
+            # Process additions
+            for add in updates_root.findall("./add"):
+                add_text = add.text if add.text else ""
+                if add_text:
+                    # Determine where to add the new information
+                    if "<fact>" in add_text.lower():
+                        facts = memory_root.find("./facts")
+                        if facts is None:
+                            facts = ET.SubElement(memory_root, "facts")
+                        
+                        # Create a new fact element
+                        new_fact = ET.SubElement(facts, "fact")
+                        new_fact.text = add_text
+                    
+                    elif "<preference>" in add_text.lower():
+                        preferences = memory_root.find("./preferences")
+                        if preferences is None:
+                            preferences = ET.SubElement(memory_root, "preferences")
+                        
+                        # Create a new preference element
+                        new_pref = ET.SubElement(preferences, "preference")
+                        new_pref.text = add_text
+                    
+                    else:
+                        # Default to facts
+                        facts = memory_root.find("./facts")
+                        if facts is None:
+                            facts = ET.SubElement(memory_root, "facts")
+                        
+                        # Create a new fact element
+                        new_item = ET.SubElement(facts, "item")
+                        new_item.text = add_text
+            
+            # Save the updated memory
+            updated_memory = self.agent.pretty_format_xml(ET.tostring(memory_root, encoding='unicode'))
+            with open(memory_file, 'w') as f:
+                f.write(updated_memory)
+                
+            self.console.print("[dim]Persistent memory updated[/dim]")
+            
+        except Exception as e:
+            self.console.print(f"[bold red]Error updating memory: {e}[/bold red]")
+    
     def process_chat_response(self, response: str):
         """Process the XML response from the model chat"""
         # Move cursor to top of terminal before displaying response
@@ -1517,17 +1688,15 @@ class AgentInterface:
         actions_xml = self.agent.extract_xml_from_response(response, "actions")
         shell_commands_xml = self.agent.extract_xml_from_response(response, "shell_commands")
         file_edits_xml = self.agent.extract_xml_from_response(response, "file_edits")
+        memory_updates_xml = self.agent.extract_xml_from_response(response, "memory_updates")
+        execution_status_xml = self.agent.extract_xml_from_response(response, "execution_status")
         
         # Extract only the non-reasoning part for history
         # We don't want to save the reasoning tokens to avoid polluting the context
-        message_xml = self.agent.extract_xml_from_response(response, "message")
-        actions_xml = self.agent.extract_xml_from_response(response, "actions")
-        shell_commands_xml = self.agent.extract_xml_from_response(response, "shell_commands")
-        file_edits_xml = self.agent.extract_xml_from_response(response, "file_edits")
             
         # Combine the extracted parts for history
         history_content = ""
-        for xml_part in [message_xml, actions_xml, shell_commands_xml, file_edits_xml]:
+        for xml_part in [message_xml, actions_xml, shell_commands_xml, file_edits_xml, execution_status_xml]:
             if xml_part:
                 history_content += xml_part + "\n"
             
@@ -1544,6 +1713,10 @@ class AgentInterface:
             
         # Save updated history
         self.save_chat_history()
+        
+        # Process memory updates if present
+        if memory_updates_xml:
+            self._update_persistent_memory(memory_updates_xml)
         
         # Process message if present
         if message_xml:
@@ -1619,6 +1792,34 @@ class AgentInterface:
                         
             except ET.ParseError as e:
                 self.console.print(f"[bold red]Error parsing shell commands XML: {e}[/bold red]")
+        
+        # Process execution status if present
+        if execution_status_xml:
+            try:
+                status_root = ET.fromstring(execution_status_xml)
+                complete = status_root.get("complete", "false").lower() == "true"
+                needs_input = status_root.get("needs_user_input", "false").lower() == "true"
+                
+                status_message = ""
+                message_elem = status_root.find("./message")
+                if message_elem is not None and message_elem.text:
+                    status_message = message_elem.text
+                
+                if complete:
+                    self.console.print("[bold green]✓ Task completed[/bold green]")
+                    if status_message:
+                        self.console.print(f"[green]{status_message}[/green]")
+                elif needs_input:
+                    self.console.print("[bold yellow]⚠ Waiting for user input[/bold yellow]")
+                    if status_message:
+                        self.console.print(f"[yellow]{status_message}[/yellow]")
+                else:
+                    self.console.print("[bold blue]⟳ Task in progress[/bold blue]")
+                    if status_message:
+                        self.console.print(f"[blue]{status_message}[/blue]")
+                
+            except ET.ParseError as e:
+                self.console.print(f"[bold red]Error parsing execution status XML: {e}[/bold red]")
     
     def run_interactive(self):
         """Run the interface in interactive mode"""
