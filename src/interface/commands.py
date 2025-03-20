@@ -2,6 +2,7 @@
 """Command handling for the agent interface."""
 
 import os
+import sys
 import json
 import datetime
 import xml.etree.ElementTree as ET
