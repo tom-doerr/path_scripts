@@ -13,14 +13,15 @@ def test_schema_is_valid_xml():
 def test_schema_contains_required_elements():
     """Test that the schema contains required elements."""
     schema = get_schema()
-    assert "<response>" in schema, "Schema should contain response element"
-    assert "<actions>" in schema, "Schema should contain actions element"
-    assert "<file_edits>" in schema, "Schema should contain file_edits element"
-    assert "<shell_commands>" in schema, "Schema should contain shell_commands element"
-    assert "<memory_updates>" in schema, "Schema should contain memory_updates element"
-    assert (
-        "<execution_status>" in schema
-    ), "Schema should contain execution_status element"
+    required_elements = {
+        "response", "actions", "file_edits",
+        "shell_commands", "memory_updates", "execution_status"
+    }
+    
+    for element in required_elements:
+        assert f"<{element}" in schema, f"Schema should contain {element} element"
+        assert f"</{element}>" in schema, f"Schema should close {element} element"
+
 
 
 def test_schema_example_structures():
@@ -36,3 +37,14 @@ def test_get_schema_returns_string():
     schema = get_schema()
     assert isinstance(schema, str), "Schema should be a string"
     assert len(schema) > 100, "Schema should be a meaningful length string"
+
+
+def test_execution_status_structure():
+    """Test execution_status element has required attributes"""
+    schema = get_schema()
+    root = ET.fromstring(schema)
+    status_elem = root.find(".//execution_status")
+    
+    assert status_elem is not None, "execution_status element missing"
+    assert "complete" in status_elem.attrib, "Missing complete attribute"
+    assert "needs_user_input" in status_elem.attrib, "Missing needs_user_input attribute"
