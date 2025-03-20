@@ -3,6 +3,7 @@
 from rich.console import Console
 from src.utils.feedback import DopamineReward
 
+
 def test_dopamine_reward():
     """Test basic dopamine reward generation."""
     console = Console()
