@@ -19,7 +19,7 @@ def execute_task(agent, task_id: str) -> str:
     Returns:
         Formatted XML response with execution results
     """
-    if not agent.plan_tree:
+    if not hasattr(agent, 'plan_tree') or not agent.plan_tree:
         return format_xml_response({"error": "No plan exists"})
 
     try:
