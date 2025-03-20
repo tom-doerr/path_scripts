@@ -796,9 +796,11 @@ def handle_success(worktree_path, main_repo_path, branch_name, main_branch, task
         merge_success = merge_and_push(worktree_path, main_repo_path, branch_name, main_branch, task, args)
         
         if merge_success:
-            total_time = str(datetime.now() - start_time).split('.')[0]
+            finish_time = datetime.now()
+            total_time = str(finish_time - start_time).split('.')[0]
             console.print(Panel(
                 f"[bold]Task completed successfully in {iteration} iterations![/bold]\n"
+                f"Finished at: {finish_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
                 f"Total time: {total_time}\n"
                 f"Original task: {task}",
                 style="green"
@@ -808,9 +810,11 @@ def handle_success(worktree_path, main_repo_path, branch_name, main_branch, task
             console.print("[yellow]Merge issues detected. Running aider again...[/yellow]")
             return False
     else:
-        total_time = str(datetime.now() - start_time).split('.')[0]
+        finish_time = datetime.now()
+        total_time = str(finish_time - start_time).split('.')[0]
         console.print(Panel(
             f"[bold]Task completed successfully in {iteration} iterations![/bold]\n"
+            f"Finished at: {finish_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
             f"Total time: {total_time}",
             style="green"
         ))
@@ -853,9 +857,11 @@ def run_with_iterations(main_repo_path, args, iterations_to_use, start_time=None
             iteration += 1
             
             if iteration > iterations_to_use:
+                finish_time = datetime.now()
                 console.print(Panel(
                     f"[bold]Reached maximum number of iterations ({iterations_to_use})[/bold]\n"
-                    f"Total time spent: {str(datetime.now() - start_time).split('.')[0]}\n"
+                    f"Finished at: {finish_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+                    f"Total time spent: {str(finish_time - start_time).split('.')[0]}\n"
                     f"Original task: {args.task}",
                     style="yellow"
                 ))
@@ -917,9 +923,11 @@ def main():
                 break
         
         if not success:
+            finish_time = datetime.now()
             console.print(Panel(
                 f"[bold red]Task failed after all retry attempts.[/bold red]\n"
-                f"Total time spent: {str(datetime.now() - start_time).split('.')[0]}\n"
+                f"Finished at: {finish_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+                f"Total time spent: {str(finish_time - start_time).split('.')[0]}\n"
                 f"Original task: {args.task}",
                 style="red"
             ))
