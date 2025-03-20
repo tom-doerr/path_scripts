@@ -192,36 +192,61 @@ def execute_task(agent, task_id: str) -> str:
 
             apply_plan_updates(agent, plan_update_xml)
 
-        if actions_xml:
-            # Update progress to 70% - ready for execution
-            task_element.set("progress", "70")
+        if not actions_xml:
+            # Update task status to failed
+            task_element.set("status", "failed")
+            task_element.set("notes", "Failed to generate actions")
+            task_element.set("progress", "0")
             agent.plan_tree = ET.tostring(root, encoding="unicode")
-            print("Progress updated to: 70% (ready for execution)")
+            print(f"Task {task_id} failed: Could not generate actions")
 
-            # Generate dopamine reward for successful action generation
+            # Generate dopamine reward for failure
             if hasattr(agent, "dopamine_reward"):
-                dopamine = agent.dopamine_reward.generate_reward(75)
+                dopamine = agent.dopamine_reward.generate_reward(30)
             else:
                 from utils.feedback import DopamineReward
 
                 agent.dopamine_reward = DopamineReward(agent.console)
-                dopamine = agent.dopamine_reward.generate_reward(75)
+                dopamine = agent.dopamine_reward.generate_reward(30)
 
             return format_xml_response(
                 {
+                    "error": "Failed to generate actions for task",
                     "task": {
                         "id": task_id,
                         "description": description,
-                        "progress": "70",
+                        "status": "failed",
                     },
-                    "actions": actions_xml,
-                    "plan_update": plan_update_xml if plan_update_xml else None,
                     "dopamine": dopamine,
                 }
             )
+
+        # Update progress to 70% - ready for execution
+        task_element.set("progress", "70")
+        agent.plan_tree = ET.tostring(root, encoding="unicode")
+        print("Progress updated to: 70% (ready for execution)")
+
+        # Generate dopamine reward for successful action generation
+        if hasattr(agent, "dopamine_reward"):
+            dopamine = agent.dopamine_reward.generate_reward(75)
         else:
-            # Update task status to failed
-            task_element.set("status", "failed")
+            from utils.feedback import DopamineReward
+
+            agent.dopamine_reward = DopamineReward(agent.console)
+            dopamine = agent.dopamine_reward.generate_reward(75)
+
+        return format_xml_response(
+            {
+                "task": {
+                    "id": task_id,
+                    "description": description,
+                    "progress": "70",
+                },
+                "actions": actions_xml,
+                "plan_update": plan_update_xml if plan_update_xml else None,
+                "dopamine": dopamine,
+            }
+        )
             task_element.set("notes", "Failed to generate actions")
             task_element.set("progress", "0")
             agent.plan_tree = ET.tostring(root, encoding="unicode")
