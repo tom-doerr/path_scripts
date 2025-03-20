@@ -97,7 +97,7 @@ class AgentInterface:
         self.console.print("[bold green]/model [model_name][/bold green]", "- Change the model (aliases: flash, r1, claude)")
         self.console.print("[bold green]/models[/bold green]", "- List available models and aliases")
         self.console.print("[bold green]/history [count][/bold green]", "- Display chat history (default: last 10 messages)")
-        self.console.print("[bold green]/clear-history[/bold green]", "- Clear the chat history")
+        self.console.print("[bold green]/clear-history[/bold green] or [bold green]/reset-chat[/bold green]", "- Clear the chat history")
         self.console.print("[bold green]/memory[/bold green]", "- Display the agent's memory")
         self.console.print("[bold green]/clear-memory[/bold green]", "- Clear the agent's memory")
         self.console.print("[bold green]/paste[/bold green]", "- Enter multiline paste mode (end with /end)")
@@ -607,7 +607,7 @@ class AgentInterface:
                     else:
                         self.console.print(f"[bold blue]Assistant:[/bold blue] {content[:100]}...")
         
-        elif cmd == "clear-history":
+        elif cmd == "clear-history" or cmd == "reset-chat":
             confirm = Prompt.ask(
                 "Are you sure you want to clear the chat history?", 
                 choices=["y", "n"], 
@@ -617,6 +617,9 @@ class AgentInterface:
             if confirm.lower() == "y":
                 self.chat_history = []
                 self.save_chat_history()
+                # Also remove the history file
+                if os.path.exists(self.history_file):
+                    os.remove(self.history_file)
                 self.console.print("[bold green]Chat history cleared[/bold green]")
             else:
                 self.console.print("[bold yellow]Operation cancelled[/bold yellow]")
