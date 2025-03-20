@@ -118,38 +118,6 @@ def main():
     
     # These methods are now imported from utils.xml_operations
                 
-def _get_terminal_height(self) -> int:
-    """Get the terminal height for proper screen clearing"""
-    try:
-        import shutil
-        terminal_size = shutil.get_terminal_size()
-        return terminal_size.lines
-    except Exception:
-        # Fallback to a reasonable default if we can't get the terminal size
-        return 40
-
-def update_plan(self, task_id: str, new_status: str, notes: Optional[str] = None, progress: Optional[str] = None) -> str:
-        """Update the status of a task in the plan"""
-        return update_plan(self, task_id, new_status, notes, progress)
-    
-    def display_plan_tree(self) -> str:
-        """Display the current plan tree"""
-        if not self.plan_tree:
-            return format_xml_response({"error": "No plan exists"})
-        
-        return format_xml_response({"plan": self.plan_tree})
-    
-    def apply_plan_updates(self, plan_update_xml: str) -> None:
-        """Apply updates to the plan tree based on the plan_update XML"""
-        apply_plan_updates(self, plan_update_xml)
-    
-    def check_dependencies(self, task_id: str) -> Tuple[bool, List[str]]:
-        """Check if all dependencies for a task are completed"""
-        return check_dependencies(self, task_id)
-    
-    def execute_task(self, task_id: str) -> str:
-        """Execute a specific task from the plan"""
-        return execute_task(self, task_id)
 
 def main():
     """Main function to handle command line arguments and run the agent"""
