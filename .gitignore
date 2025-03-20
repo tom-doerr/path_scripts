@@ -170,3 +170,7 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 .aider*
+
+context.txt
+custom_aider_history.md
+aider_history.md
