@@ -18,6 +18,21 @@ def generate_plan(agent, spec: str, formatted_message: str = None) -> str:
     Returns:
         Formatted XML response containing the plan
     """
+    # If no formatted message is provided, create one
+    if not formatted_message:
+        # Get system information for the prompt
+        from src.interface.display import get_system_info
+        system_info = get_system_info()
+        
+        # Import the input schema formatter
+        from src.utils.input_schema import format_input_message
+        
+        # Format the message with XML tags using the schema
+        formatted_message = format_input_message(
+            message=f"Generate a plan based on the following specification:\n\n{spec}",
+            system_info=system_info
+        )
+    
     prompt = f"""
     Based on the following specification, create a hierarchical plan as an XML tree.
     
