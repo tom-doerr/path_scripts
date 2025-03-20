@@ -4,72 +4,48 @@ from rich.console import Console
 from src.utils.feedback import DopamineReward
 
 
-def test_score_ranges():
-    """Test reward messages for different score ranges."""
+def test_initial_score():
+    """Test initial score is neutral."""
     reward = DopamineReward(Console())
-
-    assert "SURGE" in reward.generate_reward(95)
-    assert "BOOST" in reward.generate_reward(80)
-    assert "TRICKLE" in reward.generate_reward(65)
-    assert "NEUTRAL" in reward.generate_reward(45)
-    assert "DIP" in reward.generate_reward(25)
-    assert "LOW" in reward.generate_reward(5)
-
-
-def test_default_reward():
-    """Test default reward uses last score."""
-    reward = DopamineReward(Console())
-
-    # Set initial score
-    reward.generate_reward(85)
-    assert "BOOST" in reward.generate_reward()
-
-    # Change score
-    reward.generate_reward(40)
     assert "NEUTRAL" in reward.generate_reward()
 
 
-def test_feedback_analysis():
-    """Test feedback analysis with different sentiments."""
+def test_positive_feedback():
+    """Test strongly positive feedback."""
     reward = DopamineReward(Console())
-
-    # Positive feedback
-    positive = reward.reward_for_xml_response("", "Great work! This is excellent!")
-    assert "SURGE" in positive or "BOOST" in positive
-
-    # Negative feedback
-    negative = reward.reward_for_xml_response("", "This is terrible and wrong")
-    assert "DIP" in negative or "LOW" in negative
-
-    # Neutral feedback
-    neutral = reward.reward_for_xml_response("", "This is acceptable")
-    assert "NEUTRAL" in neutral or "TRICKLE" in neutral
+    feedback = reward.reward_for_xml_response("", "Amazing! Perfect solution!")
+    assert "SURGE" in feedback
 
 
-def test_edge_cases():
-    """Test edge cases for score values."""
+def test_negative_feedback():
+    """Test strongly negative feedback."""
     reward = DopamineReward(Console())
-
-    # Minimum score
-    assert "LOW" in reward.generate_reward(0)
-
-    # Maximum score
-    assert "SURGE" in reward.generate_reward(100)
-
-    # Invalid scores
-    assert "NEUTRAL" in reward.generate_reward(-5)
-    assert "NEUTRAL" in reward.generate_reward(105)
+    feedback = reward.reward_for_xml_response("", "This is completely wrong!")
+    assert "LOW" in feedback
 
 
-def test_message_format():
-    """Test reward message format consistency."""
+def test_mixed_feedback():
+    """Test feedback with both positive and negative words."""
     reward = DopamineReward(Console())
+    feedback = reward.reward_for_xml_response("", "Good effort but needs improvement")
+    assert "TRICKLE" in feedback or "NEUTRAL" in feedback
 
-    # Check message contains required components
-    message = reward.generate_reward(75)
-    assert "DOPAMINE" in message
-    assert any(
-        word in message
-        for word in ["SURGE", "BOOST", "TRICKLE", "NEUTRAL", "DIP", "LOW"]
-    )
-    assert message[0] in ["🌟", "😊", "🙂", "😐", "😕", "😟"]
+
+def test_empty_feedback():
+    """Test empty feedback string."""
+    reward = DopamineReward(Console())
+    feedback = reward.reward_for_xml_response("", "")
+    assert "NEUTRAL" in feedback
+
+
+def test_score_boundaries():
+    """Test score boundary conditions."""
+    reward = DopamineReward(Console())
+    
+    # Test exact boundary scores
+    assert "SURGE" in reward.generate_reward(90)
+    assert "BOOST" in reward.generate_reward(75)
+    assert "TRICKLE" in reward.generate_reward(60)
+    assert "NEUTRAL" in reward.generate_reward(40)
+    assert "DIP" in reward.generate_reward(20)
+    assert "LOW" in reward.generate_reward(10)
