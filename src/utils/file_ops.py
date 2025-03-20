@@ -28,7 +28,9 @@ def read_file(path: str) -> Tuple[bool, str]:
         return False, f"Error reading file: {str(e)}"
 
 
-def write_file(path: str, file_content: str, create_dirs: bool = True) -> Tuple[bool, str]:
+def write_file(
+    path: str, file_content: str, create_dirs: bool = True
+) -> Tuple[bool, str]:
     """
     Write content to a file.
 
