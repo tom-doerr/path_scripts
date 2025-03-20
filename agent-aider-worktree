@@ -375,6 +375,9 @@ def run_aider(worktree_path, task, args, model=None, weak_model=None, inner_loop
     
     console.print(f"[bold yellow]Aider session completed[/bold yellow]")
     
+    # Stage all changes to avoid unstaged changes
+    run_command("git add -A", cwd=worktree_path, check=False)
+    
     # Get the list of files after running aider
     after_files = set(run_command("git ls-files", cwd=worktree_path).stdout.strip().split('\n'))
     
@@ -395,14 +398,17 @@ def run_aider(worktree_path, task, args, model=None, weak_model=None, inner_loop
             if line.strip():
                 console.print(f"  - [yellow]{line}[/yellow]")
         
+        # Determine if terminal supports color
+        color_flag = "--color=always" if console.is_terminal else "--color=never"
+        
         # Show git diff for each modified file
         console.print("[bold yellow]File changes (git diff):[/bold yellow]")
-        diff_result = run_command("git diff --staged --color=always", cwd=worktree_path, check=False)
+        diff_result = run_command(f"git diff --staged {color_flag}", cwd=worktree_path, check=False)
         if diff_result.stdout.strip():
             console.print(diff_result.stdout)
         
         # Also show unstaged changes
-        unstaged_diff = run_command("git diff --color=always", cwd=worktree_path, check=False)
+        unstaged_diff = run_command(f"git diff {color_flag}", cwd=worktree_path, check=False)
         if unstaged_diff.stdout.strip():
             console.print("[bold yellow]Unstaged changes:[/bold yellow]")
             console.print(unstaged_diff.stdout)
