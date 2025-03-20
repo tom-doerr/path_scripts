@@ -1,14 +1,3 @@
-    
-    def stream_reasoning(self, prompt: str) -> str:
-        """
-        Stream the reasoning process from the model and return the final response.
-        
-        Args:
-            prompt: The prompt to send to the model
-            
-        Returns:
-            The model's response as a string
-        """
         messages = [{"role": "user", "content": prompt}]
         
         # Print the full message being sent to the model
