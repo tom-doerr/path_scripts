@@ -1,0 +1,42 @@
+[MAIN]
+# Load all checks except those we disable below
+disable=
+
+[MESSAGES CONTROL]
+# Disable these specific checks
+disable=
+    missing-docstring,
+    too-few-public-methods,
+    too-many-arguments,
+    too-many-locals,
+    too-many-instance-attributes,
+    too-many-public-methods,
+    too-many-branches,
+    too-many-statements,
+    duplicate-code,
+    protected-access,
+    redefined-builtin,
+    broad-except,
+    fixme,
+    invalid-name,
+    line-too-long,
+    import-error,
+    wrong-import-position,
+    unnecessary-dunder-call,
+    consider-using-f-string,
+    unspecified-encoding,
+    unnecessary-lambda-assignment,
+    use-dict-literal,
+    use-list-literal
+
+[REPORTS]
+# Output configuration
+output-format=colorized
+reports=no
+
+[FORMAT]
+# Formatting options
+max-line-length=120
+indent-string='    '
+single-line-if-stmt=no
+ignore-long-lines=^\s*(# )?<?https?://\S+>?$
