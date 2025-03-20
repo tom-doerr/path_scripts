@@ -61,7 +61,7 @@ def generate_plan(agent, spec: str) -> str:
         agent.plan_tree = xml_content
         return format_xml_response({"plan": xml_content})
     else:
-        return format极xml_response({"error": "Failed to generate plan"})
+        return format_xml_response({"error": "Failed to generate plan"})
 
 def update_plan(agent, task_id: str, new_status: str, notes: Optional[str] = None, progress: Optional[str] = None) -> str:
     """
