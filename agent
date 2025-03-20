@@ -92,11 +92,11 @@ class Agent:
         <plan>
           <task id="root" description="Main project goal">
             <task id="task1" description="Component 1">
-              <task id="task1.1" description="Subtask 1.1" status="pending" complexity="medium" />
-              <task id="task1.2" description="Subtask 1.2" status="pending" complexity="low" />
+              <task id="task1.1" description="Subtask 1.1" status="pending" complexity="medium" depends_on="" progress="0" />
+              <task id="task1.2" description="Subtask 1.2" status="pending" complexity="low" depends_on="task1.1" progress="0" />
             </task>
             <task id="task2" description="Component 2">
-              <task id="task2.1" description="Subtask 2.1" status="pending" complexity="high" />
+              <task id="task2.1" description="Subtask 2.1" status="pending" complexity="high" depends_on="task1.2" progress="0" />
             </task>
           </task>
         </plan>
@@ -106,6 +106,8 @@ class Agent:
         - A clear description
         - A status (pending, in-progress, completed, failed)
         - A complexity estimate (low, medium, high)
+        - Dependencies (depends_on attribute with comma-separated task IDs)
+        - Progress indicator (0-100)
         - Subtasks where appropriate
         
         Think step by step about the dependencies between tasks and how to break down the problem effectively.
@@ -232,7 +234,7 @@ class Agent:
         lines = [line for line in pretty_xml.split('\n') if line.strip()]
         return '\n'.join(lines)
     
-    def update_plan(self, task_id: str, new_status: str, notes: Optional[str] = None) -> str:
+    def update_plan(self, task_id: str, new_status: str, notes: Optional[str] = None, progress: Optional[str] = None) -> str:
         """Update the status of a task in the plan"""
         if not self.plan_tree:
             return self.format_xml_response({"error": "No plan exists"})
@@ -247,6 +249,8 @@ class Agent:
                 task.set("status", new_status)
                 if notes:
                     task.set("notes", notes)
+                if progress and progress.isdigit() and 0 <= int(progress) <= 100:
+                    task.set("progress", progress)
                 task_found = True
             
             if not task_found:
@@ -269,6 +273,61 @@ class Agent:
             return self.format_xml_response({"error": "No plan exists"})
         
         return self.format_xml_response({"plan": self.plan_tree})
+    
+    def apply_plan_updates(self, plan_update_xml: str) -> None:
+        """Apply updates to the plan tree based on the plan_update XML"""
+        if not self.plan_tree:
+            return
+        
+        try:
+            # Parse the plan tree and updates
+            plan_root = ET.fromstring(self.plan_tree)
+            updates_root = ET.fromstring(plan_update_xml)
+            
+            # Process add_task elements
+            for add_task in updates_root.findall("./add_task"):
+                parent_id = add_task.get("parent_id")
+                
+                # Find the parent task
+                parent = plan_root.find(f".//task[@id='{parent_id}']")
+                if parent is not None:
+                    # Create a new task element
+                    new_task = ET.Element("task")
+                    
+                    # Copy all attributes from add_task to new_task
+                    for attr, value in add_task.attrib.items():
+                        if attr != "parent_id":  # Skip the parent_id attribute
+                            new_task.set(attr, value)
+                    
+                    # Add the new task to the parent
+                    parent.append(new_task)
+            
+            # Process modify_task elements
+            for modify_task in updates_root.findall("./modify_task"):
+                task_id = modify_task.get("id")
+                
+                # Find the task to modify
+                task = plan_root.find(f".//task[@id='{task_id}']")
+                if task is not None:
+                    # Update attributes
+                    for attr, value in modify_task.attrib.items():
+                        if attr != "id":  # Skip the id attribute
+                            task.set(attr, value)
+            
+            # Process remove_task elements
+            for remove_task in updates_root.findall("./remove_task"):
+                task_id = remove_task.get("id")
+                
+                # Find the task to remove
+                task = plan_root.find(f".//task[@id='{task_id}']")
+                if task is not None and task.getparent() is not None:
+                    task.getparent().remove(task)
+            
+            # Update the plan tree
+            self.plan_tree = ET.tostring(plan_root, encoding='unicode')
+            
+        except Exception as e:
+            print(f"Error applying plan updates: {e}")
     
     def execute_task(self, task_id: str) -> str:
         """Execute a specific task from the plan"""
@@ -301,6 +360,9 @@ class Agent:
             REPOSITORY INFORMATION:
             {json.dumps(self.repository_info, indent=2)}
             
+            CURRENT PLAN:
+            {self.plan_tree}
+            
             Generate the necessary actions to complete this task. The actions should be in XML format:
             
             <actions>
@@ -316,6 +378,14 @@ class Agent:
               <action type="run_command" command="pytest tests/test_example.py" />
             </actions>
             
+            You can also suggest modifications to the plan if needed:
+            
+            <plan_update>
+              <add_task parent_id="task1" id="task1.3" description="New subtask" status="pending" complexity="medium" depends_on="" progress="0" />
+              <modify_task id="task2" description="Updated description" />
+              <remove_task id="task3" />
+            </plan_update>
+            
             Think step by step about what needs to be done to complete this task.
             """
             
@@ -323,6 +393,11 @@ class Agent:
             
             # Extract actions XML from the response
             actions_xml = self.extract_xml_from_response(response, "actions")
+            plan_update_xml = self.extract_xml_from_response(response, "plan_update")
+            
+            # Apply plan updates if present
+            if plan_update_xml:
+                self.apply_plan_updates(plan_update_xml)
             
             if actions_xml:
                 return self.format_xml_response({
@@ -330,7 +405,8 @@ class Agent:
                         "id": task_id,
                         "description": description
                     },
-                    "actions": actions_xml
+                    "actions": actions_xml,
+                    "plan_update": plan_update_xml if plan_update_xml else None
                 })
             else:
                 # Update task status to failed
@@ -371,7 +447,7 @@ def main():
         print("  init                  - Initialize the agent")
         print("  plan <spec_file>      - Generate a plan from specification")
         print("  display               - Display the current plan")
-        print("  update <task_id> <status> [notes] - Update task status")
+        print("  update <task_id> <status> [--notes=text] [--progress=0-100] - Update task status")
         print("  execute <task_id>     - Execute a specific task")
         print("\nOptions:")
         print("  --model, -m MODEL_NAME - Specify the model to use (default: openai/gpt-3.5-turbo)")
@@ -434,7 +510,19 @@ def main():
         
         task_id = sys.argv[2]
         status = sys.argv[3]
-        notes = sys.argv[4] if len(sys.argv) > 4 else None
+        
+        # Check for progress and notes flags
+        progress = None
+        notes = None
+        
+        for i, arg in enumerate(sys.argv[4:], 4):
+            if arg.startswith("--progress="):
+                progress = arg.split("=")[1]
+            elif arg.startswith("--notes="):
+                notes = arg.split("=")[1]
+            elif i == 4 and not arg.startswith("--"):
+                # For backward compatibility, treat the fourth argument as notes
+                notes = arg
         
         # Load the plan from file
         try:
@@ -442,7 +530,7 @@ def main():
                 xml_content = f.read()
                 agent.plan_tree = agent.extract_xml_from_response(xml_content, "plan")
             
-            result = agent.update_plan(task_id, status, notes)
+            result = agent.update_plan(task_id, status, notes, progress)
             print(result)
             
             # Save the updated plan

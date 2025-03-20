@@ -40,13 +40,96 @@ class AgentInterface:
         [bold green]init[/bold green] - Initialize the agent
         [bold green]plan <spec_file>[/bold green] - Generate a plan from specification
         [bold green]display[/bold green] - Display the current plan
-        [bold green]update <task_id> <status> [notes][/bold green] - Update task status
+        [bold green]update <task_id> <status> [--notes=text] [--progress=0-100][/bold green] - Update task status
         [bold green]execute <task_id>[/bold green] - Execute a specific task (with confirmation)
         [bold green]model <model_name>[/bold green] - Change the model
         [bold green]help[/bold green] - Show this help
         [bold green]exit[/bold green] - Exit the interface
         """
         self.console.print(Markdown(help_text))
+    
+    def execute_action(self, action_element):
+        """Execute a single action from the XML"""
+        try:
+            action_type = action_element.get("type", "unknown")
+            path = action_element.get("path", "")
+            command = action_element.get("command", "")
+            
+            if action_type == "create_file":
+                # Create the file with the content
+                content = action_element.text.strip() if action_element.text else ""
+                
+                # Create directory if it doesn't exist
+                directory = os.path.dirname(path)
+                if directory and not os.path.exists(directory):
+                    os.makedirs(directory)
+                    self.console.print(f"[bold green]Created directory: {directory}[/bold green]")
+                
+                with open(path, 'w') as f:
+                    f.write(content)
+                self.console.print(f"[bold green]Created file: {path}[/bold green]")
+                
+                # Make executable if it's a script
+                if path.endswith('.py') or not os.path.splitext(path)[1]:
+                    os.chmod(path, 0o755)
+                    self.console.print(f"[bold green]Made file executable: {path}[/bold green]")
+                
+            elif action_type == "modify_file":
+                if not os.path.exists(path):
+                    self.console.print(f"[bold red]Error: File {path} does not exist[/bold red]")
+                    return
+                
+                # Read the original file
+                with open(path, 'r') as f:
+                    file_content = f.read()
+                
+                # Apply each change
+                for change in action_element.findall("./change"):
+                    original = change.find("original").text if change.find("original") is not None else ""
+                    new = change.find("new").text if change.find("new") is not None else ""
+                    
+                    if original in file_content:
+                        file_content = file_content.replace(original, new)
+                        self.console.print(f"[bold green]Modified file: {path}[/bold green]")
+                    else:
+                        self.console.print(f"[bold yellow]Warning: Could not find text to replace in {path}[/bold yellow]")
+                
+                # Write the modified content back
+                with open(path, 'w') as f:
+                    f.write(file_content)
+                
+            elif action_type == "run_command":
+                self.console.print(f"[bold blue]Running command: {command}[/bold blue]")
+                
+                # Run the command and capture output
+                process = subprocess.Popen(
+                    command,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                
+                # Stream output in real-time
+                for line in process.stdout:
+                    self.console.print(line.rstrip())
+                
+                # Wait for process to complete
+                process.wait()
+                
+                if process.returncode == 0:
+                    self.console.print(f"[bold green]Command completed successfully[/bold green]")
+                else:
+                    stderr = process.stderr.read()
+                    self.console.print(f"[bold red]Command failed with exit code {process.returncode}[/bold red]")
+                    if stderr:
+                        self.console.print(f"[bold red]Error: {stderr}[/bold red]")
+            
+            else:
+                self.console.print(f"[bold yellow]Unknown action type: {action_type}[/bold yellow]")
+                
+        except Exception as e:
+            self.console.print(f"[bold red]Error executing action: {e}[/bold red]")
     
     def display_plan_tree(self, xml_content: str):
         """Display the plan as a rich tree"""
@@ -78,10 +161,25 @@ class AgentInterface:
                         "failed": "red"
                     }.get(status, "white")
                     
+                    # Get dependencies and progress
+                    depends_on = task.get("depends_on", "")
+                    progress = task.get("progress", "0")
+                    
                     # Create task node
                     task_text = f"[bold]{task_id}[/bold]: {description} "
                     task_text += f"[{status_color}]({status})[/{status_color}]"
+                    
+                    # Add progress bar if available
+                    if progress and progress.isdigit():
+                        progress_int = int(progress)
+                        progress_bar = "█" * (progress_int // 10) + "░" * (10 - (progress_int // 10))
+                        task_text += f" [{status_color}]{progress_bar} {progress}%[/{status_color}]"
+                    
                     task_text += f" [dim]complexity: {complexity}[/dim]"
+                    
+                    # Add dependencies if present
+                    if depends_on:
+                        task_text += f" [dim italic]depends on: {depends_on}[/dim italic]"
                     
                     task_node = parent_tree.add(task_text)
                     
@@ -203,7 +301,19 @@ class AgentInterface:
             
             task_id = args[0]
             status = args[1]
-            notes = args[2] if len(args) > 2 else None
+            
+            # Check for progress and notes flags
+            progress = None
+            notes = None
+            
+            for i, arg in enumerate(args[2:], 2):
+                if arg.startswith("--progress="):
+                    progress = arg.split("=")[1]
+                elif arg.startswith("--notes="):
+                    notes = arg.split("=")[1]
+                elif i == 2 and not arg.startswith("--"):
+                    # For backward compatibility, treat the third argument as notes
+                    notes = arg
             
             # Load the plan from file if not already loaded
             if not self.agent.plan_tree:
@@ -216,7 +326,7 @@ class AgentInterface:
                     return
             
             with self.console.status(f"[bold blue]Updating task {task_id}...[/bold blue]"):
-                result = self.agent.update_plan(task_id, status, notes)
+                result = self.agent.update_plan(task_id, status, notes, progress)
             
             # Save the updated plan
             with open("agent_plan.xml", 'w') as f:
@@ -300,11 +410,15 @@ class AgentInterface:
                                 break
                             elif confirm.lower() == "all":
                                 self.console.print("[bold green]Executing all remaining actions[/bold green]")
-                                # In a real implementation, we would execute all actions here
+                                # Execute this and all remaining actions
+                                execute_all = True
+                                self.execute_action(action)
+                                for remaining_action in list(actions_root.findall("./action"))[i+1:]:
+                                    self.execute_action(remaining_action)
                                 break
                             elif confirm.lower() == "y":
-                                self.console.print("[bold green]Action would be executed here[/bold green]")
-                                # In a real implementation, we would execute the action here
+                                self.console.print("[bold green]Executing action...[/bold green]")
+                                self.execute_action(action)
                             else:
                                 self.console.print("[bold yellow]Action skipped[/bold yellow]")
                     
