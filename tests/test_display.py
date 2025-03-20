@@ -1,7 +1,7 @@
 """Tests for display functionality."""
 
 from rich.console import Console
-from src.interface.display import (
+from ..src.interface.display import (
     get_system_info,
     display_welcome,
     display_help,
