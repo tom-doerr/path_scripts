@@ -195,10 +195,9 @@ class Agent:
                         clean_reasoning = reasoning.replace('\r', '').replace('\b', '')
                         tokens = clean_reasoning.split(' ')
                         
-                        # Buffer tokens and print with spaces
-                        for token in tokens:
-                            print(f"\033[33m{token}\033[0m", end=' ', flush=True)
-                            reasoning_output += token + ' '
+                        # Print full reasoning content with color
+                        print(f"\033[33m{clean_reasoning}\033[0m", end=' ', flush=True)
+                        reasoning_output += clean_reasoning + ' '
             
             print("\n\n--- End of Reasoning ---\n")
             
