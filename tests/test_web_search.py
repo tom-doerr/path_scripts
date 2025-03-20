@@ -1,5 +1,6 @@
 """Tests for web search functionality."""
 
+import requests
 from src.utils.web_search import search_web
 
 

@@ -530,7 +530,6 @@ def _load_persistent_memory() -> str:
         }
 
         model_name = model_aliases.get(model_name, model_name)
-            model_name = model_aliases[model_name]
 
         agent.model_name = model_name
         console.print(f"[bold green]Model changed to:[/bold green] {agent.model_name}")
