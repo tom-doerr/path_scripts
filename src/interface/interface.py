@@ -76,6 +76,7 @@ class AgentInterface:
     
     def chat_with_model(self, message: str):
         """Send a message directly to the model and handle the response"""
+        self.console.print("\n")
         
         # Initialize agent if not already done
         if not self.agent.repository_info:
