@@ -62,7 +62,7 @@ def execute_task(agent, task_id: str) -> str:
         task_element.set("progress", "10")  # Start with 10% progress
         agent.plan_tree = ET.tostring(root, encoding='unicode')
         
-        print(f"Executing task {极task_id}: {description}")
+        print(f"Executing task {task_id}: {description}")
         print(f"Status updated to: in-progress (10%)")
         
         # Get parent task information for context
