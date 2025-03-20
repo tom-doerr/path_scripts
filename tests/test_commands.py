@@ -1,6 +1,6 @@
 """Tests for command processing."""
 from unittest.mock import Mock
-from src.interface.commands import process_command
+from src.interface.commands import process_command  # pylint: disable=no-name-in-module
 
 def test_process_help_command():
     """Test help command displays help."""

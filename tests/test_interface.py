@@ -1,6 +1,6 @@
 """Tests for interface components."""
 from rich.console import Console
-from src.interface.display import get_system_info, display_welcome
+from src.interface.display import get_system_info, display_welcome  # pylint: disable=no-name-in-module
 
 def test_get_system_info():
     """Test system info returns expected fields."""
