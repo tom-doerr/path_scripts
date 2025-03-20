@@ -160,10 +160,10 @@ class AgentInterface:
             # Ask for confirmation
             confirm = Prompt.ask(
                 "\nExecute this action?", 
-                choices=["y", "n"], 
-                default="n"
+                choices=["Y", "n"], 
+                default="Y"
             )
-            
+                
             if confirm.lower() != "y":
                 self.console.print("[bold yellow]Action skipped[/bold yellow]")
                 return False
@@ -1124,8 +1124,8 @@ class AgentInterface:
         if not auto_run:
             confirm = Prompt.ask(
                 "\nExecute this shell command?", 
-                choices=["y", "n"], 
-                default="n"
+                choices=["Y", "n"], 
+                default="Y"
             )
             
             if confirm.lower() != "y":
@@ -1383,8 +1383,8 @@ class AgentInterface:
         # Ask the user if we should continue despite no successful commands
         confirm = Prompt.ask(
             "\nNo commands succeeded. Continue with model execution?", 
-            choices=["y", "n"], 
-            default="y"
+            choices=["Y", "n"], 
+            default="Y"
         )
         return confirm.lower() == "y"
     
@@ -1436,8 +1436,8 @@ class AgentInterface:
             # Ask for confirmation
             confirm = Prompt.ask(
                 "\nApply this edit?", 
-                choices=["y", "n"], 
-                default="n"
+                choices=["Y", "n"], 
+                default="Y"
             )
             
             if confirm.lower() != "y":
@@ -1449,8 +1449,8 @@ class AgentInterface:
                 # Ask if we should create the file
                 create_file = Prompt.ask(
                     f"File {path} does not exist. Create it?",
-                    choices=["y", "n"],
-                    default="n"
+                    choices=["Y", "n"],
+                    default="Y"
                 )
                 
                 if create_file.lower() != "y":
