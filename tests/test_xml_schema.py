@@ -1,5 +1,6 @@
 """Tests for XML schema functionality."""
 
+import xml.etree.ElementTree as ET
 from src.utils.xml_schema import get_schema  # pylint: disable=no-name-in-module
 from src.utils.xml_tools import validate_xml  # pylint: disable=no-name-in-module
 
