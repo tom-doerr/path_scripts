@@ -15,45 +15,14 @@ from src.utils.xml_operations import extract_xml_from_response, format_xml_respo
 from src.utils.xml_tools import extract_xml_from_response as extract_xml_alt
 from src.utils.feedback import DopamineReward
 
-class Agent:
-    def __init__(self, model_name: str = "openrouter/deepseek/deepseek-r1"):
-        self.console = Console()
-        self.model_name = model_name
-        self.plan_tree = None
-        self.repository_info = {}
-        self.config = {
-            "stream_reasoning": True,
-            "verbose": True
-        }
-        self.stream_callback = None
-        
-    def initialize(self, repo_path: str = ".") -> None:
-        """Initialize the agent with repository information"""
-        self.repository_info = analyze_repository(repo_path)
-        print(f"Agent initialized for repository: {repo_path}")
-    
-    def generate_plan(self, spec: str) -> str:
-        """Generate a plan tree based on the specification"""
-        return generate_plan(self, spec)
-    
-    def extract_xml_from_response(self, response: str, tag_name: str) -> Optional[str]:
-        """Extract XML content for a specific tag from the response"""
-        try:
-            # Look for XML content in the response
-            start_tag = f"<{tag_name}"
-            end_tag = f"</{tag_name}>"
-            
-            start_index = response.find(start_tag)
-            end_index = response.find(end_tag, start_index) + len(end_tag)
-            
-            if start_index != -1 and end_index != -1:
-                return response[start_index:end_index]
-            return None
-        except Exception as e:
-            print(f"Error extracting XML: {e}")
-            return None
-    
-    def stream_reasoning(self, prompt: str) -> str:
+from src.agent.core import Agent
+from typing import List, Dict, Optional, Any
+import sys
+import litellm
+from rich.console import Console
+from utils.xml_operations import format_xml_response
+
+def main():
         """Stream the reasoning process from the model and return the final response"""
         messages = [{"role": "user", "content": prompt}]
         
