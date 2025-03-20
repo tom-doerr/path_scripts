@@ -14,33 +14,9 @@ from rich.prompt import Prompt
 from rich.markdown import Markdown
 
 # Import the Agent class directly
-import os
-import sys
-import importlib.util
-
-# Get the absolute path of the current script and agent file
 current_dir = os.path.dirname(os.path.abspath(__file__))
-agent_path = os.path.join(current_dir, "agent")
-
-# Debug information
-print(f"Current directory: {current_dir}")
-print(f"Agent path: {agent_path}")
-print(f"File exists: {os.path.exists(agent_path)}")
-
-# Check if the agent file exists
-if not os.path.exists(agent_path):
-    print(f"Error: Agent file not found at {agent_path}")
-    sys.exit(1)
-
-# Load the agent module directly from file
-try:
-    # Use a simpler approach - just import the Agent class directly
-    sys.path.insert(0, current_dir)
-    from agent import Agent
-except Exception as e:
-    print(f"Error importing Agent: {e}")
-    print(f"Python path: {sys.path}")
-    sys.exit(1)
+sys.path.insert(0, current_dir)
+from agent import Agent
 
 class AgentInterface:
     def __init__(self):
