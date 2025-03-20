@@ -62,24 +62,30 @@ class VimInput(App):
         
         elif key == "j":
             # Navigate down in history
-            if self.history_index < len(self.history) - 1:
+            if self.history and self.history_index < len(self.history) - 1:
                 self.history_index += 1
                 self.input.value = self.history[self.history_index]
         
         elif key == "k":
             # Navigate up in history
-            if self.history_index > 0:
+            if self.history and self.history_index > 0:
                 self.history_index -= 1
                 self.input.value = self.history[self.history_index]
         
-        elif key == "d" and event.is_repeat:
-            # dd to clear line
-            self.input.value = ""
+        elif key == "d":
+            # dd to clear line (no need for is_repeat which isn't reliable)
+            if getattr(self, '_last_key', None) == 'd':
+                self.input.value = ""
+            self._last_key = 'd'
+            return
         
         elif key == "enter":
             # Submit in normal mode too
             self.result = self.input.value
             self.exit()
+            
+        # Store last key for combinations like dd
+        self._last_key = key
     
     def on_input_submitted(self):
         """Handle input submission."""

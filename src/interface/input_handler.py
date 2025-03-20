@@ -29,12 +29,17 @@ def get_user_input(
     Returns:
         User input string
     """
-    if vim_mode and VIM_INPUT_AVAILABLE:
-        console.print(prompt, end="")
-        return get_vim_input(console, history)
-    else:
-        # Fall back to regular input
-        return console.input(prompt)
+    try:
+        if vim_mode and VIM_INPUT_AVAILABLE:
+            console.print(prompt, end="")
+            return get_vim_input(console, history or [])
+        else:
+            # Fall back to regular input
+            return console.input(prompt)
+    except Exception as e:
+        console.print(f"[bold red]Error getting input: {str(e)}[/bold red]")
+        # Fall back to basic input on error
+        return input(prompt)
 
 def process_input_with_history(
     input_text: str,
