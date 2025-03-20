@@ -72,3 +72,48 @@ def test_reward_edge_cases():
     # Invalid score
     assert "NEUTRAL" in reward.generate_reward(-10)
     assert "NEUTRAL" in reward.generate_reward(110)
+
+
+def test_reward_message_format():
+    """Test that reward messages follow expected format."""
+    reward = DopamineReward(Console())
+    result = reward.generate_reward(80)
+    assert result.startswith("😊") or result.startswith("🌟")
+    assert "DOPAMINE" in result
+    assert any(word in result for word in ["SURGE", "BOOST", "TRICKLE"])
+
+
+def test_empty_feedback_analysis():
+    """Test empty feedback analysis."""
+    reward = DopamineReward(Console())
+    xml = "<response><message>Test</message></response>"
+    result = reward.reward_for_xml_response(xml, "")
+    assert "NEUTRAL" in result or "TRICKLE" in result
+
+
+def test_reward_score_boundaries():
+    """Test exact boundary scores."""
+    reward = DopamineReward(Console())
+    
+    # Test exact boundary scores
+    assert "SURGE" in reward.generate_reward(90)
+    assert "BOOST" in reward.generate_reward(75)
+    assert "TRICKLE" in reward.generate_reward(60)
+    assert "NEUTRAL" in reward.generate_reward(50)
+    assert "DIP" in reward.generate_reward(30)
+    assert "LOW" in reward.generate_reward(10)
+
+
+def test_reward_consistency():
+    """Test that same score produces consistent rewards."""
+    reward = DopamineReward(Console())
+    result1 = reward.generate_reward(85)
+    result2 = reward.generate_reward(85)
+    assert result1 == result2
+
+
+def test_reward_for_empty_xml():
+    """Test reward generation with empty XML."""
+    reward = DopamineReward(Console())
+    result = reward.reward_for_xml_response("", "This is a test")
+    assert "NEUTRAL" in result or "TRICKLE" in result
