@@ -54,3 +54,9 @@ def test_execution_status_structure():
     assert (
         "needs_user_input" in status_elem.attrib
     ), "Missing needs_user_input attribute"
+
+def test_schema_root_element():
+    """Test schema contains root xml_schema element"""
+    schema = get_schema()
+    root = ET.fromstring(schema)
+    assert root.tag == "xml_schema", "Schema should have xml_schema root element"
