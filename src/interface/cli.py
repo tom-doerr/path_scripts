@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import sys
-from src.interface.interface import main
 
 def main():
     """Entry point for the CLI interface"""
