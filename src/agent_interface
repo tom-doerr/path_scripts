@@ -1684,9 +1684,10 @@ class AgentInterface:
     
     def process_chat_response(self, response: str):
         """Process the XML response from the model chat"""
-        # Get terminal height and add that many newlines to preserve history
+        # Move existing text up and clear remaining space
         terminal_height = self._get_terminal_height()
-        print("\n" * terminal_height)
+        # Move cursor up by terminal height and clear from cursor down
+        print(f"\x1b[{terminal_height}F\x1b[J", end="")
         
         # Display full XML response
         self.console.print("[bold blue]Full Agent Response XML:[/bold blue]")
