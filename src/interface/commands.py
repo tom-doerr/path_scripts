@@ -56,7 +56,7 @@ def process_command(
         return
 
     # Handle exit command
-    elif cmd == "exit":
+    if cmd == "exit":
         console.print("[bold blue]Exiting...[/bold blue]")
         sys.exit(0)
 
