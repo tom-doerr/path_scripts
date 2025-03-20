@@ -15,14 +15,17 @@ def test_schema_contains_required_elements():
     """Test that the schema contains required elements."""
     schema = get_schema()
     required_elements = {
-        "response", "actions", "file_edits",
-        "shell_commands", "memory_updates", "execution_status"
+        "response",
+        "actions",
+        "file_edits",
+        "shell_commands",
+        "memory_updates",
+        "execution_status",
     }
-    
+
     for element in required_elements:
         assert f"<{element}" in schema, f"Schema should contain {element} element"
         assert f"</{element}>" in schema, f"Schema should close {element} element"
-
 
 
 def test_schema_example_structures():
@@ -45,7 +48,9 @@ def test_execution_status_structure():
     schema = get_schema()
     root = ET.fromstring(schema)
     status_elem = root.find(".//execution_status")
-    
+
     assert status_elem is not None, "execution_status element missing"
     assert "complete" in status_elem.attrib, "Missing complete attribute"
-    assert "needs_user_input" in status_elem.attrib, "Missing needs_user_input attribute"
+    assert (
+        "needs_user_input" in status_elem.attrib
+    ), "Missing needs_user_input attribute"
