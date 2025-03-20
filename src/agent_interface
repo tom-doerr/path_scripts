@@ -22,6 +22,11 @@ import importlib.util
 current_dir = os.path.dirname(os.path.abspath(__file__))
 agent_path = os.path.join(current_dir, "agent")
 
+# Debug information
+print(f"Current directory: {current_dir}")
+print(f"Agent path: {agent_path}")
+print(f"File exists: {os.path.exists(agent_path)}")
+
 # Check if the agent file exists
 if not os.path.exists(agent_path):
     print(f"Error: Agent file not found at {agent_path}")
@@ -29,16 +34,12 @@ if not os.path.exists(agent_path):
 
 # Load the agent module directly from file
 try:
-    spec = importlib.util.spec_from_file_location("agent_module", agent_path)
-    if spec is None:
-        print(f"Error: Could not create spec for {agent_path}")
-        sys.exit(1)
-    
-    agent_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(agent_module)
-    Agent = agent_module.Agent
+    # Use a simpler approach - just import the Agent class directly
+    sys.path.insert(0, current_dir)
+    from agent import Agent
 except Exception as e:
     print(f"Error importing Agent: {e}")
+    print(f"Python path: {sys.path}")
     sys.exit(1)
 
 class AgentInterface:
