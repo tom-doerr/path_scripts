@@ -338,7 +338,7 @@ class AgentInterface:
                     # Extract plan XML for display
                     plan_xml = self.agent.extract_xml_from_response(result, "plan")
                     if plan_xml:
-                        self.current_plan = plan_xml
+                        self.current_plan = result
                         self.console.print("\n\n[bold blue]Generated Plan:[/bold blue]")
                         self.display_plan_tree(result)
                     else:
