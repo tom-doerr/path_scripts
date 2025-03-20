@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Any, Tuple
 import litellm
 
 class Agent:
-    def __init__(self, model_name: str = "openai/gpt-3.5-turbo"):
+    def __init__(self, model_name: str = "openrouter/deepseek/deepseek-r1"):
         self.model_name = model_name
         self.plan_tree = None
         self.repository_info = {}
@@ -158,6 +158,7 @@ class Agent:
         # Streaming mode
         print("\n--- Streaming Reasoning ---\n")
         full_response = ""
+        reasoning_output = ""
         
         try:
             # Add timeout to prevent hanging
@@ -169,19 +170,28 @@ class Agent:
             )
             
             for chunk in response:
+                # Handle regular content
                 if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
                     content = chunk.choices[0].delta.content
                     if content:
                         print(content, end='', flush=True)
                         full_response += content
                 
-                # Check for reasoning content in deepseek models
+                # Handle reasoning content separately (for deepseek models)
                 if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'reasoning_content'):
                     reasoning = chunk.choices[0].delta.reasoning_content
                     if reasoning:
-                        print(reasoning, end='', flush=True)
+                        # Print reasoning in a different color (yellow)
+                        print(f"\033[33m{reasoning}\033[0m", end='', flush=True)
+                        reasoning_output += reasoning
             
             print("\n\n--- End of Reasoning ---\n")
+            
+            # Save reasoning to a file for reference
+            if reasoning_output:
+                with open("last_reasoning.txt", "w") as f:
+                    f.write(reasoning_output)
+                
             return full_response
             
         except KeyboardInterrupt:
@@ -342,7 +352,7 @@ class Agent:
 def main():
     """Main function to handle command line arguments and run the agent"""
     # Check for model argument
-    model_name = "openai/gpt-3.5-turbo"  # Default model
+    model_name = "openrouter/deepseek/deepseek-r1"  # Default model
     
     # Look for --model or -m flag
     for i, arg in enumerate(sys.argv):

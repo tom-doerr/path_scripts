@@ -1,0 +1,294 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import subprocess
+from typing import List, Optional
+import xml.etree.ElementTree as ET
+from rich.console import Console
+from rich.panel import Panel
+from rich.tree import Tree
+from rich.syntax import Syntax
+from rich.prompt import Prompt
+from rich.markdown import Markdown
+
+# Import the Agent class from the agent script
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from agent import Agent
+
+class AgentInterface:
+    def __init__(self):
+        self.console = Console()
+        self.agent = Agent()
+        self.current_plan = None
+    
+    def display_welcome(self):
+        """Display welcome message and instructions"""
+        self.console.print(Panel.fit(
+            "[bold blue]Agent Interface[/bold blue]\n"
+            "A simple interface for the agent planning system\n"
+            "Type [bold]help[/bold] for available commands",
+            title="Welcome",
+            border_style="blue"
+        ))
+    
+    def display_help(self):
+        """Display available commands"""
+        help_text = """
+        [bold]Available Commands:[/bold]
+        
+        [bold green]init[/bold green] - Initialize the agent
+        [bold green]plan <spec_file>[/bold green] - Generate a plan from specification
+        [bold green]display[/bold green] - Display the current plan
+        [bold green]update <task_id> <status> [notes][/bold green] - Update task status
+        [bold green]execute <task_id>[/bold green] - Execute a specific task
+        [bold green]model <model_name>[/bold green] - Change the model
+        [bold green]help[/bold green] - Show this help
+        [bold green]exit[/bold green] - Exit the interface
+        """
+        self.console.print(Markdown(help_text))
+    
+    def display_plan_tree(self, xml_content: str):
+        """Display the plan as a rich tree"""
+        try:
+            # Parse the XML
+            root = ET.fromstring(xml_content)
+            plan_element = root.find(".//plan")
+            
+            if plan_element is None:
+                self.console.print("[bold red]Error:[/bold red] No plan found in XML")
+                return
+            
+            # Create a rich tree
+            tree = Tree("[bold blue]Plan[/bold blue]")
+            
+            # Process tasks recursively
+            def add_tasks(parent_element, parent_tree):
+                for task in parent_element.findall("./task"):
+                    task_id = task.get("id", "unknown")
+                    description = task.get("description", "No description")
+                    status = task.get("status", "pending")
+                    complexity = task.get("complexity", "unknown")
+                    
+                    # Choose color based on status
+                    status_color = {
+                        "pending": "yellow",
+                        "in-progress": "blue",
+                        "completed": "green",
+                        "failed": "red"
+                    }.get(status, "white")
+                    
+                    # Create task node
+                    task_text = f"[bold]{task_id}[/bold]: {description} "
+                    task_text += f"[{status_color}]({status})[/{status_color}]"
+                    task_text += f" [dim]complexity: {complexity}[/dim]"
+                    
+                    task_node = parent_tree.add(task_text)
+                    
+                    # Add notes if present
+                    notes = task.get("notes")
+                    if notes:
+                        task_node.add(f"[italic dim]Notes: {notes}[/italic dim]")
+                    
+                    # Process subtasks
+                    add_tasks(task, task_node)
+            
+            # Start with the root task
+            root_task = plan_element.find("./task")
+            if root_task is not None:
+                add_tasks(plan_element, tree)
+            
+            # Display the tree
+            self.console.print(tree)
+            
+        except ET.ParseError as e:
+            self.console.print(f"[bold red]Error parsing XML:[/bold red] {e}")
+        except Exception as e:
+            self.console.print(f"[bold red]Error:[/bold red] {e}")
+    
+    def run_command(self, command: List[str]):
+        """Run a command and handle the result"""
+        if not command:
+            return
+        
+        cmd = command[0].lower()
+        args = command[1:]
+        
+        if cmd == "help":
+            self.display_help()
+        
+        elif cmd == "exit":
+            self.console.print("[bold blue]Exiting...[/bold blue]")
+            sys.exit(0)
+        
+        elif cmd == "init":
+            with self.console.status("[bold blue]Initializing agent...[/bold blue]"):
+                self.agent.initialize()
+            self.console.print("[bold green]Agent initialized successfully[/bold green]")
+        
+        elif cmd == "model":
+            if not args:
+                self.console.print(f"[bold blue]Current model:[/bold blue] {self.agent.model_name}")
+                return
+                
+            model_name = args[0]
+            self.agent.model_name = model_name
+            
+            # Handle special case for r1
+            if model_name == "r1":
+                self.agent.model_name = "deepseek/deepseek-reasoner"
+                
+            self.console.print(f"[bold green]Model changed to:[/bold green] {self.agent.model_name}")
+        
+        elif cmd == "plan":
+            if not args:
+                self.console.print("[bold red]Error:[/bold red] Missing specification file")
+                return
+            
+            spec_file = args[0]
+            try:
+                with open(spec_file, 'r') as f:
+                    spec = f.read()
+                
+                self.console.print(f"[bold blue]Using model:[/bold blue] {self.agent.model_name}")
+                
+                # Initialize if not already done
+                if not self.agent.repository_info:
+                    with self.console.status("[bold blue]Initializing agent...[/bold blue]"):
+                        self.agent.initialize()
+                
+                # Generate plan
+                with self.console.status("[bold blue]Generating plan...[/bold blue]"):
+                    try:
+                        result = self.agent.generate_plan(spec)
+                        
+                        # Save the plan to a file
+                        with open("agent_plan.xml", 'w') as f:
+                            f.write(result)
+                        
+                        # Extract plan XML for display
+                        plan_xml = self.agent.extract_xml_from_response(result, "plan")
+                        if plan_xml:
+                            self.current_plan = plan_xml
+                            self.display_plan_tree(result)
+                        else:
+                            self.console.print("[bold red]Error:[/bold red] No plan found in response")
+                            
+                        self.console.print("[bold green]Plan saved to agent_plan.xml[/bold green]")
+                        
+                    except KeyboardInterrupt:
+                        self.console.print("\n[bold yellow]Operation cancelled by user[/bold yellow]")
+                
+            except FileNotFoundError:
+                self.console.print(f"[bold red]Error:[/bold red] Specification file '{spec_file}' not found")
+        
+        elif cmd == "display":
+            # Load the plan from file if not already loaded
+            if not self.current_plan:
+                try:
+                    with open("agent_plan.xml", 'r') as f:
+                        xml_content = f.read()
+                        self.agent.plan_tree = self.agent.extract_xml_from_response(xml_content, "plan")
+                        self.current_plan = xml_content
+                except FileNotFoundError:
+                    self.console.print("[bold red]Error:[/bold red] No plan file found. Generate a plan first.")
+                    return
+            
+            self.display_plan_tree(self.current_plan)
+        
+        elif cmd == "update":
+            if len(args) < 2:
+                self.console.print("[bold red]Error:[/bold red] Missing task_id or status")
+                return
+            
+            task_id = args[0]
+            status = args[1]
+            notes = args[2] if len(args) > 2 else None
+            
+            # Load the plan from file if not already loaded
+            if not self.agent.plan_tree:
+                try:
+                    with open("agent_plan.xml", 'r') as f:
+                        xml_content = f.read()
+                        self.agent.plan_tree = self.agent.extract_xml_from_response(xml_content, "plan")
+                except FileNotFoundError:
+                    self.console.print("[bold red]Error:[/bold red] No plan file found. Generate a plan first.")
+                    return
+            
+            with self.console.status(f"[bold blue]Updating task {task_id}...[/bold blue]"):
+                result = self.agent.update_plan(task_id, status, notes)
+            
+            # Save the updated plan
+            with open("agent_plan.xml", 'w') as f:
+                f.write(result)
+            
+            self.current_plan = result
+            self.console.print(f"[bold green]Task {task_id} updated to {status}[/bold green]")
+            self.display_plan_tree(result)
+        
+        elif cmd == "execute":
+            if not args:
+                self.console.print("[bold red]Error:[/bold red] Missing task_id")
+                return
+            
+            task_id = args[0]
+            
+            # Load the plan from file if not already loaded
+            if not self.agent.plan_tree:
+                try:
+                    with open("agent_plan.xml", 'r') as f:
+                        xml_content = f.read()
+                        self.agent.plan_tree = self.agent.extract_xml_from_response(xml_content, "plan")
+                except FileNotFoundError:
+                    self.console.print("[bold red]Error:[/bold red] No plan file found. Generate a plan first.")
+                    return
+            
+            self.console.print(f"[bold blue]Executing task {task_id}...[/bold blue]")
+            
+            try:
+                result = self.agent.execute_task(task_id)
+                
+                # Save the actions to a file
+                with open(f"agent_actions_{task_id}.xml", 'w') as f:
+                    f.write(result)
+                
+                # Save the updated plan
+                with open("agent_plan.xml", 'w') as f:
+                    f.write(self.agent.format_xml_response({"plan": self.agent.plan_tree}))
+                
+                # Display the actions
+                actions_xml = self.agent.extract_xml_from_response(result, "actions")
+                if actions_xml:
+                    syntax = Syntax(actions_xml, "xml", theme="monokai", line_numbers=True)
+                    self.console.print(Panel(syntax, title=f"Actions for Task {task_id}", border_style="green"))
+                
+                self.console.print(f"[bold green]Actions saved to agent_actions_{task_id}.xml[/bold green]")
+                
+            except KeyboardInterrupt:
+                self.console.print("\n[bold yellow]Operation cancelled by user[/bold yellow]")
+        
+        else:
+            self.console.print(f"[bold red]Unknown command:[/bold red] {cmd}")
+            self.console.print("Type [bold]help[/bold] for available commands")
+    
+    def run_interactive(self):
+        """Run the interface in interactive mode"""
+        self.display_welcome()
+        
+        while True:
+            try:
+                user_input = Prompt.ask("\n[bold blue]>[/bold blue]")
+                command = user_input.strip().split()
+                self.run_command(command)
+            except KeyboardInterrupt:
+                self.console.print("\n[bold yellow]Use 'exit' to quit[/bold yellow]")
+            except Exception as e:
+                self.console.print(f"[bold red]Error:[/bold red] {e}")
+
+def main():
+    """Main function to run the agent interface"""
+    interface = AgentInterface()
+    interface.run_interactive()
+
+if __name__ == "__main__":
+    main()
