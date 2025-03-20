@@ -1,7 +1,7 @@
 """Tests for XML schema functionality."""
 
-from utils.xml_schema import get_schema
-from utils.xml_tools import validate_xml
+from src.utils.xml_schema import get_schema
+from src.utils.xml_tools import validate_xml
 
 def test_schema_is_valid_xml():
     """Test that the schema itself is valid XML."""
