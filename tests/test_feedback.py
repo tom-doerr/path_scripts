@@ -50,6 +50,43 @@ def test_empty_feedback():
     feedback = reward.reward_for_xml_response("", "")
     assert "NEUTRAL" in feedback
 
+def test_positive_word_variations():
+    """Test different positive word variations."""
+    reward = DopamineReward(Console())
+    feedback = reward.reward_for_xml_response("", "GREAT! Excellent work!")
+    assert "SURGE" in feedback or "BOOST" in feedback
+
+def test_negative_word_variations():
+    """Test different negative word variations."""
+    reward = DopamineReward(Console())
+    feedback = reward.reward_for_xml_response("", "BAD terrible FAILURE")
+    assert "LOW" in feedback or "DIP" in feedback
+
+def test_neutral_feedback():
+    """Test neutral feedback with no strong words."""
+    reward = DopamineReward(Console())
+    feedback = reward.reward_for_xml_response("", "This is acceptable")
+    assert "NEUTRAL" in feedback
+
+def test_score_boundary_conditions():
+    """Test score boundary conditions."""
+    reward = DopamineReward(Console())
+    
+    # Test exact boundary scores
+    assert "SURGE" in reward.generate_reward(90)
+    assert "BOOST" in reward.generate_reward(75)
+    assert "TRICKLE" in reward.generate_reward(60)
+    assert "NEUTRAL" in reward.generate_reward(40)
+    assert "DIP" in reward.generate_reward(20)
+    assert "LOW" in reward.generate_reward(10)
+
+def test_random_variation():
+    """Test random variation when no score is provided."""
+    reward = DopamineReward(Console())
+    feedback1 = reward.generate_reward()
+    feedback2 = reward.generate_reward()
+    assert feedback1 != feedback2  # Should be different due to random variation
+
 
 def test_score_boundaries():
     """Test score boundary conditions."""
