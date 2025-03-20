@@ -163,6 +163,7 @@ def main():
             "  update <task_id> <status> [--notes=text] [--progress=0-100] - Update task status"
         )
         print("  execute <task_id>     - Execute a specific task")
+        print("  review <spec> <code>  - Review code against specifications")
         print("\nOptions:")
         print(
             "  --model, -m MODEL_NAME - Specify the model to use (default: openrouter/deepseek/deepseek-r1)"
