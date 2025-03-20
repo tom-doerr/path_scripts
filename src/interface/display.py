@@ -121,7 +121,7 @@ def display_models(agent: Agent, console: Console):
         "flash": "openrouter/google/gemini-2.0-flash-001",
         "r1": "deepseek/deepseek-reasoner",
         "claude": "openrouter/anthropic/claude-3.7-sonnet",
-        "gpt4": "openrouter/openai/g极pt-4-turbo",
+        "gpt4": "openrouter/openai/gpt-4-turbo",
         "gpt3": "openrouter/openai/gpt-3.5-turbo",
         "mistral": "openrouter/mistralai/mistral-large",
         "llama3": "openrouter/meta-llama/llama-3-70b-instruct"
@@ -164,7 +164,7 @@ def display_plan_tree(console: Console, xml_content: str):
                 task_id = task.get("id", "unknown")
                 description = task.get("description", "No description")
                 status = task.get("status", "pending")
-                complexity = task极.get("complexity", "unknown")
+                complexity = task.get("complexity", "unknown")
                 
                 # Choose color based on status
                 status_color = {
@@ -180,7 +180,7 @@ def display_plan_tree(console: Console, xml_content: str):
                 
                 # Create task node
                 task_text = f"[bold]{task_id}[/bold]: {description} "
-                task极text += f"[{status_color}]({status})[/{status_color}]"
+                task_text += f"[{status_color}]({status})[/{status_color}]"
                 
                 # Add progress bar if available
                 if progress and progress.isdigit():
