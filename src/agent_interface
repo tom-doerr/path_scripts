@@ -40,13 +40,32 @@ class AgentInterface:
     
     def get_system_info(self) -> Dict[str, str]:
         """Get system information"""
-        info = {
-            "platform": platform.platform(),
-            "python": platform.python_version(),
-            "processor": platform.processor(),
-            "hostname": platform.node(),
-            "shell": os.environ.get("SHELL", "unknown")
-        }
+        info = {}
+        try:
+            info["platform"] = platform.platform()
+        except Exception:
+            info["platform"] = "unknown"
+            
+        try:
+            info["python"] = platform.python_version()
+        except Exception:
+            info["python"] = "unknown"
+            
+        try:
+            info["processor"] = platform.processor()
+        except Exception:
+            info["processor"] = "unknown"
+            
+        try:
+            info["hostname"] = platform.node()
+        except Exception:
+            info["hostname"] = "unknown"
+            
+        try:
+            info["shell"] = os.environ.get("SHELL", "unknown")
+        except Exception:
+            info["shell"] = "unknown"
+            
         return info
     
     def display_welcome(self):
@@ -1158,8 +1177,8 @@ class AgentInterface:
     
     def chat_with_model(self, message: str):
         """Send a message directly to the model and handle the response"""
-        # Clear the screen to start from the top
-        os.system('clear' if os.name != 'nt' else 'cls')
+        # Clear the screen and move cursor to top
+        print("\033[H\033[2J", end="")  # ANSI escape code to clear screen and move cursor to home position
         
         # Initialize agent if not already done
         if not self.agent.repository_info:
@@ -1490,6 +1509,9 @@ class AgentInterface:
     
     def process_chat_response(self, response: str):
         """Process the XML response from the model chat"""
+        # Move cursor to top of terminal before displaying response
+        print("\033[H", end="")  # ANSI escape code to move cursor to home position
+        
         # Extract different parts of the response
         message_xml = self.agent.extract_xml_from_response(response, "message")
         actions_xml = self.agent.extract_xml_from_response(response, "actions")
