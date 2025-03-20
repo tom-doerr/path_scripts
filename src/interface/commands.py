@@ -321,7 +321,7 @@ def process_command(
                     console.print(f"[bold blue]Assistant:[/bold blue] {content[:100]}...")
         return
     
-    elif cmd == "clear-history":
+    elif cmd in ["clear-history", "reset"]:
         confirm = Prompt.ask(
             "Are you sure you want to clear the chat history?", 
             choices=["y", "n"], 
