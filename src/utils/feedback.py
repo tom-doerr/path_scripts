@@ -22,6 +22,13 @@ class DopamineReward:
 
         Returns:
             A dopamine reward message
+
+        Examples:
+            >>> reward = DopamineReward(Console())
+            >>> reward.generate_reward(95)
+            '🌟 [bold green]DOPAMINE SURGE![/bold green] Exceptional work!'
+            >>> reward.generate_reward(65)
+            '🙂 [blue]DOPAMINE TRICKLE[/blue] Good progress.'
         """
         if quality_score is None:
             # Vary slightly from last score if no new score provided
