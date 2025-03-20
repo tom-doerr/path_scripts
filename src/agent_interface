@@ -296,27 +296,37 @@ class AgentInterface:
                     with self.console.status("[bold blue]Initializing agent...[/bold blue]"):
                         self.agent.initialize()
                 
-                # Generate plan
-                with self.console.status("[bold blue]Generating plan...[/bold blue]"):
-                    try:
-                        result = self.agent.generate_plan(spec)
-                        
-                        # Save the plan to a file
-                        with open("agent_plan.xml", 'w') as f:
-                            f.write(result)
-                        
-                        # Extract plan XML for display
-                        plan_xml = self.agent.extract_xml_from_response(result, "plan")
-                        if plan_xml:
-                            self.current_plan = plan_xml
-                            self.display_plan_tree(result)
+                # Generate plan - don't use status context manager to allow streaming
+                self.console.print("[bold blue]Generating plan...[/bold blue]")
+                try:
+                    # Set a callback to handle streaming in the interface
+                    def stream_callback(content, is_reasoning=False):
+                        if is_reasoning:
+                            self.console.print(f"[yellow]{content}[/yellow]", end="")
                         else:
-                            self.console.print("[bold red]Error:[/bold red] No plan found in response")
+                            self.console.print(content, end="")
                             
-                        self.console.print("[bold green]Plan saved to agent_plan.xml[/bold green]")
-                        
-                    except KeyboardInterrupt:
-                        self.console.print("\n[bold yellow]Operation cancelled by user[/bold yellow]")
+                    # Pass the callback to the agent
+                    self.agent.stream_callback = stream_callback
+                    result = self.agent.generate_plan(spec)
+                            
+                    # Save the plan to a file
+                    with open("agent_plan.xml", 'w') as f:
+                        f.write(result)
+                            
+                    # Extract plan XML for display
+                    plan_xml = self.agent.extract_xml_from_response(result, "plan")
+                    if plan_xml:
+                        self.current_plan = plan_xml
+                        self.console.print("\n\n[bold blue]Generated Plan:[/bold blue]")
+                        self.display_plan_tree(result)
+                    else:
+                        self.console.print("[bold red]Error:[/bold red] No plan found in response")
+                                
+                    self.console.print("[bold green]Plan saved to agent_plan.xml[/bold green]")
+                            
+                except KeyboardInterrupt:
+                    self.console.print("\n[bold yellow]Operation cancelled by user[/bold yellow]")
                 
             except FileNotFoundError:
                 self.console.print(f"[bold red]Error:[/bold red] Specification file '{spec_file}' not found")

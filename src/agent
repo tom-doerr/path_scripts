@@ -21,6 +21,7 @@ class Agent:
             "stream_reasoning": True,
             "verbose": True
         }
+        self.stream_callback = None
         
         # Use native API if model is specified as r1
         if model_name == "r1":
@@ -186,7 +187,10 @@ class Agent:
                         clean_content = content.replace('\r', '').replace('\b', '')
                         # Remove any potential token markers or brackets that might be causing display issues
                         clean_content = clean_content.replace('[', '').replace(']', '')
-                        self.console.print(clean_content, end='')
+                        if self.stream_callback:
+                            self.stream_callback(clean_content, is_reasoning=False)
+                        else:
+                            self.console.print(clean_content, end='')
                         full_response += clean_content
                 
                 # Handle reasoning content separately (for deepseek models)
@@ -197,8 +201,11 @@ class Agent:
                         clean_reasoning = reasoning.replace('\r', '').replace('\b', '')
                         tokens = clean_reasoning.split(' ')
                         
-                        # Print full reasoning content with rich color
-                        self.console.print(f"[yellow]{clean_reasoning}[/yellow]", end='')
+                        # Use callback if available, otherwise use console
+                        if self.stream_callback:
+                            self.stream_callback(clean_reasoning, is_reasoning=True)
+                        else:
+                            self.console.print(f"[yellow]{clean_reasoning}[/yellow]", end='')
                         reasoning_output += clean_reasoning + ' '
             
             print("\n\n--- End of Reasoning ---\n")
