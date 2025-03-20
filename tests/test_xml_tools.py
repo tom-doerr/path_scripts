@@ -59,16 +59,19 @@ def test_pretty_format_xml():
         "</response>"
     )
 
+
 def test_extract_xml_with_whitespace():
     """Test XML extraction with surrounding whitespace."""
     wrapped_xml = "\n\n   <response>\n     <data>Content</data>\n   </response>\n\n"
     result = extract_xml_from_response(wrapped_xml, "response")
     assert result.strip() == "<response>\n     <data>Content</data>\n   </response>"
 
+
 def test_validate_good_xml():
     """Test validation of properly formatted XML."""
     valid_xml = "<root><element>text</element></root>"
     assert validate_xml(valid_xml) is True
+
 
 def test_validate_bad_xml():
     """Test validation detects malformed XML."""
