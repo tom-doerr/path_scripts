@@ -36,19 +36,16 @@ class AgentInterface:
     
     def display_help(self):
         """Display available commands"""
-        help_text = """
-        [bold]Available Commands:[/bold]
-        
-        [bold green]init[/bold green] - Initialize the agent
-        [bold green]plan <spec_file>[/bold green] - Generate a plan from specification
-        [bold green]display[/bold green] - Display the current plan
-        [bold green]update <task_id> <status> [--notes=text] [--progress=0-100][/bold green] - Update task status
-        [bold green]execute <task_id>[/bold green] - Execute a specific task (with confirmation)
-        [bold green]model <model_name>[/bold green] - Change the model
-        [bold green]help[/bold green] - Show this help
-        [bold green]exit[/bold green] - Exit the interface
-        """
-        self.console.print(Markdown(help_text))
+        self.console.print("[bold]Available Commands:[/bold]")
+        self.console.print("")
+        self.console.print("[bold green]init[/bold green]", "- Initialize the agent")
+        self.console.print("[bold green]plan <spec_file>[/bold green]", "- Generate a plan from specification")
+        self.console.print("[bold green]display[/bold green]", "- Display the current plan")
+        self.console.print("[bold green]update <task_id> <status> [--notes=text] [--progress=0-100][/bold green]", "- Update task status")
+        self.console.print("[bold green]execute <task_id>[/bold green]", "- Execute a specific task (with confirmation)")
+        self.console.print("[bold green]model <model_name>[/bold green]", "- Change the model")
+        self.console.print("[bold green]help[/bold green]", "- Show this help")
+        self.console.print("[bold green]exit[/bold green]", "- Exit the interface")
     
     def execute_action(self, action_element):
         """Execute a single action from the XML"""

@@ -177,14 +177,16 @@ class Agent:
                 if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
                     content = chunk.choices[0].delta.content
                     if content:
-                        print(content, end='', flush=True)
-                        full_response += content
+                        # Clean up any control characters that might be causing display issues
+                        clean_content = content.replace('\r', '').replace('\b', '')
+                        print(clean_content, end='', flush=True)
+                        full_response += clean_content
                 
                 # Handle reasoning content separately (for deepseek models)
                 if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'reasoning_content'):
                     reasoning = chunk.choices[0].delta.reasoning_content
                     if reasoning:
-                        # Print reasoning in a different color (yellow)
+                        # Print reasoning in a different color (yellow) without breaking lines
                         print(f"\033[33m{reasoning}\033[0m", end='', flush=True)
                         reasoning_output += reasoning
             
