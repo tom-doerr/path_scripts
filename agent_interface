@@ -13,7 +13,7 @@ from rich.prompt import Prompt
 from rich.markdown import Markdown
 
 # Import the Agent class from the agent script
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Use a direct import since agent is in the same directory
 from agent import Agent
 
 class AgentInterface:
@@ -41,7 +41,7 @@ class AgentInterface:
         [bold green]plan <spec_file>[/bold green] - Generate a plan from specification
         [bold green]display[/bold green] - Display the current plan
         [bold green]update <task_id> <status> [notes][/bold green] - Update task status
-        [bold green]execute <task_id>[/bold green] - Execute a specific task
+        [bold green]execute <task_id>[/bold green] - Execute a specific task (with confirmation)
         [bold green]model <model_name>[/bold green] - Change the model
         [bold green]help[/bold green] - Show this help
         [bold green]exit[/bold green] - Exit the interface
@@ -261,6 +261,55 @@ class AgentInterface:
                 if actions_xml:
                     syntax = Syntax(actions_xml, "xml", theme="monokai", line_numbers=True)
                     self.console.print(Panel(syntax, title=f"Actions for Task {task_id}", border_style="green"))
+                    
+                    # Parse the actions to show them individually for confirmation
+                    try:
+                        actions_root = ET.fromstring(actions_xml)
+                        for i, action in enumerate(actions_root.findall("./action")):
+                            action_type = action.get("type", "unknown")
+                            path = action.get("path", "")
+                            command = action.get("command", "")
+                            
+                            if action_type == "create_file":
+                                self.console.print(f"\n[bold cyan]Action {i+1}:[/bold cyan] Create file '{path}'")
+                                content = action.text.strip() if action.text else ""
+                                self.console.print(Syntax(content, "python", theme="monokai"))
+                                
+                            elif action_type == "modify_file":
+                                self.console.print(f"\n[bold cyan]Action {i+1}:[/bold cyan] Modify file '{path}'")
+                                for change in action.findall("./change"):
+                                    original = change.find("original").text if change.find("original") is not None else ""
+                                    new = change.find("new").text if change.find("new") is not None else ""
+                                    self.console.print("[bold red]- Original:[/bold red]")
+                                    self.console.print(Syntax(original, "python", theme="monokai"))
+                                    self.console.print("[bold green]+ New:[/bold green]")
+                                    self.console.print(Syntax(new, "python", theme="monokai"))
+                                    
+                            elif action_type == "run_command":
+                                self.console.print(f"\n[bold cyan]Action {i+1}:[/bold cyan] Run command '{command}'")
+                            
+                            # Ask for confirmation for each action
+                            confirm = Prompt.ask(
+                                "\nExecute this action?", 
+                                choices=["y", "n", "all", "none"], 
+                                default="n"
+                            )
+                            
+                            if confirm.lower() == "none":
+                                self.console.print("[bold yellow]Skipping all remaining actions[/bold yellow]")
+                                break
+                            elif confirm.lower() == "all":
+                                self.console.print("[bold green]Executing all remaining actions[/bold green]")
+                                # In a real implementation, we would execute all actions here
+                                break
+                            elif confirm.lower() == "y":
+                                self.console.print("[bold green]Action would be executed here[/bold green]")
+                                # In a real implementation, we would execute the action here
+                            else:
+                                self.console.print("[bold yellow]Action skipped[/bold yellow]")
+                    
+                    except ET.ParseError:
+                        self.console.print("[bold red]Error parsing actions XML[/bold red]")
                 
                 self.console.print(f"[bold green]Actions saved to agent_actions_{task_id}.xml[/bold green]")
                 
