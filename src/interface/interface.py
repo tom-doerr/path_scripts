@@ -76,10 +76,6 @@ class AgentInterface:
     
     def chat_with_model(self, message: str):
         """Send a message directly to the model and handle the response"""
-        # Move existing text up and clear remaining space
-        terminal_height = self._get_terminal_height()
-        # Move cursor up by terminal height and clear from cursor down
-        print(f"\x1b[{terminal_height}F\x1b[J", end="")
         
         # Initialize agent if not already done
         if not self.agent.repository_info:

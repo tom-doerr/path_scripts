@@ -110,9 +110,6 @@ def _continue_execution_with_context(
     """Continue execution with the model using command execution context"""
     console.print("[bold blue]Continuing execution with command results...[/bold blue]")
     
-    # Move cursor to top of terminal and clear scroll buffer
-    print("\x1b[3J\x1b[H\x1c2J", end="")
-    
     # Extract message content if available
     message_content = ""
     if previous_message_xml:
@@ -217,10 +214,6 @@ def process_chat_response(
     save_history_callback: Callable
 ):
     """Process the XML response from the model chat"""
-    # Move existing text up and clear remaining space
-    terminal_height = get_terminal_height_callback()
-    # Move cursor up by terminal height and clear from cursor down
-    print(f"\x1b[{terminal_height}F\x1b[J", end="")
     
     # Display full XML response
     console.print("[bold blue]Full Agent Response XML:[/bold blue]")
