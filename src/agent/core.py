@@ -304,7 +304,7 @@ class Agent:
                 
                 # Add attributes
                 for name, value in elem.attrib.items():
-                    result += f' {name}="{value}"'
+                    result += f' {name}="{value}""
                 
                 # Check if element has children or text
                 if len(elem) == 0 and (elem.text is None or elem.text.strip() == ""):
