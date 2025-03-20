@@ -1218,8 +1218,8 @@ class AgentInterface:
     
     def chat_with_model(self, message: str):
         """Send a message directly to the model and handle the response"""
-        # Clear the screen and move cursor to top
-        print("\033[H\033[2J", end="")  # ANSI escape code to clear screen and move cursor to home position
+        # Add many newlines to preserve history when scrolling up
+        print("\n" * 20)
         
         # Initialize agent if not already done
         if not self.agent.repository_info:
@@ -1241,7 +1241,9 @@ class AgentInterface:
         })
         self.save_chat_history()
         
-        self.console.print(f"[bold blue]Sending message to model ({self.agent.model_name})...[/bold blue]")
+        # Print the full message being sent to the model
+        print("\n=== Message Sent to Model ===\n")
+        print(f"Model: {self.agent.model_name}")
         
         # Get current date, time and timezone
         now = datetime.datetime.now()
@@ -1328,6 +1330,10 @@ class AgentInterface:
         
         Use the execution_status tag to indicate if you've completed the task or need more input from the user.
         """
+        
+        # Print the full prompt
+        print(prompt)
+        print("\n=== End Message ===\n")
         
         try:
             # Set a callback to handle streaming in the interface
@@ -1488,6 +1494,9 @@ class AgentInterface:
         """Continue execution with the model using command execution context"""
         self.console.print("[bold blue]Continuing execution with command results...[/bold blue]")
         
+        # Add many newlines to preserve history when scrolling up
+        print("\n" * 20)
+        
         # Extract message content if available
         message_content = ""
         if previous_message_xml:
@@ -1503,6 +1512,10 @@ class AgentInterface:
         # Get current date, time and timezone for context
         now = datetime.datetime.now()
         timezone = datetime.datetime.now().astimezone().tzinfo
+        
+        # Print the model being used
+        print("\n=== Message Sent to Model ===\n")
+        print(f"Model: {self.agent.model_name}")
         
         prompt = f"""
         <context>
@@ -1527,6 +1540,10 @@ class AgentInterface:
         
         Respond using the appropriate XML tags for each part of your response.
         """
+        
+        # Print the full prompt
+        print(prompt)
+        print("\n=== End Message ===\n")
         
         # Set a callback to handle streaming in the interface
         def stream_callback(content, is_reasoning=False):
@@ -1680,8 +1697,8 @@ class AgentInterface:
     
     def process_chat_response(self, response: str):
         """Process the XML response from the model chat"""
-        # Move cursor to top of terminal before displaying response
-        print("\033[H", end="")  # ANSI escape code to move cursor to home position
+        # Add many newlines to preserve history when scrolling up
+        print("\n" * 20)
         
         # Extract different parts of the response
         message_xml = self.agent.extract_xml_from_response(response, "message")

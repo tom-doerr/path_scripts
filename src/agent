@@ -147,8 +147,14 @@ class Agent:
         """Stream the reasoning process from the model and return the final response"""
         messages = [{"role": "user", "content": prompt}]
         
-        # Clear the screen and move cursor to top
-        print("\033[H\033[2J", end="")  # ANSI escape code to clear screen and move cursor to home position
+        # Print the full message being sent to the model
+        print("\n=== Message Sent to Model ===\n")
+        print(f"Model: {self.model_name}")
+        print(prompt)
+        print("\n=== End Message ===\n")
+        
+        # Add many newlines to preserve history when scrolling up
+        print("\n" * 20)
         
         if not self.config["stream_reasoning"]:
             # Non-streaming mode
@@ -164,7 +170,6 @@ class Agent:
                 return f"Error: {str(e)}"
         
         # Streaming mode
-        print("\n--- Streaming Reasoning ---\n")
         full_response = ""
         reasoning_output = ""
         
@@ -213,7 +218,7 @@ class Agent:
                             self.console.print(f"[yellow]{clean_reasoning}[/yellow]", end='', highlight=False)
                         reasoning_output += clean_reasoning
             
-            print("\n\n--- End of Reasoning ---\n")
+            print("\n")
             
             # Save reasoning to a file for reference
             if reasoning_output:
