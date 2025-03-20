@@ -25,7 +25,7 @@ def test_write_file_new():
     """Test writing to a new file."""
     with tempfile.TemporaryDirectory() as tmpdir:
         path = os.path.join(tmpdir, "new.txt")
-        success, msg = write_file(path, "new content")
+        success, _ = write_file(path, "new content")
         assert success is True
         assert os.path.exists(path)
         with open(path) as f:
@@ -37,7 +37,7 @@ def test_edit_file_success():
         f.write("old content")
         path = f.name
     
-    success, msg = edit_file(path, "old", "new")
+    success, _ = edit_file(path, "old", "new")
     assert success is True
     with open(path) as f:
         assert f.read() == "new content"
@@ -49,7 +49,7 @@ def test_append_to_file():
         f.write("original")
         path = f.name
     
-    success, msg = append_to_file(path, "\nappended")
+    success, _ = append_to_file(path, "\nappended")
     assert success is True
     with open(path) as f:
         assert f.read() == "original\nappended"
