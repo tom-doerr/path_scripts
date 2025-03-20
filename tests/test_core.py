@@ -24,3 +24,8 @@ def test_agent_initial_state():
     assert (
         agent.repository_info == {}
     ), "Repository info should be empty before initialization"
+
+def test_initial_plan_tree_is_none():
+    """Test plan tree is None after initialization."""
+    agent = Agent()
+    assert agent.plan_tree is None, "Plan tree should be None initially"
