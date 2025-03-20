@@ -1,1 +1,1 @@
-# Agent package initialization
+# Interface package initialization
