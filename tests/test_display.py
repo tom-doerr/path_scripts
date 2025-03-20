@@ -1,5 +1,13 @@
 """Tests for display functionality."""
 
+import sys
+from pathlib import Path
+
+# Add project root to Python path
+project_root = str(Path(__file__).parent.parent)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from rich.console import Console
 from src.interface.display import (
     get_system_info,
