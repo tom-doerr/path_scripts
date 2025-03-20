@@ -1140,16 +1140,19 @@ class AgentInterface:
         
         # Construct a prompt that instructs the model to respond in XML format
         prompt = f"""
+        <context>
+          <system_info>
+            <date>{now.strftime('%Y-%m-%d')}</date>
+            <time>{now.strftime('%H:%M:%S')}</time>
+            <timezone>{timezone}</timezone>
+          </system_info>
+          <conversation_history>
+            {self._format_history_for_prompt()}
+          </conversation_history>
+          <user_message>{message}</user_message>
+        </context>
+        
         You are an AI assistant that can respond to user queries and also perform actions.
-        
-        CURRENT DATE: {now.strftime('%Y-%m-%d')}
-        CURRENT TIME: {now.strftime('%H:%M:%S')}
-        TIMEZONE: {timezone}
-        
-        CONVERSATION HISTORY:
-        {self._format_history_for_prompt()}
-        
-        USER MESSAGE: {message}
         
         You can respond in the following ways:
         
@@ -1169,7 +1172,19 @@ class AgentInterface:
           </action>
         </actions>
         
-        3. Shell commands:
+        3. File edits (search and replace):
+        <file_edits>
+          <edit path="path/to/file.py">
+            <search>def old_function():</search>
+            <replace>def new_function():</replace>
+          </edit>
+          <edit path="path/to/new_file.py">
+            <search></search>
+            <replace># New file content here</replace>
+          </edit>
+        </file_edits>
+        
+        4. Shell commands:
         <shell_commands>
           <command safe_to_autorun="true">echo "Hello World"</command>
           <command safe_to_autorun="false">rm -rf some_directory</command>
@@ -1220,6 +1235,120 @@ class AgentInterface:
         )
         return confirm.lower() == "y"
     
+    def execute_file_edit(self, edit_element):
+        """Execute a file edit from the XML"""
+        try:
+            path = edit_element.get("path", "")
+            if not path:
+                self.console.print("[bold red]Error: Missing file path in edit[/bold red]")
+                return False
+                
+            # Determine syntax highlighting language based on file extension
+            language = "python"  # default
+            if path:
+                ext = os.path.splitext(path)[1].lower()
+                if ext in ['.js', '.jsx']:
+                    language = "javascript"
+                elif ext in ['.html', '.htm']:
+                    language = "html"
+                elif ext in ['.css']:
+                    language = "css"
+                elif ext in ['.json']:
+                    language = "json"
+                elif ext in ['.md']:
+                    language = "markdown"
+                elif ext in ['.sh']:
+                    language = "bash"
+                elif ext in ['.yml', '.yaml']:
+                    language = "yaml"
+            
+            # Get search and replace elements
+            search_elem = edit_element.find("search")
+            replace_elem = edit_element.find("replace")
+            
+            if search_elem is None or replace_elem is None:
+                self.console.print("[bold red]Error: Missing search or replace elements[/bold red]")
+                return False
+                
+            search_text = search_elem.text if search_elem.text else ""
+            replace_text = replace_elem.text if replace_elem.text else ""
+            
+            # Display the edit
+            self.console.print(f"[bold cyan]File Edit:[/bold cyan] {path}")
+            self.console.print("[bold red]- Search:[/bold red]")
+            self.console.print(Syntax(search_text, language, theme="monokai"))
+            self.console.print("[bold green]+ Replace:[/bold green]")
+            self.console.print(Syntax(replace_text, language, theme="monokai"))
+            
+            # Ask for confirmation
+            confirm = Prompt.ask(
+                "\nApply this edit?", 
+                choices=["y", "n"], 
+                default="n"
+            )
+            
+            if confirm.lower() != "y":
+                self.console.print("[bold yellow]Edit skipped[/bold yellow]")
+                return False
+                
+            # Check if file exists
+            if not os.path.exists(path):
+                # Ask if we should create the file
+                create_file = Prompt.ask(
+                    f"File {path} does not exist. Create it?",
+                    choices=["y", "n"],
+                    default="n"
+                )
+                
+                if create_file.lower() != "y":
+                    self.console.print("[bold yellow]Edit skipped[/bold yellow]")
+                    return False
+                    
+                # Create directory if it doesn't exist
+                directory = os.path.dirname(path)
+                if directory and not os.path.exists(directory):
+                    os.makedirs(directory)
+                    self.console.print(f"[bold green]Created directory: {directory}[/bold green]")
+                
+                # Create empty file
+                with open(path, 'w') as f:
+                    pass
+                self.console.print(f"[bold green]Created file: {path}[/bold green]")
+                
+                # For new files, just write the replace text
+                with open(path, 'w') as f:
+                    f.write(replace_text)
+                self.console.print(f"[bold green]Applied edit to {path}[/bold green]")
+                return True
+            
+            # Read the file content
+            with open(path, 'r') as f:
+                content = f.read()
+                
+            # Apply the search and replace
+            if search_text == "":
+                # Empty search means append to the file
+                new_content = content + replace_text
+                self.console.print("[bold blue]Appending to file[/bold blue]")
+            else:
+                # Replace the search text with the replace text
+                if search_text not in content:
+                    self.console.print(f"[bold yellow]Warning: Search text not found in {path}[/bold yellow]")
+                    return False
+                    
+                new_content = content.replace(search_text, replace_text, 1)
+                
+            # Write the new content
+            with open(path, 'w') as f:
+                f.write(new_content)
+                
+            self.console.print(f"[bold green]Applied edit to {path}[/bold green]")
+            return True
+            
+        except Exception as e:
+            self.console.print(f"[bold red]Error executing file edit: {e}[/bold red]")
+            return False
+    
     def _continue_execution_with_context(self, previous_message_xml: str, execution_contexts: List[str]):
         """Continue execution with the model using command execution context"""
         self.console.print("[bold blue]Continuing execution with command results...[/bold blue]")
@@ -1236,21 +1365,32 @@ class AgentInterface:
         # Construct a prompt with execution contexts
         contexts_xml = "\n".join(execution_contexts)
         
+        # Get current date, time and timezone for context
+        now = datetime.datetime.now()
+        timezone = datetime.datetime.now().astimezone().tzinfo
+        
         prompt = f"""
+        <context>
+          <previous_message>{message_content}</previous_message>
+          <command_results>
+            {contexts_xml}
+          </command_results>
+          <system_info>
+            <date>{now.strftime('%Y-%m-%d')}</date>
+            <time>{now.strftime('%H:%M:%S')}</time>
+            <timezone>{timezone}</timezone>
+          </system_info>
+        </context>
+        
         You are continuing a task based on the results of previous commands.
         
-        Your previous response:
-        {message_content}
-        
-        Command execution results:
-        {contexts_xml}
-        
         Based on these results, please continue with the task. You can:
-        1. Provide additional information or explanation
-        2. Suggest new commands to run
-        3. Suggest file modifications
+        1. Provide additional information or explanation using <message> tags
+        2. Suggest new commands to run using <shell_commands> tags
+        3. Suggest file modifications using <file_edits> tags
+        4. Suggest actions using <actions> tags
         
-        Respond in the same XML format as before.
+        Respond using the appropriate XML tags for each part of your response.
         """
         
         # Set a callback to handle streaming in the interface
@@ -1276,9 +1416,30 @@ class AgentInterface:
         
         formatted_history = []
         for msg in recent_history[:-1]:  # Exclude the current message which is added separately
-            role = msg["role"].upper()
+            role = msg["role"]
             content = msg["content"]
-            formatted_history.append(f"{role}: {content}")
+            timestamp = msg.get("timestamp", "")
+            
+            # Format as XML
+            entry = f"<entry role=\"{role}\" timestamp=\"{timestamp}\">"
+            
+            # For assistant messages, try to extract just the message part to keep history cleaner
+            if role == "assistant":
+                message_xml = self.agent.extract_xml_from_response(content, "message")
+                if message_xml:
+                    try:
+                        root = ET.fromstring(message_xml)
+                        message_text = root.text if root.text else ""
+                        entry += f"<content>{message_text}</content>"
+                    except ET.ParseError:
+                        entry += f"<content>{content}</content>"
+                else:
+                    entry += f"<content>{content}</content>"
+            else:
+                entry += f"<content>{content}</content>"
+                
+            entry += "</entry>"
+            formatted_history.append(entry)
         
         return "\n".join(formatted_history)
     
@@ -1288,6 +1449,7 @@ class AgentInterface:
         message_xml = self.agent.extract_xml_from_response(response, "message")
         actions_xml = self.agent.extract_xml_from_response(response, "actions")
         shell_commands_xml = self.agent.extract_xml_from_response(response, "shell_commands")
+        file_edits_xml = self.agent.extract_xml_from_response(response, "file_edits")
         
         # Add response to history
         timestamp = datetime.datetime.now().isoformat()
@@ -1329,6 +1491,21 @@ class AgentInterface:
                         
             except ET.ParseError as e:
                 self.console.print(f"[bold red]Error parsing actions XML: {e}[/bold red]")
+        
+        # Process file edits if present
+        if file_edits_xml:
+            try:
+                edits_root = ET.fromstring(file_edits_xml)
+                edits = edits_root.findall("./edit")
+                
+                if edits:
+                    self.console.print("[bold blue]The model suggests the following file edits:[/bold blue]")
+                    
+                    for edit in edits:
+                        self.execute_file_edit(edit)
+                        
+            except ET.ParseError as e:
+                self.console.print(f"[bold red]Error parsing file edits XML: {e}[/bold red]")
         
         # Process shell commands if present
         if shell_commands_xml:

@@ -194,7 +194,8 @@ class Agent:
                         if self.stream_callback:
                             self.stream_callback(clean_content, is_reasoning=False)
                         else:
-                            self.console.print(clean_content, end='', highlight=False)
+                            # Print without any special formatting
+                            print(clean_content, end='', flush=True)
                         full_response += clean_content
                 
                 # Handle reasoning content separately (for deepseek models)
@@ -208,7 +209,7 @@ class Agent:
                         if self.stream_callback:
                             self.stream_callback(clean_reasoning, is_reasoning=True)
                         else:
-                            # Use yellow color for reasoning and avoid unnecessary line breaks
+                            # Use yellow color for reasoning
                             self.console.print(f"[yellow]{clean_reasoning}[/yellow]", end='', highlight=False)
                         reasoning_output += clean_reasoning
             

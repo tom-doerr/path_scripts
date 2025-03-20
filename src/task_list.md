@@ -2,12 +2,7 @@
 
 ## High Priority Tasks
 
-1. **Multi-step Execution** - Allow the agent to run for multiple steps with context preservation.
-   - Priority: HIGH
-   - Status: In progress
-   - Notes: Implement ability to continue execution with command output context
-
-2. **Add Task Dependency Tracking** - Improve tracking of task dependencies and status updates.
+1. **Add Task Dependency Tracking** - Improve tracking of task dependencies and status updates.
    - Priority: HIGH
    - Status: Partially implemented
    - Notes: Need to enhance the dependency resolution and automatic status updates
@@ -50,3 +45,15 @@
    - Priority: LOW
    - Status: Not started
    - Notes: Focus on keeping the codebase simple and maintainable
+
+## Completed Tasks
+
+1. **Multi-step Execution** - Allow the agent to run for multiple steps with context preservation.
+   - Priority: HIGH
+   - Status: Completed
+   - Notes: Implemented ability to continue execution with command output context
+
+2. **File Editing Functionality** - Add ability to edit files using search/replace.
+   - Priority: HIGH
+   - Status: Completed
+   - Notes: Implemented file editing with search/replace functionality
