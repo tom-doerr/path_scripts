@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
-"""Command handling for the agent interface."""
-
+"""
+Command handling for the agent interface.
+"""
 import os
 import sys
 import json
@@ -12,7 +12,6 @@ from rich.prompt import Prompt
 from rich.syntax import Syntax
 from rich.markdown import Markdown
 
-from src.agent.core import Agent
 from src.utils.xml_tools import extract_xml_from_response, format_xml_response
 from .display import display_help, display_plan_tree
 from src.interface.input import process_user_input, save_chat_history
@@ -361,23 +360,6 @@ def _load_persistent_memory() -> str:
     except Exception as e:
         print(f"Could not load memory: {e}")
         return "<memory></memory>"
-import os
-import sys
-import json
-import datetime
-import subprocess
-import xml.etree.ElementTree as ET
-from typing import List, Dict, Any, Optional, Tuple
-from rich.console import Console
-from rich.panel import Panel
-from rich.tree import Tree
-from rich.syntax import Syntax
-from rich.prompt import Prompt
-from rich.markdown import Markdown
-
-from src.interface.display import display_help, display_plan_tree
-from src.interface.actions import execute_action, execute_shell_command
-from src.utils.xml_schema import get_schema
 
 def process_command(
     agent, 

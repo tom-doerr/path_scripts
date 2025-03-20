@@ -184,7 +184,7 @@ def apply_plan_updates(agent, plan_update_xml: str) -> None:
         agent: The agent instance
         plan_update_xml: XML string containing plan updates
     """
-    if not agent.极plan_tree:
+    if not agent.plan_tree:
         return
     
     try:

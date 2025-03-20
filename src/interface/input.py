@@ -1,24 +1,18 @@
-#!/usr/bin/env python3
-"""Input handling for the agent interface."""
-
+"""
+Input handling for the agent interface.
+"""
 import os
-import json
 import datetime
-from typing import List, Dict, Any
+import json
+import xml.etree.ElementTree as ET
+from typing import List, Dict, Any, Optional, Callable
 from rich.console import Console
-from rich.prompt import Prompt
+
+from src.interface.display import get_system_info
+from src.interface.chat import process_chat_response
 
 def process_user_input(agent, user_input: str, chat_history: List[Dict[str, Any]], history_file: str, console: Console):
-    """
-    Process user input and send to the model.
-    
-    Args:
-        agent: The agent instance
-        user_input: The user's input text
-        chat_history: The chat history
-        history_file: Path to the history file
-        console: Rich console instance
-    """
+    """Process user input and send to the model."""
     # Add user message to history
     timestamp = datetime.datetime.now().isoformat()
     chat_history.append({
@@ -35,7 +29,6 @@ def process_user_input(agent, user_input: str, chat_history: List[Dict[str, Any]
     memory_content = _load_persistent_memory()
     
     # Get system information
-    from src.interface.display import get_system_info
     system_info = get_system_info()
     
     # Import the input schema formatter
@@ -49,15 +42,9 @@ def process_user_input(agent, user_input: str, chat_history: List[Dict[str, Any]
         history=formatted_history
     )
     
-    # Process the message using the chat module
-    from src.interface.chat import process_chat_message, process_chat_response
-    
-    prompt = process_chat_message(
-        formatted_input, 
-        formatted_history, 
-        memory_content,
-        system_info
-    )
+    # Construct a prompt that instructs the model to respond in XML format
+    from src.interface.chat import process_chat_message
+    prompt = process_chat_message(formatted_input, formatted_history, memory_content, system_info)
     
     try:
         # Set a callback to handle streaming in the interface
@@ -75,8 +62,8 @@ def process_user_input(agent, user_input: str, chat_history: List[Dict[str, Any]
         
         # Process the response
         process_chat_response(
-            agent,
-            console,
+            agent, 
+            console, 
             response, 
             chat_history,
             _update_persistent_memory,
@@ -85,36 +72,22 @@ def process_user_input(agent, user_input: str, chat_history: List[Dict[str, Any]
             _format_history_for_prompt,
             lambda: save_chat_history(chat_history, history_file)
         )
-            
     except KeyboardInterrupt:
         console.print("\n[bold yellow]Operation cancelled by user[/bold yellow]")
 
 def save_chat_history(chat_history: List[Dict[str, Any]], history_file: str):
-    """
-    Save chat history to file.
-    
-    Args:
-        chat_history: The chat history
-        history_file: Path to the history file
-    """
+    """Save chat history to file."""
     try:
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(history_file), exist_ok=True)
+        
         with open(history_file, 'w') as f:
             json.dump(chat_history, f, indent=2)
     except Exception as e:
         print(f"Could not save chat history: {e}")
 
 def _format_history_for_prompt(chat_history: List[Dict[str, Any]]) -> str:
-    """
-    Format chat history for inclusion in the prompt.
-    
-    Args:
-        chat_history: The chat history
-        
-    Returns:
-        Formatted history as XML string
-    """
-    import xml.etree.ElementTree as ET
-    
+    """Format chat history for inclusion in the prompt."""
     # Limit history to last 10 messages to avoid context overflow
     recent_history = chat_history[-10:] if len(chat_history) > 10 else chat_history
     
@@ -149,12 +122,7 @@ def _format_history_for_prompt(chat_history: List[Dict[str, Any]]) -> str:
     return "\n".join(formatted_history)
 
 def _load_persistent_memory() -> str:
-    """
-    Load memory from file.
-    
-    Returns:
-        Memory content as string
-    """
+    """Load memory from file."""
     memory_file = "agent_memory.xml"
     try:
         if os.path.exists(memory_file):
@@ -171,18 +139,11 @@ def _load_persistent_memory() -> str:
         return "<memory></memory>"
 
 def _update_persistent_memory(memory_updates_xml):
-    """
-    Update memory based on model's instructions.
-    
-    Args:
-        memory_updates_xml: XML with memory updates
-    """
+    """Update memory based on model's instructions."""
     if not memory_updates_xml:
         return
         
     try:
-        import xml.etree.ElementTree as ET
-        
         memory_file = "agent_memory.xml"
         current_memory = _load_persistent_memory()
         
@@ -237,12 +198,7 @@ def _update_persistent_memory(memory_updates_xml):
         print(f"Error updating memory: {e}")
 
 def _get_terminal_height() -> int:
-    """
-    Get the terminal height for proper screen clearing.
-    
-    Returns:
-        The height of the terminal in lines
-    """
+    """Get the terminal height for proper screen clearing."""
     try:
         import shutil
         terminal_size = shutil.get_terminal_size()
@@ -250,73 +206,6 @@ def _get_terminal_height() -> int:
     except Exception:
         # Fallback to a reasonable default if we can't get the terminal size
         return 40
-"""
-Input handling for the agent interface.
-"""
-import os
-import datetime
-import xml.etree.ElementTree as ET
-from typing import List, Dict, Any, Optional, Callable
-from rich.console import Console
-
-from src.interface.display import get_system_info
-from src.interface.chat import process_chat_response
-
-def process_user_input(agent, user_input: str, chat_history: List[Dict[str, Any]], history_file: str, console: Console):
-    """Prepare the chat message to send to the model"""
-    # Add user message to history
-    chat_history.append({"role": "user", "content": user_input})
-    save_chat_history(chat_history, history_file)
-    
-    # Format history for the prompt
-    formatted_history = _format_history_for_prompt(chat_history)
-    
-    # Get persistent memory
-    memory_content = _load_persistent_memory()
-    
-    # Get system information
-    system_info = get_system_info()
-    
-    # Import the input schema formatter
-    from src.utils.input_schema import format_input_message
-    
-    # Format the message with XML tags using the schema
-    formatted_input = format_input_message(
-        message=user_input,
-        system_info=system_info,
-        memory=memory_content,
-        history=formatted_history
-    )
-    
-    # Construct a prompt that instructs the model to respond in XML format
-    from src.interface.chat import process_chat_message
-    prompt = process_chat_message(formatted_input, formatted_history, memory_content, system_info)
-    
-    # Set a callback to handle streaming in the interface
-    def stream_callback(content, is_reasoning=False):
-        if is_reasoning:
-            # Use yellow color for reasoning tokens
-            console.print(f"[yellow]{content}[/yellow]", end="")
-        else:
-            # Use rich for normal content
-            console.print(content, end="", highlight=False)
-            
-    # Pass the callback to the agent
-    agent.stream_callback = stream_callback
-    response = agent.stream_reasoning(prompt)
-    
-    # Process the response
-    process_chat_response(
-        agent, 
-        console, 
-        response, 
-        chat_history,
-        _update_persistent_memory,
-        _get_terminal_height,
-        _load_persistent_memory,
-        _format_history_for_prompt,
-        lambda: save_chat_history(chat_history, history_file)
-    )
 
 def _format_history_for_prompt(chat_history: List[Dict[str, Any]]) -> str:
     """
