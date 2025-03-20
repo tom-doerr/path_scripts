@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Any, Tuple
 import litellm
 
 class Agent:
-    def __init__(self, model_name: str = "deepseek/deepseek-reasoner"):
+    def __init__(self, model_name: str = "openai/gpt-3.5-turbo"):
         self.model_name = model_name
         self.plan_tree = None
         self.repository_info = {}
@@ -18,6 +18,10 @@ class Agent:
             "stream_reasoning": True,
             "verbose": True
         }
+        
+        # Use native API if model is specified as r1
+        if model_name == "r1":
+            self.model_name = "deepseek/deepseek-reasoner"
         
     def initialize(self, repo_path: str = ".") -> None:
         """Initialize the agent with repository information"""
@@ -140,21 +144,28 @@ class Agent:
         
         if not self.config["stream_reasoning"]:
             # Non-streaming mode
-            response = litellm.completion(
-                model=self.model_name,
-                messages=messages
-            )
-            return response.choices[0].message.content
+            try:
+                response = litellm.completion(
+                    model=self.model_name,
+                    messages=messages,
+                    timeout=60  # Add timeout to prevent hanging
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                print(f"Error in non-streaming mode: {e}")
+                return f"Error: {str(e)}"
         
         # Streaming mode
         print("\n--- Streaming Reasoning ---\n")
         full_response = ""
         
         try:
+            # Add timeout to prevent hanging
             response = litellm.completion(
                 model=self.model_name,
                 messages=messages,
-                stream=True
+                stream=True,
+                timeout=60
             )
             
             for chunk in response:
@@ -173,9 +184,12 @@ class Agent:
             print("\n\n--- End of Reasoning ---\n")
             return full_response
             
+        except KeyboardInterrupt:
+            print("\n\nOperation cancelled by user")
+            return full_response
         except Exception as e:
-            print(f"Error during streaming: {e}")
-            return ""
+            print(f"\nError during streaming: {e}")
+            return full_response or f"Error: {str(e)}"
     
     def format_xml_response(self, content_dict: Dict[str, Any]) -> str:
         """Format various content pieces into an XML response"""
@@ -327,16 +341,31 @@ class Agent:
 
 def main():
     """Main function to handle command line arguments and run the agent"""
-    agent = Agent()
+    # Check for model argument
+    model_name = "openai/gpt-3.5-turbo"  # Default model
+    
+    # Look for --model or -m flag
+    for i, arg in enumerate(sys.argv):
+        if arg in ["--model", "-m"] and i + 1 < len(sys.argv):
+            model_name = sys.argv[i + 1]
+            # Remove these arguments
+            sys.argv.pop(i)
+            sys.argv.pop(i)
+            break
+    
+    agent = Agent(model_name)
     
     if len(sys.argv) < 2:
-        print("Usage: ./agent <command> [arguments]")
+        print("Usage: ./agent [--model MODEL_NAME] <command> [arguments]")
         print("Commands:")
         print("  init                  - Initialize the agent")
         print("  plan <spec_file>      - Generate a plan from specification")
         print("  display               - Display the current plan")
         print("  update <task_id> <status> [notes] - Update task status")
         print("  execute <task_id>     - Execute a specific task")
+        print("\nOptions:")
+        print("  --model, -m MODEL_NAME - Specify the model to use (default: openai/gpt-3.5-turbo)")
+        print("                           Use 'r1' for native deepseek-reasoner API")
         sys.exit(1)
     
     command = sys.argv[1]
@@ -355,14 +384,20 @@ def main():
             with open(spec_file, 'r') as f:
                 spec = f.read()
             
+            print(f"Using model: {agent.model_name}")
             agent.initialize()
-            result = agent.generate_plan(spec)
-            print(result)
             
-            # Save the plan to a file
-            with open("agent_plan.xml", 'w') as f:
-                f.write(result)
-            print("Plan saved to agent_plan.xml")
+            try:
+                result = agent.generate_plan(spec)
+                print(result)
+                
+                # Save the plan to a file
+                with open("agent_plan.xml", 'w') as f:
+                    f.write(result)
+                print("Plan saved to agent_plan.xml")
+            except KeyboardInterrupt:
+                print("\nOperation cancelled by user")
+                sys.exit(1)
             
         except FileNotFoundError:
             print(f"Error: Specification file '{spec_file}' not found")
@@ -421,21 +456,80 @@ def main():
                 xml_content = f.read()
                 agent.plan_tree = agent.extract_xml_from_response(xml_content, "plan")
             
-            result = agent.execute_task(task_id)
-            print(result)
-            
-            # Save the actions to a file
-            with open(f"agent_actions_{task_id}.xml", 'w') as f:
-                f.write(result)
-            print(f"Actions saved to agent_actions_{task_id}.xml")
-            
-            # Save the updated plan
-            with open("agent_plan.xml", 'w') as f:
-                f.write(agent.format_xml_response({"plan": agent.plan_tree}))
+            try:
+                result = agent.execute_task(task_id)
+                print(result)
+                
+                # Save the actions to a file
+                with open(f"agent_actions_{task_id}.xml", 'w') as f:
+                    f.write(result)
+                print(f"Actions saved to agent_actions_{task_id}.xml")
+                
+                # Save the updated plan
+                with open("agent_plan.xml", 'w') as f:
+                    f.write(agent.format_xml_response({"plan": agent.plan_tree}))
+            except KeyboardInterrupt:
+                print("\nOperation cancelled by user")
+                sys.exit(1)
             
         except FileNotFoundError:
             print("Error: No plan file found. Generate a plan first.")
             sys.exit(1)
+    
+    elif command == "interactive":
+        print(f"Starting interactive mode with model: {agent.model_name}")
+        agent.initialize()
+        
+        while True:
+            try:
+                user_input = input("\n> ")
+                if user_input.lower() in ["exit", "quit", "q"]:
+                    break
+                
+                # Simple command processing
+                if user_input.startswith("/"):
+                    parts = user_input[1:].split()
+                    cmd = parts[0] if parts else ""
+                    
+                    if cmd == "plan" and len(parts) > 1:
+                        spec_file = parts[1]
+                        try:
+                            with open(spec_file, 'r') as f:
+                                spec = f.read()
+                            result = agent.generate_plan(spec)
+                            print(result)
+                        except FileNotFoundError:
+                            print(f"Error: File '{spec_file}' not found")
+                    
+                    elif cmd == "display":
+                        result = agent.display_plan_tree()
+                        print(result)
+                    
+                    elif cmd == "execute" and len(parts) > 1:
+                        task_id = parts[1]
+                        result = agent.execute_task(task_id)
+                        print(result)
+                    
+                    elif cmd == "help":
+                        print("Available commands:")
+                        print("  /plan <spec_file> - Generate a plan from specification")
+                        print("  /display - Display the current plan")
+                        print("  /execute <task_id> - Execute a specific task")
+                        print("  /help - Show this help")
+                        print("  exit, quit, q - Exit interactive mode")
+                    
+                    else:
+                        print("Unknown command. Type /help for available commands.")
+                
+                # Treat as a prompt to the model
+                else:
+                    response = agent.stream_reasoning(user_input)
+                    # No need to print response as it's already streamed
+            
+            except KeyboardInterrupt:
+                print("\nUse 'exit' or 'q' to quit")
+            except Exception as e:
+                print(f"Error: {e}")
     
     else:
         print(f"Error: Unknown command '{command}'")
