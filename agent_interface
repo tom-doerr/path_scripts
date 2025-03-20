@@ -13,7 +13,10 @@ from rich.prompt import Prompt
 from rich.markdown import Markdown
 
 # Import the Agent class from the agent script
-# Use a direct import since agent is in the same directory
+# Make sure we can find the agent module
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from agent import Agent
 
 class AgentInterface:

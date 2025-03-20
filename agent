@@ -320,8 +320,14 @@ class Agent:
                 
                 # Find the task to remove
                 task = plan_root.find(f".//task[@id='{task_id}']")
-                if task is not None and task.getparent() is not None:
-                    task.getparent().remove(task)
+                if task is not None:
+                    # ElementTree in Python doesn't have getparent() method
+                    # We need to find the parent manually
+                    for potential_parent in plan_root.findall(".//task"):
+                        for child in potential_parent.findall("./task"):
+                            if child.get("id") == task_id:
+                                potential_parent.remove(child)
+                                break
             
             # Update the plan tree
             self.plan_tree = ET.tostring(plan_root, encoding='unicode')
