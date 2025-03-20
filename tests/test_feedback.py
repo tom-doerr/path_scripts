@@ -1,7 +1,7 @@
 """Tests for feedback functionality."""
 
 from rich.console import Console
-from src.utils.feedback import DopamineReward
+from utils.feedback import DopamineReward
 
 
 def test_score_ranges():
