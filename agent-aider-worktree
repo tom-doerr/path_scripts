@@ -23,7 +23,7 @@ console = Console()
 # DEFAULT_MODEL = "openrouter/deepseek/deepseek-r1-distill-qwen-32b"
 # WEAK_MODEL = "openrouter/google/gemini-2.0-flash-001"
 DEFAULT_MODEL = "r1"
-WEAK_MODEL = "deepseek"
+DEFAULT_WEAK_MODEL = "deepseek"
 COMMAND_TIMEOUT = 300  # 5 minute timeout
 
 
@@ -293,10 +293,14 @@ def _add_test_samples_to_context(f, worktree_path):
 
 
 # Aider integration
-def run_aider(worktree_path, task, args, model=None, inner_loop_count=3):
+def run_aider(worktree_path, task, args, model=None, weak_model=None, inner_loop_count=3):
     # Use args.model if model parameter is not provided
     if model is None:
         model = args.model
+    
+    # Use args.weak_model if weak_model parameter is not provided
+    if weak_model is None:
+        weak_model = args.weak_model
     """Run aider with the given task."""
     console.print(Panel(f"[bold]Running aider with task:[/bold]\n{task}", style="cyan"))
     
@@ -328,7 +332,7 @@ def run_aider(worktree_path, task, args, model=None, inner_loop_count=3):
     aider_cmd = (
         f"aider --architect "
         f"--model {model} "
-        f"--weak-model {WEAK_MODEL} "
+        f"--weak-model {weak_model} "
         f"{' '.join(read_args)} "
         f"--yes-always "
         f"--no-show-model-warnings "
@@ -479,13 +483,14 @@ def _update_worktree(worktree_path, main_branch, branch_name, task, args):
         # Create minimal args for conflict resolution
         conflict_args = SimpleNamespace(
             model=args.model,
+            weak_model=args.weak_model,
             no_python_files=False,
             inner_loop=1,
             max_iterations=1
         )
         
         # Run aider to help resolve conflicts
-        run_aider(worktree_path, conflict_task, conflict_args, model=conflict_args.model)
+        run_aider(worktree_path, conflict_task, conflict_args, model=conflict_args.model, weak_model=conflict_args.weak_model)
         
         # Verify conflicts were resolved
         diff_result = run_command("git diff --name-only --diff-filter=U", cwd=worktree_path, check=False)
@@ -577,6 +582,7 @@ def _merge_to_main(main_repo_path, main_branch, branch_name):
         # Run aider to help resolve conflicts
         run_aider(main_repo_path, conflict_task, SimpleNamespace(
             model=args.model,
+            weak_model=args.weak_model,
             no_python_files=False,
             inner_loop=1,
             max_iterations=1
@@ -631,6 +637,8 @@ Examples:
                         help="Don't push changes back to main repository")
     parser.add_argument("--model", default=DEFAULT_MODEL,
                         help=f"Model to use with aider (default: {DEFAULT_MODEL})")
+    parser.add_argument("--weak-model", default=DEFAULT_WEAK_MODEL,
+                        help=f"Weak model to use with aider (default: {DEFAULT_WEAK_MODEL})")
     parser.add_argument("--max-iterations", type=int, default=10,
                         help="Maximum number of iterations to run (default: 10)")
     parser.add_argument("--inner-loop", type=int, default=3,
@@ -662,6 +670,7 @@ def display_configuration(args, worktree_path, branch_name):
     config_table.add_row("Worktree", worktree_path)
     config_table.add_row("Branch", branch_name)
     config_table.add_row("Model", args.model)
+    config_table.add_row("Weak Model", args.weak_model)
     config_table.add_row("Max Iterations", str(args.max_iterations))
     config_table.add_row("Inner Loop", str(args.inner_loop))
     config_table.add_row("Push Changes", "No" if args.no_push else "Yes")
@@ -688,7 +697,7 @@ def run_iteration(iteration, max_iterations, worktree_path, task, args, start_ti
     generate_context(worktree_path)
     
     # Run aider
-    run_aider(worktree_path, task, args, model=args.model)
+    run_aider(worktree_path, task, args, model=args.model, weak_model=args.weak_model)
     
     # Check if tests pass after aider run
     return run_tests(worktree_path)
