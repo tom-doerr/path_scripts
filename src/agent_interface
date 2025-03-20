@@ -96,8 +96,8 @@ class AgentInterface:
         self.console.print("[bold green]/model <model_name>[/bold green]", "- Change the model (aliases: flash, r1, claude)")
         self.console.print("[bold green]/history [count][/bold green]", "- Display chat history (default: last 10 messages)")
         self.console.print("[bold green]/clear-history[/bold green]", "- Clear the chat history")
-        self.console.print("[bold green]/memory[/bold green]", "- Display the agent's persistent memory")
-        self.console.print("[bold green]/clear-memory[/bold green]", "- Clear the agent's persistent memory")
+        self.console.print("[bold green]/memory[/bold green]", "- Display the agent's memory")
+        self.console.print("[bold green]/clear-memory[/bold green]", "- Clear the agent's memory")
         self.console.print("[bold green]/paste[/bold green]", "- Enter multiline paste mode (end with /end)")
         self.console.print("[bold green]/end[/bold green]", "- End multiline paste mode")
         self.console.print("[bold green]/help[/bold green]", "- Show this help")
@@ -415,8 +415,8 @@ class AgentInterface:
             )
             
             if confirm.lower() == "y":
-                # Create default memory structure
-                default_memory = "<memory>\n  <facts>\n  </facts>\n  <preferences>\n  </preferences>\n</memory>"
+                # Create default memory structure - simple and flexible
+                default_memory = "<memory>\n  <!-- Agent can structure this as needed -->\n</memory>"
                 with open("agent_memory.xml", 'w') as f:
                     f.write(default_memory)
                 self.console.print("[bold green]Agent memory cleared[/bold green]")
@@ -1608,24 +1608,24 @@ class AgentInterface:
         return "\n".join(formatted_history)
     
     def _load_persistent_memory(self):
-        """Load persistent memory from file"""
+        """Load memory from file"""
         memory_file = "agent_memory.xml"
         try:
             if os.path.exists(memory_file):
                 with open(memory_file, 'r') as f:
                     return f.read()
             else:
-                # Create default memory structure
-                default_memory = "<memory>\n  <facts>\n  </facts>\n  <preferences>\n  </preferences>\n</memory>"
+                # Create default memory structure - simple and flexible
+                default_memory = "<memory>\n  <!-- Agent can structure this as needed -->\n</memory>"
                 with open(memory_file, 'w') as f:
                     f.write(default_memory)
                 return default_memory
         except Exception as e:
-            self.console.print(f"[dim]Could not load persistent memory: {e}[/dim]")
+            self.console.print(f"[dim]Could not load memory: {e}[/dim]")
             return "<memory></memory>"
     
     def _update_persistent_memory(self, memory_updates_xml):
-        """Update persistent memory based on model's instructions"""
+        """Update memory based on model's instructions"""
         if not memory_updates_xml:
             return
             
@@ -1642,10 +1642,8 @@ class AgentInterface:
             except ET.ParseError:
                 # If parsing fails, create a new memory structure
                 memory_root = ET.Element("memory")
-                facts = ET.SubElement(memory_root, "facts")
-                preferences = ET.SubElement(memory_root, "preferences")
             
-            # Process edits
+            # Process edits - simple search/replace approach
             for edit in updates_root.findall("./edit"):
                 search_elem = edit.find("search")
                 replace_elem = edit.find("replace")
@@ -1664,45 +1662,23 @@ class AgentInterface:
                         # Parse the updated memory
                         memory_root = ET.fromstring(memory_str)
             
-            # Process additions
+            # Process additions - just add text directly to memory
             for add in updates_root.findall("./add"):
                 add_text = add.text if add.text else ""
                 if add_text:
-                    # Determine where to add the new information
-                    if "<fact>" in add_text.lower():
-                        facts = memory_root.find("./facts")
-                        if facts is None:
-                            facts = ET.SubElement(memory_root, "facts")
-                        
-                        # Create a new fact element
-                        new_fact = ET.SubElement(facts, "fact")
-                        new_fact.text = add_text
-                    
-                    elif "<preference>" in add_text.lower():
-                        preferences = memory_root.find("./preferences")
-                        if preferences is None:
-                            preferences = ET.SubElement(memory_root, "preferences")
-                        
-                        # Create a new preference element
-                        new_pref = ET.SubElement(preferences, "preference")
-                        new_pref.text = add_text
-                    
+                    # Let the agent structure the memory as it wants
+                    # Just add the content directly to the memory root
+                    if memory_root.text is None:
+                        memory_root.text = add_text
                     else:
-                        # Default to facts
-                        facts = memory_root.find("./facts")
-                        if facts is None:
-                            facts = ET.SubElement(memory_root, "facts")
-                        
-                        # Create a new fact element
-                        new_item = ET.SubElement(facts, "item")
-                        new_item.text = add_text
+                        memory_root.text += "\n" + add_text
             
             # Save the updated memory
             updated_memory = self.agent.pretty_format_xml(ET.tostring(memory_root, encoding='unicode'))
             with open(memory_file, 'w') as f:
                 f.write(updated_memory)
                 
-            self.console.print("[dim]Persistent memory updated[/dim]")
+            self.console.print("[dim]Memory updated[/dim]")
             
         except Exception as e:
             self.console.print(f"[bold red]Error updating memory: {e}[/bold red]")
