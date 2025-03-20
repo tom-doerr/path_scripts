@@ -178,35 +178,40 @@ class Agent:
                 timeout=60
             )
             
+            # Track if we're in the reasoning phase
+            reasoning_phase = True
+            
             for chunk in response:
                 # Handle regular content
                 if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
                     content = chunk.choices[0].delta.content
                     if content:
-                        # More thorough cleaning of control characters and special tokens
+                        # We've transitioned to regular content
+                        reasoning_phase = False
+                        
+                        # Clean content of control characters
                         clean_content = content.replace('\r', '').replace('\b', '')
-                        # Remove any potential token markers or brackets that might be causing display issues
-                        clean_content = clean_content.replace('[', '').replace(']', '')
+                        
                         if self.stream_callback:
                             self.stream_callback(clean_content, is_reasoning=False)
                         else:
-                            self.console.print(clean_content, end='')
+                            self.console.print(clean_content, end='', highlight=False)
                         full_response += clean_content
                 
                 # Handle reasoning content separately (for deepseek models)
                 if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'reasoning_content'):
                     reasoning = chunk.choices[0].delta.reasoning_content
                     if reasoning:
-                        # Clean up control chars and split into tokens
+                        # Clean up control chars
                         clean_reasoning = reasoning.replace('\r', '').replace('\b', '')
-                        tokens = clean_reasoning.split(' ')
                         
                         # Use callback if available, otherwise use console
                         if self.stream_callback:
                             self.stream_callback(clean_reasoning, is_reasoning=True)
                         else:
-                            self.console.print(f"[yellow]{clean_reasoning}[/yellow]", end='')
-                        reasoning_output += clean_reasoning + ' '
+                            # Print without any formatting that might cause display issues
+                            print(clean_reasoning, end='', flush=True)
+                        reasoning_output += clean_reasoning
             
             print("\n\n--- End of Reasoning ---\n")
             
@@ -365,6 +370,9 @@ class Agent:
             plan_root = ET.fromstring(self.plan_tree)
             updates_root = ET.fromstring(plan_update_xml)
             
+            # Track changes for reporting
+            changes = []
+            
             # Process add_task elements
             for add_task in updates_root.findall("./add_task"):
                 parent_id = add_task.get("parent_id")
@@ -382,7 +390,7 @@ class Agent:
                     
                     # Add the new task to the parent
                     parent.append(new_task)
-                    print(f"Added new task {new_task.get('id')}: {new_task.get('description')}")
+                    changes.append(f"Added new task {new_task.get('id')}: {new_task.get('description')}")
             
             # Process modify_task elements
             for modify_task in updates_root.findall("./modify_task"):
@@ -398,9 +406,9 @@ class Agent:
                             task.set(attr, value)
                     new_desc = task.get("description", "")
                     if old_desc != new_desc:
-                        print(f"Modified task {task_id}: {old_desc} -> {new_desc}")
+                        changes.append(f"Modified task {task_id}: {old_desc} -> {new_desc}")
                     else:
-                        print(f"Updated attributes for task {task_id}")
+                        changes.append(f"Updated attributes for task {task_id}")
             
             # Process remove_task elements
             for remove_task in updates_root.findall("./remove_task"):
@@ -416,12 +424,17 @@ class Agent:
                         for child in potential_parent.findall("./task"):
                             if child.get("id") == task_id:
                                 potential_parent.remove(child)
-                                print(f"Removed task {task_id}: {desc}")
+                                changes.append(f"Removed task {task_id}: {desc}")
                                 break
             
             # Update the plan tree
             self.plan_tree = ET.tostring(plan_root, encoding='unicode')
-            print("Plan has been updated by the agent")
+            
+            # Report changes
+            if changes:
+                print("\nPlan has been updated by the agent:")
+                for change in changes:
+                    print(f"- {change}")
             
         except Exception as e:
             print(f"Error applying plan updates: {e}")
@@ -514,12 +527,25 @@ class Agent:
             print(f"Executing task {task_id}: {description}")
             print(f"Status updated to: in-progress (10%)")
             
+            # Get parent task information for context
+            parent_info = ""
+            for potential_parent in root.findall(".//task"):
+                for child in potential_parent.findall("./task"):
+                    if child.get("id") == task_id:
+                        parent_id = potential_parent.get("id")
+                        parent_desc = potential_parent.get("description")
+                        parent_info = f"This task is part of: {parent_id} - {parent_desc}"
+                        break
+                if parent_info:
+                    break
+            
             # Generate actions for this task
             prompt = f"""
             I need to execute the following task:
             
             TASK ID: {task_id}
             DESCRIPTION: {description}
+            {parent_info}
             
             REPOSITORY INFORMATION:
             {json.dumps(self.repository_info, indent=2)}
@@ -551,6 +577,7 @@ class Agent:
             </plan_update>
             
             Think step by step about what needs to be done to complete this task.
+            Focus on creating actions that are specific, concrete, and directly implement the task.
             """
             
             # Update progress to 30% - planning phase

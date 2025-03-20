@@ -54,11 +54,30 @@ class AgentInterface:
             path = action_element.get("path", "")
             command = action_element.get("command", "")
             
+            # Determine syntax highlighting language based on file extension
+            language = "python"  # default
+            if path:
+                ext = os.path.splitext(path)[1].lower()
+                if ext in ['.js', '.jsx']:
+                    language = "javascript"
+                elif ext in ['.html', '.htm']:
+                    language = "html"
+                elif ext in ['.css']:
+                    language = "css"
+                elif ext in ['.json']:
+                    language = "json"
+                elif ext in ['.md']:
+                    language = "markdown"
+                elif ext in ['.sh']:
+                    language = "bash"
+                elif ext in ['.yml', '.yaml']:
+                    language = "yaml"
+            
             # Ask for confirmation before executing
             if action_type == "create_file":
                 content = action_element.text.strip() if action_element.text else ""
                 self.console.print(f"[bold cyan]Action:[/bold cyan] Create file '{path}'")
-                self.console.print(Syntax(content, "python", theme="monokai"))
+                self.console.print(Syntax(content, language, theme="monokai"))
                 
             elif action_type == "modify_file":
                 self.console.print(f"[bold cyan]Action:[/bold cyan] Modify file '{path}'")
@@ -66,9 +85,9 @@ class AgentInterface:
                     original = change.find("original").text if change.find("original") is not None else ""
                     new = change.find("new").text if change.find("new") is not None else ""
                     self.console.print("[bold red]- Original:[/bold red]")
-                    self.console.print(Syntax(original, "python", theme="monokai"))
+                    self.console.print(Syntax(original, language, theme="monokai"))
                     self.console.print("[bold green]+ New:[/bold green]")
-                    self.console.print(Syntax(new, "python", theme="monokai"))
+                    self.console.print(Syntax(new, language, theme="monokai"))
                     
             elif action_type == "run_command":
                 self.console.print(f"[bold cyan]Action:[/bold cyan] Run command '{command}'")
@@ -302,9 +321,11 @@ class AgentInterface:
                     # Set a callback to handle streaming in the interface
                     def stream_callback(content, is_reasoning=False):
                         if is_reasoning:
-                            self.console.print(f"[yellow]{content}[/yellow]", end="")
+                            # Print reasoning tokens without rich formatting to avoid display issues
+                            print(content, end="", flush=True)
                         else:
-                            self.console.print(content, end="")
+                            # Use rich for normal content
+                            self.console.print(content, end="", highlight=False)
                             
                     # Pass the callback to the agent
                     self.agent.stream_callback = stream_callback
