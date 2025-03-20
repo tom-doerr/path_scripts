@@ -72,6 +72,36 @@ def run_command(cmd, cwd=None, capture_output=True, check=True, env=None, shell=
 
 
 # Git repository utilities
+def _update_gitignore(worktree_path):
+    """Add generated files to .gitignore to prevent merge conflicts."""
+    gitignore_path = os.path.join(worktree_path, ".gitignore")
+    
+    # Files that should be ignored
+    files_to_ignore = [
+        "context.txt",
+        "custom_aider_history.md",
+        "aider_history.md",
+        ".aider*"
+    ]
+    
+    # Read existing .gitignore if it exists
+    existing_ignores = set()
+    if os.path.exists(gitignore_path):
+        with open(gitignore_path, 'r') as f:
+            existing_ignores = set(line.strip() for line in f.readlines())
+    
+    # Add new entries if they don't exist
+    with open(gitignore_path, 'a') as f:
+        for file_pattern in files_to_ignore:
+            if file_pattern not in existing_ignores:
+                f.write(f"\n{file_pattern}")
+    
+    # Stage the .gitignore changes
+    run_command("git add .gitignore", cwd=worktree_path, check=False)
+    run_command("git commit -m 'Update .gitignore to exclude generated files'", 
+                cwd=worktree_path, check=False)
+
+
 def get_repo_name(repo_path):
     """Get the repository name from the git remote URL or directory name."""
     result = run_command("git remote get-url origin", cwd=repo_path, check=False)
@@ -125,6 +155,9 @@ def create_worktree(repo_path, task_name):
         # Fallback to clone and checkout
         run_command(f"git clone {repo_path} {worktree_path}", check=False)
         run_command(f"git checkout -b {branch_name}", cwd=worktree_path, check=False)
+    
+    # Add generated files to .gitignore
+    _update_gitignore(worktree_path)
     
     return worktree_path, branch_name, current_branch
 
@@ -396,13 +429,28 @@ def _update_worktree(worktree_path, main_branch, branch_name, task, args):
     """Update worktree with latest changes and resolve conflicts."""
     console.print("[bold blue]Updating worktree with latest changes...[/bold blue]")
     
+    # Make sure generated files are in .gitignore
+    _update_gitignore(worktree_path)
+    
+    # Remove generated files from git tracking if they're tracked
+    run_command("git rm --cached context.txt custom_aider_history.md aider_history.md .aider* 2>/dev/null || true", 
+                cwd=worktree_path, shell=True, check=False)
+    
     # Commit any pending changes in worktree
     run_command("git add -A", cwd=worktree_path)
     run_command("git commit -m 'Commit changes before merge'", cwd=worktree_path, check=False)
     
+    # Stash any untracked files that might cause conflicts
+    run_command("git stash push --include-untracked", cwd=worktree_path, check=False)
+    
     # Attempt to merge directly
     console.print(f"[bold blue]Merging changes from {main_branch}...[/bold blue]")
     merge_result = run_command(f"git merge origin/{main_branch}", cwd=worktree_path, check=False)
+    
+    # Pop the stash if we stashed anything
+    stash_list = run_command("git stash list", cwd=worktree_path)
+    if stash_list.stdout.strip():
+        run_command("git stash pop", cwd=worktree_path, check=False)
     
     # Check if there are conflicts using multiple methods
     has_conflicts = False
@@ -479,13 +527,28 @@ def _merge_to_main(main_repo_path, main_branch, branch_name):
     """Merge branch into main branch and push."""
     console.print(f"[bold blue]Merging {branch_name} into {main_branch}...[/bold blue]")
     
+    # Make sure generated files are in .gitignore
+    _update_gitignore(main_repo_path)
+    
+    # Remove generated files from git tracking if they're tracked
+    run_command("git rm --cached context.txt custom_aider_history.md aider_history.md .aider* 2>/dev/null || true", 
+                cwd=main_repo_path, shell=True, check=False)
+    
     # Use a safer approach with separate commands
     checkout_result = run_command(f"git checkout {main_branch}", cwd=main_repo_path)
     if checkout_result.returncode != 0:
         console.print(f"[bold red]Failed to checkout {main_branch}[/bold red]")
         return False
+    
+    # Stash any untracked files that might cause conflicts
+    run_command("git stash push --include-untracked", cwd=main_repo_path, check=False)
         
     merge_result = run_command(f"git merge --no-ff {branch_name}", cwd=main_repo_path, check=False)
+    
+    # Pop the stash if we stashed anything
+    stash_list = run_command("git stash list", cwd=main_repo_path)
+    if stash_list.stdout.strip():
+        run_command("git stash pop", cwd=main_repo_path, check=False)
     
     # Check for conflicts using multiple methods
     has_conflicts = False
