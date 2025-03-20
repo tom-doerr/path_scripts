@@ -23,10 +23,6 @@ class Agent:
         }
         self.stream_callback = None
         
-        # Use native API if model is specified as r1
-        if model_name == "r1":
-            self.model_name = "deepseek/deepseek-reasoner"
-        
     def initialize(self, repo_path: str = ".") -> None:
         """Initialize the agent with repository information"""
         self.repository_info = self.analyze_repository(repo_path)
@@ -209,17 +205,8 @@ class Agent:
                         if self.stream_callback:
                             self.stream_callback(clean_reasoning, is_reasoning=True)
                         else:
-                            # Use yellow color for reasoning
-                            # Only print newline if the content actually contains one
-                            if '\n' in clean_reasoning:
-                                # Split by newline and print each line
-                                for i, line in enumerate(clean_reasoning.split('\n')):
-                                    if i > 0:  # Only add newline before lines after the first
-                                        self.console.print("")
-                                    if line:  # Only print non-empty lines
-                                        self.console.print(f"[yellow]{line}[/yellow]", end='')
-                            else:
-                                self.console.print(f"[yellow]{clean_reasoning}[/yellow]", end='')
+                            # Use yellow color for reasoning and avoid unnecessary line breaks
+                            self.console.print(f"[yellow]{clean_reasoning}[/yellow]", end='', highlight=False)
                         reasoning_output += clean_reasoning
             
             print("\n\n--- End of Reasoning ---\n")
@@ -669,8 +656,7 @@ def main():
         print("  update <task_id> <status> [--notes=text] [--progress=0-100] - Update task status")
         print("  execute <task_id>     - Execute a specific task")
         print("\nOptions:")
-        print("  --model, -m MODEL_NAME - Specify the model to use (default: openai/gpt-3.5-turbo)")
-        print("                           Use 'r1' for native deepseek-reasoner API")
+        print("  --model, -m MODEL_NAME - Specify the model to use (default: openrouter/deepseek/deepseek-r1)")
         sys.exit(1)
     
     command = sys.argv[1]

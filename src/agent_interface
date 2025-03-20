@@ -23,13 +23,19 @@ class AgentInterface:
         self.console = Console()
         self.agent = Agent()
         self.current_plan = None
+        self.model_aliases = {
+            "flash": "openrouter/google/gemini-2.0-flash-001",
+            "r1": "deepseek/deepseek-reasoner",
+            "claude": "openrouter/anthropic/claude-3.7-sonnet"
+        }
     
     def display_welcome(self):
         """Display welcome message and instructions"""
         self.console.print(Panel.fit(
             "[bold blue]Agent Interface[/bold blue]\n"
             "A simple interface for the agent planning system\n"
-            "Type [bold]help[/bold] for available commands",
+            "Type [bold]/help[/bold] for available commands\n"
+            "Any text not starting with / will be sent directly to the model",
             title="Welcome",
             border_style="blue"
         ))
@@ -38,16 +44,18 @@ class AgentInterface:
         """Display available commands"""
         self.console.print("[bold]Available Commands:[/bold]")
         self.console.print("")
-        self.console.print("[bold green]init[/bold green]", "- Initialize the agent")
-        self.console.print("[bold green]plan [spec_file][/bold green]", "- Generate a plan from specification (default: spec.md)")
-        self.console.print("[bold green]display[/bold green]", "- Display the current plan")
-        self.console.print("[bold green]update <task_id> <status> [--notes=text] [--progress=0-100][/bold green]", "- Update task status")
-        self.console.print("[bold green]execute <task_id>[/bold green]", "- Execute a specific task (with confirmation)")
-        self.console.print("[bold green]execute-ready[/bold green]", "- Execute all ready tasks in dependency order")
-        self.console.print("[bold green]modify-plan[/bold green]", "- Let the agent suggest modifications to the plan")
-        self.console.print("[bold green]model <model_name>[/bold green]", "- Change the model")
-        self.console.print("[bold green]help[/bold green]", "- Show this help")
-        self.console.print("[bold green]exit[/bold green]", "- Exit the interface")
+        self.console.print("[bold green]/init[/bold green]", "- Initialize the agent")
+        self.console.print("[bold green]/plan [spec_file][/bold green]", "- Generate a plan from specification (default: spec.md)")
+        self.console.print("[bold green]/display[/bold green]", "- Display the current plan")
+        self.console.print("[bold green]/update <task_id> <status> [--notes=text] [--progress=0-100][/bold green]", "- Update task status")
+        self.console.print("[bold green]/execute <task_id>[/bold green]", "- Execute a specific task (with confirmation)")
+        self.console.print("[bold green]/execute-ready[/bold green]", "- Execute all ready tasks in dependency order")
+        self.console.print("[bold green]/modify-plan[/bold green]", "- Let the agent suggest modifications to the plan")
+        self.console.print("[bold green]/model <model_name>[/bold green]", "- Change the model (aliases: flash, r1, claude)")
+        self.console.print("[bold green]/help[/bold green]", "- Show this help")
+        self.console.print("[bold green]/exit[/bold green]", "- Exit the interface")
+        self.console.print("")
+        self.console.print("[italic]Any text not starting with / will be sent directly to the model as a chat message[/italic]")
     
     def execute_action(self, action_element):
         """Execute a single action from the XML"""
@@ -294,13 +302,18 @@ class AgentInterface:
         except Exception as e:
             self.console.print(f"[bold red]Error:[/bold red] {e}")
     
-    def run_command(self, command: List[str]):
+    def run_command(self, command: List[str], is_slash_command: bool = True):
         """Run a command and handle the result"""
         if not command:
             return
         
         cmd = command[0].lower()
         args = command[1:]
+        
+        # If not a slash command, treat as chat with the model
+        if not is_slash_command:
+            self.chat_with_model(" ".join([cmd] + args))
+            return
         
         if cmd == "help":
             self.display_help()
@@ -441,12 +454,12 @@ class AgentInterface:
                 return
                 
             model_name = args[0]
-            self.agent.model_name = model_name
             
-            # Handle special case for r1
-            if model_name == "r1":
-                self.agent.model_name = "deepseek/deepseek-reasoner"
+            # Check for model aliases
+            if model_name in self.model_aliases:
+                model_name = self.model_aliases[model_name]
                 
+            self.agent.model_name = model_name
             self.console.print(f"[bold green]Model changed to:[/bold green] {self.agent.model_name}")
         
         elif cmd == "plan":
@@ -922,6 +935,171 @@ class AgentInterface:
             self.console.print(f"[bold red]Unknown command:[/bold red] {cmd}")
             self.console.print("Type [bold]help[/bold] for available commands")
     
+    def execute_shell_command(self, command: str, auto_run: bool = False) -> bool:
+        """Execute a shell command with optional auto-run"""
+        self.console.print(f"[bold cyan]Shell Command:[/bold cyan] {command}")
+        
+        if not auto_run:
+            confirm = Prompt.ask(
+                "\nExecute this shell command?", 
+                choices=["y", "n"], 
+                default="n"
+            )
+            
+            if confirm.lower() != "y":
+                self.console.print("[bold yellow]Command execution skipped[/bold yellow]")
+                return False
+        
+        self.console.print(f"[bold blue]Running command: {command}[/bold blue]")
+        
+        # Run the command and capture output
+        process = subprocess.Popen(
+            command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        
+        # Stream output in real-time
+        for line in process.stdout:
+            self.console.print(line.rstrip())
+        
+        # Wait for process to complete
+        process.wait()
+        
+        if process.returncode == 0:
+            self.console.print(f"[bold green]Command completed successfully[/bold green]")
+            return True
+        else:
+            stderr = process.stderr.read()
+            self.console.print(f"[bold red]Command failed with exit code {process.returncode}[/bold red]")
+            if stderr:
+                self.console.print(f"[bold red]Error: {stderr}[/bold red]")
+            return False
+    
+    def chat_with_model(self, message: str):
+        """Send a message directly to the model and handle the response"""
+        # Initialize agent if not already done
+        if not self.agent.repository_info:
+            with self.console.status("[bold blue]Initializing agent...[/bold blue]"):
+                self.agent.initialize()
+        
+        self.console.print(f"[bold blue]Sending message to model ({self.agent.model_name})...[/bold blue]")
+        
+        # Construct a prompt that instructs the model to respond in XML format
+        prompt = f"""
+        You are an AI assistant that can respond to user queries and also perform actions.
+        
+        USER MESSAGE: {message}
+        
+        You can respond in the following ways:
+        
+        1. Simple message:
+        <message>Your response text here</message>
+        
+        2. Actions to execute:
+        <actions>
+          <action type="create_file" path="example.py">
+            # Python code here
+          </action>
+          <action type="modify_file" path="existing.py">
+            <change>
+              <original>def old_function():</original>
+              <new>def new_function():</new>
+            </change>
+          </action>
+        </actions>
+        
+        3. Shell commands:
+        <shell_commands>
+          <command safe_to_autorun="true">echo "Hello World"</command>
+          <command safe_to_autorun="false">rm -rf some_directory</command>
+        </shell_commands>
+        
+        You can include multiple response types in a single reply.
+        For shell commands, set safe_to_autorun="true" only for commands that are completely safe and have no destructive potential.
+        """
+        
+        try:
+            # Set a callback to handle streaming in the interface
+            def stream_callback(content, is_reasoning=False):
+                if is_reasoning:
+                    # Use yellow color for reasoning tokens
+                    self.console.print(f"[yellow]{content}[/yellow]", end="")
+                else:
+                    # Use rich for normal content
+                    self.console.print(content, end="", highlight=False)
+                    
+            # Pass the callback to the agent
+            self.agent.stream_callback = stream_callback
+            response = self.agent.stream_reasoning(prompt)
+            
+            # Process the response
+            self.process_chat_response(response)
+                
+        except KeyboardInterrupt:
+            self.console.print("\n[bold yellow]Operation cancelled by user[/bold yellow]")
+    
+    def process_chat_response(self, response: str):
+        """Process the XML response from the model chat"""
+        # Extract different parts of the response
+        message_xml = self.agent.extract_xml_from_response(response, "message")
+        actions_xml = self.agent.extract_xml_from_response(response, "actions")
+        shell_commands_xml = self.agent.extract_xml_from_response(response, "shell_commands")
+        
+        # Process message if present
+        if message_xml:
+            try:
+                # Parse the XML to get just the text content
+                root = ET.fromstring(message_xml)
+                message_text = root.text if root.text else ""
+                
+                # Display the message as markdown
+                self.console.print("")
+                self.console.print(Markdown(message_text))
+                self.console.print("")
+            except ET.ParseError:
+                # Fallback if parsing fails
+                self.console.print(f"\n{message_xml}\n")
+        
+        # Process actions if present
+        if actions_xml:
+            try:
+                actions_root = ET.fromstring(actions_xml)
+                actions = actions_root.findall("./action")
+                
+                if actions:
+                    self.console.print("[bold blue]The model suggests the following actions:[/bold blue]")
+                    
+                    for action in actions:
+                        self.execute_action(action)
+                        
+            except ET.ParseError as e:
+                self.console.print(f"[bold red]Error parsing actions XML: {e}[/bold red]")
+        
+        # Process shell commands if present
+        if shell_commands_xml:
+            try:
+                commands_root = ET.fromstring(shell_commands_xml)
+                commands = commands_root.findall("./command")
+                
+                if commands:
+                    self.console.print("[bold blue]The model suggests the following shell commands:[/bold blue]")
+                    
+                    for cmd_elem in commands:
+                        command = cmd_elem.text.strip() if cmd_elem.text else ""
+                        auto_run = cmd_elem.get("safe_to_autorun", "false").lower() == "true"
+                        
+                        if auto_run:
+                            self.console.print(f"[bold green]Auto-running safe command:[/bold green] {command}")
+                            self.execute_shell_command(command, auto_run=True)
+                        else:
+                            self.execute_shell_command(command, auto_run=False)
+                        
+            except ET.ParseError as e:
+                self.console.print(f"[bold red]Error parsing shell commands XML: {e}[/bold red]")
+    
     def run_interactive(self):
         """Run the interface in interactive mode"""
         self.display_welcome()
@@ -929,11 +1107,19 @@ class AgentInterface:
         while True:
             try:
                 user_input = Prompt.ask("\n[bold blue]>[/bold blue]")
-                if user_input.lower() in ["exit", "quit", "q"]:
+                if user_input.lower() in ["exit", "quit", "q", "/exit", "/quit", "/q"]:
                     self.console.print("[bold blue]Exiting...[/bold blue]")
                     sys.exit(0)
-                command = user_input.strip().split()
-                self.run_command(command)
+                
+                # Check if this is a slash command
+                if user_input.startswith('/'):
+                    # Remove the slash and split into command parts
+                    command = user_input[1:].strip().split()
+                    self.run_command(command)
+                else:
+                    # Treat as direct chat with the model
+                    self.chat_with_model(user_input)
+                    
             except KeyboardInterrupt:
                 self.console.print("\n[bold yellow]Exiting...[/bold yellow]")
                 sys.exit(0)
