@@ -9,9 +9,11 @@ import xml.etree.ElementTree as ET
 import xml.dom.minidom as minidom
 from typing import Dict, List, Optional, Any, Tuple
 import litellm
+from rich.console import Console
 
 class Agent:
     def __init__(self, model_name: str = "openrouter/deepseek/deepseek-r1"):
+        self.console = Console()
         self.model_name = model_name
         self.plan_tree = None
         self.repository_info = {}
@@ -195,8 +197,8 @@ class Agent:
                         clean_reasoning = reasoning.replace('\r', '').replace('\b', '')
                         tokens = clean_reasoning.split(' ')
                         
-                        # Print full reasoning content with color
-                        print(f"\033[33m{clean_reasoning}\033[0m", end=' ', flush=True)
+                        # Print full reasoning content with rich color
+                        self.console.print(f"[yellow]{clean_reasoning}[/yellow]", end='', flush=True)
                         reasoning_output += clean_reasoning + ' '
             
             print("\n\n--- End of Reasoning ---\n")
