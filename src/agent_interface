@@ -321,8 +321,8 @@ class AgentInterface:
                     # Set a callback to handle streaming in the interface
                     def stream_callback(content, is_reasoning=False):
                         if is_reasoning:
-                            # Print reasoning tokens without rich formatting to avoid display issues
-                            print(content, end="", flush=True)
+                            # Use yellow color for reasoning tokens
+                            self.console.print(f"[yellow]{content}[/yellow]", end="")
                         else:
                             # Use rich for normal content
                             self.console.print(content, end="", highlight=False)

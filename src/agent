@@ -209,8 +209,8 @@ class Agent:
                         if self.stream_callback:
                             self.stream_callback(clean_reasoning, is_reasoning=True)
                         else:
-                            # Print without any formatting that might cause display issues
-                            print(clean_reasoning, end='', flush=True)
+                            # Use yellow color for reasoning
+                            self.console.print(f"[yellow]{clean_reasoning}[/yellow]", end='')
                         reasoning_output += clean_reasoning
             
             print("\n\n--- End of Reasoning ---\n")
