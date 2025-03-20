@@ -2,17 +2,17 @@
 
 import threading
 import shutil
-from typing import Dict, Optional, Callable
+from typing import Dict, Optional, Callable, Any, List, Tuple
 import litellm
 from rich.console import Console
-from src.agent.plan import (
+from .plan import (
     generate_plan,
     update_plan,
     check_dependencies,
     apply_plan_updates,
 )
-from src.agent.task import execute_task
-from src.utils.xml_operations import format_xml_response, extract_xml_from_response
+from .task import execute_task
+from src.utils.xml_operations import format_xml_response
 
 
 class Agent:
@@ -33,7 +33,6 @@ class Agent:
 
     def initialize(self, repo_path: str = ".") -> None:
         """Initialize the agent with repository information"""
-        from src.utils.file_ops import read_file
 
         self.repository_info = {"path": repo_path}
         print(f"Agent initialized for repository: {repo_path}")
