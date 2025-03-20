@@ -1688,6 +1688,15 @@ class AgentInterface:
         terminal_height = self._get_terminal_height()
         print("\n" * terminal_height)
         
+        # Display full XML response
+        self.console.print("[bold blue]Full Agent Response XML:[/bold blue]")
+        try:
+            formatted_xml = self.agent.pretty_format_xml(response)
+            self.console.print(Syntax(formatted_xml, "xml", theme="monokai", line_numbers=True))
+        except Exception as e:
+            self.console.print(f"[red]Error formatting XML: {e}[/red]")
+            self.console.print(response)
+
         # Extract different parts of the response
         message_xml = self.agent.extract_xml_from_response(response, "message")
         actions_xml = self.agent.extract_xml_from_response(response, "actions")
