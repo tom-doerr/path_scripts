@@ -31,9 +31,7 @@ def process_command(
     multiline_input_mode: bool,
     multiline_input_buffer: List[str],
 ) -> None:
-    """Process a command and handle the result."""
-    """
-    Process a command and handle the result.
+    """Process a command and handle the result.
 
     Args:
         agent: The agent instance
@@ -73,7 +71,7 @@ def process_command(
         if multiline_input_mode:
             multiline_input_mode = False
             if multiline_input_buffer:
-                _ = "\n".join(multiline_input_buffer)  # Store but don't use
+                full_input = "\n".join(multiline_input_buffer)
                 console.print(
                     f"[dim]Processing {len(multiline_input_buffer)} lines of input...[/dim]"
                 )
@@ -395,18 +393,6 @@ def _load_persistent_memory() -> str:
         print(f"Could not load memory: {e}")
         return "<memory></memory>"
 
-    """
-    Process a command and handle the result.
-
-    Args:
-        agent: The agent instance
-        command: List of command parts
-        chat_history: The chat history
-        history_file: Path to the history file
-        console: Rich console instance
-        multiline_input_mode: Whether multiline input mode is active
-        multiline_input_buffer: Buffer for multiline input
-    """
     if not command:
         return
 

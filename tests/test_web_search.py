@@ -1,7 +1,7 @@
 """Tests for web search functionality."""
 
 import requests
-from src.utils.web_search import search_web
+from src.utils.web_search import search_web  # pylint: disable=no-name-in-module
 
 
 def test_search_web_success():
