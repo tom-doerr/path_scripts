@@ -147,6 +147,9 @@ class Agent:
         """Stream the reasoning process from the model and return the final response"""
         messages = [{"role": "user", "content": prompt}]
         
+        # Clear the screen to start from the top
+        os.system('clear' if os.name != 'nt' else 'cls')
+        
         if not self.config["stream_reasoning"]:
             # Non-streaming mode
             try:

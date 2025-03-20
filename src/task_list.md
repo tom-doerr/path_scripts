@@ -1,39 +1,13 @@
 # Agent Development Task List
 
-## Completed Tasks
-1. **Add Direct Model Interaction** - Allow users to chat directly with the model from the interface.
-   - Priority: HIGH
-   - Status: Completed
-   - Notes: Implemented chat mode where any text not starting with / is sent to the model
-
-2. **Add Model Aliases** - Support for model aliases like 'flash', 'r1', 'claude'.
-   - Priority: HIGH
-   - Status: Completed
-   - Notes: Added model_aliases dictionary to support easy model switching
-
-3. **Add Shell Command Execution** - Allow the model to suggest and execute shell commands.
-   - Priority: HIGH
-   - Status: Completed
-   - Notes: Implemented with safety checks and auto-run capability for safe commands
-
-4. **Add Chat History** - Implement conversation history for the chat interface.
-   - Priority: HIGH
-   - Status: Completed
-   - Notes: Added persistent chat history with timestamps and context information
-
 ## High Priority Tasks
 
-1. **Fix Reasoning Token Display** - Improve how reasoning tokens are displayed during streaming.
+1. **Multi-step Execution** - Allow the agent to run for multiple steps with context preservation.
    - Priority: HIGH
    - Status: In progress
-   - Notes: Need to ensure consistent formatting and avoid line breaks between tokens
+   - Notes: Implement ability to continue execution with command output context
 
-2. **Implement Action Execution** - Allow the model to execute actions like file creation/modification.
-   - Priority: HIGH
-   - Status: Partially implemented
-   - Notes: Basic implementation exists, needs refinement and better confirmation flow
-
-3. **Add Task Dependency Tracking** - Improve tracking of task dependencies and status updates.
+2. **Add Task Dependency Tracking** - Improve tracking of task dependencies and status updates.
    - Priority: HIGH
    - Status: Partially implemented
    - Notes: Need to enhance the dependency resolution and automatic status updates
@@ -54,11 +28,6 @@
    - Priority: MEDIUM
    - Status: Not started
    - Notes: Will require significant refactoring of execution logic
-
-4. **Add Confirmation for Each Action** - Require user confirmation before executing actions.
-   - Priority: MEDIUM
-   - Status: Implemented
-   - Notes: Consider adding batch confirmation options for multiple actions
 
 ## Low Priority Tasks
 

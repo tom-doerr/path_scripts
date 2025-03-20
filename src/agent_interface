@@ -6,7 +6,7 @@ import sys
 import json
 import datetime
 import subprocess
-from typing import List, Optional
+from typing import List, Optional, Dict, Tuple
 import xml.etree.ElementTree as ET
 from rich.console import Console
 from rich.panel import Panel
@@ -1004,9 +1004,20 @@ class AgentInterface:
             self.console.print(f"[bold red]Unknown command:[/bold red] {cmd}")
             self.console.print("Type [bold]help[/bold] for available commands")
     
-    def execute_shell_command(self, command: str, auto_run: bool = False) -> bool:
+    def execute_shell_command(self, command: str, auto_run: bool = False) -> Tuple[bool, str]:
         """Execute a shell command with optional auto-run"""
         self.console.print(f"[bold cyan]Shell Command:[/bold cyan] {command}")
+        
+        execution_context = {
+            "command": command,
+            "auto_run": auto_run,
+            "user_approved": False,
+            "success": False,
+            "output": "",
+            "error": "",
+            "return_code": None,
+            "timestamp": datetime.datetime.now().isoformat()
+        }
         
         if not auto_run:
             confirm = Prompt.ask(
@@ -1017,7 +1028,12 @@ class AgentInterface:
             
             if confirm.lower() != "y":
                 self.console.print("[bold yellow]Command execution skipped[/bold yellow]")
-                return False
+                execution_context["user_approved"] = False
+                return False, self._format_execution_context(execution_context)
+            
+            execution_context["user_approved"] = True
+        else:
+            execution_context["user_approved"] = True
         
         self.console.print(f"[bold blue]Running command: {command}[/bold blue]")
         
@@ -1030,22 +1046,54 @@ class AgentInterface:
             text=True
         )
         
+        # Collect output while streaming
+        output_lines = []
+        
         # Stream output in real-time
         for line in process.stdout:
+            output_lines.append(line.rstrip())
             self.console.print(line.rstrip())
         
         # Wait for process to complete
         process.wait()
         
+        # Get stderr if any
+        stderr = process.stderr.read()
+        
+        # Truncate output to last 5000 characters
+        full_output = "\n".join(output_lines)
+        if len(full_output) > 5000:
+            truncated_output = "... (output truncated) ...\n" + full_output[-5000:]
+        else:
+            truncated_output = full_output
+            
+        execution_context["output"] = truncated_output
+        execution_context["error"] = stderr
+        execution_context["return_code"] = process.returncode
+        execution_context["success"] = (process.returncode == 0)
+        
         if process.returncode == 0:
             self.console.print(f"[bold green]Command completed successfully[/bold green]")
-            return True
+            return True, self._format_execution_context(execution_context)
         else:
-            stderr = process.stderr.read()
             self.console.print(f"[bold red]Command failed with exit code {process.returncode}[/bold red]")
             if stderr:
                 self.console.print(f"[bold red]Error: {stderr}[/bold red]")
-            return False
+            return False, self._format_execution_context(execution_context)
+    
+    def _format_execution_context(self, context: Dict) -> str:
+        """Format execution context as XML"""
+        xml = f"""<execution_context>
+  <command>{context['command']}</command>
+  <auto_run>{str(context['auto_run']).lower()}</auto_run>
+  <user_approved>{str(context['user_approved']).lower()}</user_approved>
+  <success>{str(context['success']).lower()}</success>
+  <return_code>{context['return_code']}</return_code>
+  <timestamp>{context['timestamp']}</timestamp>
+  <output><![CDATA[{context['output']}]]></output>
+  <error><![CDATA[{context['error']}]]></error>
+</execution_context>"""
+        return xml
     
     def load_chat_history(self):
         """Load chat history from file if it exists"""
@@ -1068,6 +1116,9 @@ class AgentInterface:
     
     def chat_with_model(self, message: str):
         """Send a message directly to the model and handle the response"""
+        # Clear the screen to start from the top
+        os.system('clear' if os.name != 'nt' else 'cls')
+        
         # Initialize agent if not already done
         if not self.agent.repository_info:
             with self.console.status("[bold blue]Initializing agent...[/bold blue]"):
@@ -1148,6 +1199,76 @@ class AgentInterface:
         except KeyboardInterrupt:
             self.console.print("\n[bold yellow]Operation cancelled by user[/bold yellow]")
     
+    def _should_continue_execution(self, execution_contexts: List[str]) -> bool:
+        """Determine if we should continue execution based on command results"""
+        # Parse each execution context to check for success
+        for context_xml in execution_contexts:
+            try:
+                root = ET.fromstring(context_xml)
+                success_elem = root.find("./success")
+                if success_elem is not None and success_elem.text == "true":
+                    # At least one successful command means we should continue
+                    return True
+            except ET.ParseError:
+                continue
+        
+        # Ask the user if we should continue despite no successful commands
+        confirm = Prompt.ask(
+            "\nNo commands succeeded. Continue with model execution?", 
+            choices=["y", "n"], 
+            default="y"
+        )
+        return confirm.lower() == "y"
+    
+    def _continue_execution_with_context(self, previous_message_xml: str, execution_contexts: List[str]):
+        """Continue execution with the model using command execution context"""
+        self.console.print("[bold blue]Continuing execution with command results...[/bold blue]")
+        
+        # Extract message content if available
+        message_content = ""
+        if previous_message_xml:
+            try:
+                root = ET.fromstring(previous_message_xml)
+                message_content = root.text if root.text else ""
+            except ET.ParseError:
+                message_content = "Error parsing previous message"
+        
+        # Construct a prompt with execution contexts
+        contexts_xml = "\n".join(execution_contexts)
+        
+        prompt = f"""
+        You are continuing a task based on the results of previous commands.
+        
+        Your previous response:
+        {message_content}
+        
+        Command execution results:
+        {contexts_xml}
+        
+        Based on these results, please continue with the task. You can:
+        1. Provide additional information or explanation
+        2. Suggest new commands to run
+        3. Suggest file modifications
+        
+        Respond in the same XML format as before.
+        """
+        
+        # Set a callback to handle streaming in the interface
+        def stream_callback(content, is_reasoning=False):
+            if is_reasoning:
+                # Use yellow color for reasoning tokens
+                self.console.print(f"[yellow]{content}[/yellow]", end="")
+            else:
+                # Use rich for normal content
+                self.console.print(content, end="", highlight=False)
+                
+        # Pass the callback to the agent
+        self.agent.stream_callback = stream_callback
+        response = self.agent.stream_reasoning(prompt)
+        
+        # Process the response
+        self.process_chat_response(response)
+    
     def _format_history_for_prompt(self):
         """Format chat history for inclusion in the prompt"""
         # Limit history to last 10 messages to avoid context overflow
@@ -1215,6 +1336,8 @@ class AgentInterface:
                 commands_root = ET.fromstring(shell_commands_xml)
                 commands = commands_root.findall("./command")
                 
+                execution_contexts = []
+                
                 if commands:
                     self.console.print("[bold blue]The model suggests the following shell commands:[/bold blue]")
                     
@@ -1224,9 +1347,15 @@ class AgentInterface:
                         
                         if auto_run:
                             self.console.print(f"[bold green]Auto-running safe command:[/bold green] {command}")
-                            self.execute_shell_command(command, auto_run=True)
+                            success, context_xml = self.execute_shell_command(command, auto_run=True)
                         else:
-                            self.execute_shell_command(command, auto_run=False)
+                            success, context_xml = self.execute_shell_command(command, auto_run=False)
+                        
+                        execution_contexts.append(context_xml)
+                
+                # If there are execution contexts and we need to continue with the model
+                if execution_contexts and self._should_continue_execution(execution_contexts):
+                    self._continue_execution_with_context(message_xml, execution_contexts)
                         
             except ET.ParseError as e:
                 self.console.print(f"[bold red]Error parsing shell commands XML: {e}[/bold red]")
