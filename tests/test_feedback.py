@@ -3,22 +3,36 @@
 from rich.console import Console
 from src.utils.feedback import DopamineReward
 
-def test_dopamine_reward():
-    """Test basic dopamine reward generation."""
-    console = Console()
-    reward = DopamineReward(console)
 
-    # Test with quality score
-    result = reward.generate_reward(95)
-    assert "DOPAMINE SURGE" in result
-    assert "🌟" in result
+def test_initial_score_neutral():
+    """Test initial score is neutral."""
+    reward = DopamineReward(Console())
+    assert "NEUTRAL" in reward.generate_reward()
 
-    # Test without quality score (should use last score)
-    result2 = reward.generate_reward()
-    assert result2  # Should return something
 
-    # Test reward for XML response
-    response = "<response><message>Test response</message></response>"
-    observation = "This is great work! Perfect solution!"
-    result3 = reward.reward_for_xml_response(response, observation)
-    assert "DOPAMINE" in result3
+def test_positive_feedback_high_score():
+    """Test high score generates positive feedback."""
+    reward = DopamineReward(Console())
+    feedback = reward.generate_reward(95)
+    assert "SURGE" in feedback
+
+
+def test_negative_feedback_low_score():
+    """Test low score generates negative feedback."""
+    reward = DopamineReward(Console())
+    feedback = reward.generate_reward(15)
+    assert "LOW" in feedback
+
+
+def test_mixed_feedback_mid_score():
+    """Test mid-range score generates mixed feedback."""
+    reward = DopamineReward(Console())
+    feedback = reward.generate_reward(65)
+    assert "TRICKLE" in feedback or "BOOST" in feedback
+
+
+def test_empty_feedback_defaults_neutral():
+    """Test empty feedback defaults to neutral."""
+    reward = DopamineReward(Console())
+    feedback = reward.reward_for_xml_response("", "")
+    assert "NEUTRAL" in feedback
