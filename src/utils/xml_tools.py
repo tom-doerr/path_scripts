@@ -1,36 +1,36 @@
-#!/usr/bin/env python3
 """XML parsing and formatting utilities."""
-
-import json
 import xml.etree.ElementTree as ET
-import xml.dom.minidom as minidom
 from typing import Optional, Dict, Any, List
 
 def extract_xml_from_response(response: str, tag_name: str) -> Optional[str]:
-    """
-    Extract XML content for a specific tag from a response string.
-    
-    Args:
-        response: The full response text
-        tag_name: The XML tag to extract
-        
-    Returns:
-        The extracted XML string or None if not found
-    """
+    """Extract XML content for a specific tag from a response string."""
     try:
-        # Look for XML content in the response
         start_tag = f"<{tag_name}"
         end_tag = f"</{tag_name}>"
         
         start_index = response.find(start_tag)
-        end_index = response.find(end_tag, start_index) + len(end_tag)
-        
-        if start_index != -1 and end_index != -1:
-            return response[start_index:end_index]
-        return None
+        if start_index == -1:
+            return None
+            
+        end_index = response.find(end_tag, start_index)
+        if end_index == -1:
+            return None
+            
+        return response[start_index:end_index+len(end_tag)]
     except Exception as e:
-        print(f"Error extracting XML: {e}")
         return None
+
+def validate_xml(xml_str: str) -> bool:
+    """Basic XML validation."""
+    try:
+        ET.fromstring(xml_str)
+        return True
+    except ET.ParseError:
+        return False
+
+def escape_xml_content(content: str) -> str:
+    """Escape special XML characters."""
+    return content.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&apos;')
 
 def format_xml_response(content_dict: Dict[str, Any]) -> str:
     """

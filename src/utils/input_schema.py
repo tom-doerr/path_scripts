@@ -60,75 +60,16 @@ INPUT_SCHEMA = """
 """
 
 RESPONSE_SCHEMA = """<response>
-  <!-- Optional message to the user -->
-  <message>Your response text here. Can include markdown formatting.</message>
-  
-  <!-- Optional actions to execute -->
-  <actions>
-    <!-- Create a new file -->
-    <action type="create_file" path="example.py">
-      # Python code here
-    </action>
-    
-    <!-- Modify an existing file -->
-    <action type="modify_file" path="existing.py">
-      <change>
-        <original>def old_function():</original>
-        <new>def new_function():</new>
-      </change>
-    </action>
-    
-    <!-- Run a shell command -->
-    <action type="run_command" command="echo 'Hello World'">
-    </action>
-  </actions>
-  
-  <!-- Optional file edits (search and replace) -->
+  <message>Response text</message>
   <file_edits>
-    <edit path="path/to/file.py">
-      <search>def old_function():</search>
-      <replace>def new_function():</replace>
-    </edit>
-    <edit path="path/to/new_file.py">
-      <search></search>
-      <replace># New file content here</replace>
-    </edit>
+    <!-- file edits here -->
   </file_edits>
-  
-  <!-- Optional shell commands -->
   <shell_commands>
-    <command safe_to_autorun="true">echo "Hello World"</command>
-    <command safe_to_autorun="false">rm -rf some_directory</command>
+    <!-- commands here -->
   </shell_commands>
-  
-  <!-- Optional memory updates -->
-  <memory_updates>
-    <edit>
-      <search>Old information to replace</search>
-      <replace>Updated information</replace>
-    </edit>
-    <append>New information to remember</append>
-  </memory_updates>
-  
-  <!-- Optional plan updates -->
-  <plan_updates>
-    <task id="task1" status="completed">Task description</task>
-    <task id="task2" status="in_progress">Task description</task>
-    <new_task id="task3" depends_on="task1,task2">New task description</new_task>
-  </plan_updates>
-  
-  <!-- Optional execution status -->
-  <execution_status complete="true|false" needs_user_input="true|false">
-    <message>Status message explaining what's done or what's needed</message>
-    <progress percent="50">Optional progress information</progress>
+  <execution_status>
+    <!-- status info -->
   </execution_status>
-  
-  <!-- Optional error reporting -->
-  <error>
-    <type>Error type (e.g., API_ERROR, EXECUTION_ERROR)</type>
-    <message>Error message</message>
-    <suggestion>Suggested action to resolve the error</suggestion>
-  </error>
 </response>"""
 
 def get_input_schema() -> str:

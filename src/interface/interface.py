@@ -20,7 +20,10 @@ from src.agent.core import Agent
 class AgentInterface:
     def __init__(self):
         self.console = Console()
-        self.agent = Agent()
+        from src.config import load_config
+        config = load_config()
+        model_name = config.get("default_model", "openrouter/deepseek/deepseek-r1")
+        self.agent = Agent(model_name=model_name)
         self.current_plan = None
         self.model_aliases = {
             "flash": "openrouter/google/gemini-2.0-flash-001",

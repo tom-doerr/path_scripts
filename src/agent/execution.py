@@ -117,7 +117,7 @@ def execute_task(agent, task_id: str) -> str:
             <action type="create_file" path="example.py">
               # Python code here
             </action>
-            <action type="modify_file极 path="existing.py">
+            <action type="modify_file" path="existing.py">
               <change>
                 <original>def old_function():</original>
                 <new>def new_function():</new>
