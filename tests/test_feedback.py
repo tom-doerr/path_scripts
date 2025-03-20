@@ -37,6 +37,7 @@ def test_empty_feedback_defaults_neutral():
     feedback = reward.reward_for_xml_response("", "")
     assert "NEUTRAL" in feedback
 
+
 def test_default_reward_score():
     """Test reward generation with default scoring."""
     reward = DopamineReward(Console())

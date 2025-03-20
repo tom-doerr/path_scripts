@@ -62,6 +62,7 @@ def test_pretty_format_xml():
         "</response>"
     )
 
+
 def test_pretty_format_invalid_xml():
     """Test formatting handles invalid XML gracefully."""
     invalid_xml = "<root><unclosed>test"
@@ -80,6 +81,7 @@ def test_validate_good_xml():
     """Test validation of properly formatted XML."""
     valid_xml = "<root><element>text</element></root>"
     assert validate_xml(valid_xml) is True
+
 
 def test_escape_xml_content():
     """Test XML content escaping."""
