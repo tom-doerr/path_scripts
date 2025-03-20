@@ -43,6 +43,8 @@ class AgentInterface:
         self.console.print("[bold green]display[/bold green]", "- Display the current plan")
         self.console.print("[bold green]update <task_id> <status> [--notes=text] [--progress=0-100][/bold green]", "- Update task status")
         self.console.print("[bold green]execute <task_id>[/bold green]", "- Execute a specific task (with confirmation)")
+        self.console.print("[bold green]execute-ready[/bold green]", "- Execute all ready tasks in dependency order")
+        self.console.print("[bold green]modify-plan[/bold green]", "- Let the agent suggest modifications to the plan")
         self.console.print("[bold green]model <model_name>[/bold green]", "- Change the model")
         self.console.print("[bold green]help[/bold green]", "- Show this help")
         self.console.print("[bold green]exit[/bold green]", "- Exit the interface")
@@ -193,6 +195,32 @@ class AgentInterface:
             self.console.print(f"[bold red]Error executing action: {e}[/bold red]")
             return False
     
+    def update_dependent_tasks(self, root, completed_task_id):
+        """Update tasks that depend on the completed task"""
+        # Find all tasks that depend on the completed task
+        for task in root.findall(".//task"):
+            depends_on = task.get("depends_on", "")
+            if depends_on:
+                dependencies = [dep.strip() for dep in depends_on.split(",")]
+                if completed_task_id in dependencies:
+                    # Check if all dependencies are completed
+                    all_deps_completed = True
+                    for dep_id in dependencies:
+                        if dep_id == completed_task_id:
+                            continue  # This one is completed
+                        
+                        dep_task = root.find(f".//task[@id='{dep_id}']")
+                        if dep_task is None or dep_task.get("status") != "completed":
+                            all_deps_completed = False
+                            break
+                    
+                    # If all dependencies are completed, mark this task as ready
+                    if all_deps_completed:
+                        current_status = task.get("status", "pending")
+                        if current_status == "pending":
+                            task.set("status", "ready")
+                            self.console.print(f"[bold blue]Task {task.get('id')} is now ready to be executed[/bold blue]")
+    
     def display_plan_tree(self, xml_content: str):
         """Display the plan as a rich tree"""
         try:
@@ -285,6 +313,127 @@ class AgentInterface:
             with self.console.status("[bold blue]Initializing agent...[/bold blue]"):
                 self.agent.initialize()
             self.console.print("[bold green]Agent initialized successfully[/bold green]")
+        
+        elif cmd == "modify-plan":
+            # Load the plan from file if not already loaded
+            if not self.agent.plan_tree:
+                try:
+                    with open("agent_plan.xml", 'r') as f:
+                        xml_content = f.read()
+                        self.agent.plan_tree = self.agent.extract_xml_from_response(xml_content, "plan")
+                except FileNotFoundError:
+                    self.console.print("[bold red]Error:[/bold red] No plan file found. Generate a plan first.")
+                    return
+            
+            self.console.print("[bold blue]Asking agent to suggest plan modifications...[/bold blue]")
+            
+            try:
+                # Get the current plan status
+                root = ET.fromstring(self.agent.plan_tree)
+                
+                # Count tasks by status
+                status_counts = {"pending": 0, "ready": 0, "in-progress": 0, "completed": 0, "failed": 0}
+                for task in root.findall(".//task"):
+                    status = task.get("status", "pending")
+                    if status in status_counts:
+                        status_counts[status] += 1
+                
+                # Generate a prompt for the agent
+                prompt = f"""
+                Review the current plan and suggest modifications based on the current state.
+                
+                CURRENT PLAN STATUS:
+                - Pending tasks: {status_counts["pending"]}
+                - Ready tasks: {status_counts["ready"]}
+                - In-progress tasks: {status_counts["in-progress"]}
+                - Completed tasks: {status_counts["completed"]}
+                - Failed tasks: {status_counts["failed"]}
+                
+                CURRENT PLAN:
+                {self.agent.plan_tree}
+                
+                Based on the current state, suggest modifications to the plan. These could include:
+                - Adding new tasks that were not initially considered
+                - Modifying existing tasks based on what we've learned
+                - Removing tasks that are no longer necessary
+                - Adjusting dependencies between tasks
+                
+                Return your suggestions in this XML format:
+                
+                <plan_update>
+                  <add_task parent_id="task1" id="task1.3" description="New subtask" status="pending" complexity="medium" depends_on="" progress="0" />
+                  <modify_task id="task2" description="Updated description" />
+                  <remove_task id="task3" />
+                </plan_update>
+                
+                Only include changes that are necessary. If no changes are needed, return an empty plan_update element.
+                """
+                
+                # Stream the reasoning process
+                response = self.agent.stream_reasoning(prompt)
+                
+                # Extract plan_update XML from the response
+                plan_update_xml = self.agent.extract_xml_from_response(response, "plan_update")
+                
+                if plan_update_xml:
+                    # Parse the plan update
+                    update_root = ET.fromstring(plan_update_xml)
+                    
+                    # Count the number of changes
+                    add_tasks = update_root.findall("./add_task")
+                    modify_tasks = update_root.findall("./modify_task")
+                    remove_tasks = update_root.findall("./remove_task")
+                    
+                    total_changes = len(add_tasks) + len(modify_tasks) + len(remove_tasks)
+                    
+                    if total_changes == 0:
+                        self.console.print("[bold green]No changes suggested by the agent[/bold green]")
+                        return
+                    
+                    # Display the suggested changes
+                    self.console.print(f"[bold blue]Agent suggests {total_changes} changes:[/bold blue]")
+                    
+                    for add_task in add_tasks:
+                        parent_id = add_task.get("parent_id", "unknown")
+                        task_id = add_task.get("id", "unknown")
+                        description = add_task.get("description", "No description")
+                        self.console.print(f"[bold green]+ Add task {task_id}[/bold green] to parent {parent_id}: {description}")
+                    
+                    for modify_task in modify_tasks:
+                        task_id = modify_task.get("id", "unknown")
+                        description = modify_task.get("description", "")
+                        self.console.print(f"[bold yellow]~ Modify task {task_id}[/bold yellow]" + (f": {description}" if description else ""))
+                    
+                    for remove_task in remove_tasks:
+                        task_id = remove_task.get("id", "unknown")
+                        self.console.print(f"[bold red]- Remove task {task_id}[/bold red]")
+                    
+                    # Ask for confirmation
+                    confirm = Prompt.ask(
+                        "\nApply these changes?", 
+                        choices=["y", "n"], 
+                        default="n"
+                    )
+                    
+                    if confirm.lower() == "y":
+                        # Apply the changes
+                        self.agent.apply_plan_updates(plan_update_xml)
+                        
+                        # Save the updated plan
+                        with open("agent_plan.xml", 'w') as f:
+                            f.write(self.agent.format_xml_response({"plan": self.agent.plan_tree}))
+                        
+                        self.console.print("[bold green]Plan updated successfully[/bold green]")
+                        
+                        # Display the updated plan
+                        self.display_plan_tree(self.agent.format_xml_response({"plan": self.agent.plan_tree}))
+                    else:
+                        self.console.print("[bold yellow]Changes discarded[/bold yellow]")
+                else:
+                    self.console.print("[bold yellow]No plan updates found in the response[/bold yellow]")
+            
+            except Exception as e:
+                self.console.print(f"[bold red]Error modifying plan: {e}[/bold red]")
         
         elif cmd == "model":
             if not args:
@@ -408,6 +557,205 @@ class AgentInterface:
             self.console.print(f"[bold green]Task {task_id} updated to {status}[/bold green]")
             self.display_plan_tree(result)
         
+        elif cmd == "execute-ready":
+            # Load the plan from file if not already loaded
+            if not self.agent.plan_tree:
+                try:
+                    with open("agent_plan.xml", 'r') as f:
+                        xml_content = f.read()
+                        self.agent.plan_tree = self.agent.extract_xml_from_response(xml_content, "plan")
+                except FileNotFoundError:
+                    self.console.print("[bold red]Error:[/bold red] No plan file found. Generate a plan first.")
+                    return
+            
+            # Find all ready tasks
+            try:
+                root = ET.fromstring(self.agent.plan_tree)
+                ready_tasks = []
+                
+                # First pass: find all tasks with status "ready" or "pending" with no dependencies
+                for task in root.findall(".//task"):
+                    task_id = task.get("id")
+                    status = task.get("status", "pending")
+                    depends_on = task.get("depends_on", "")
+                    
+                    if status == "ready" or (status == "pending" and not depends_on):
+                        # Check if dependencies are met
+                        deps_met, _ = self.agent.check_dependencies(task_id)
+                        if deps_met:
+                            ready_tasks.append((task_id, task.get("description", "")))
+                
+                if not ready_tasks:
+                    self.console.print("[bold yellow]No ready tasks found[/bold yellow]")
+                    return
+                
+                # Display ready tasks
+                self.console.print("[bold blue]Ready tasks:[/bold blue]")
+                for i, (task_id, desc) in enumerate(ready_tasks):
+                    self.console.print(f"[bold]{i+1}.[/bold] {task_id}: {desc}")
+                
+                # Ask which tasks to execute
+                confirm = Prompt.ask(
+                    "\nExecute all ready tasks?", 
+                    choices=["y", "n", "select"], 
+                    default="n"
+                )
+                
+                if confirm.lower() == "n":
+                    self.console.print("[bold yellow]Execution cancelled[/bold yellow]")
+                    return
+                
+                tasks_to_execute = []
+                
+                if confirm.lower() == "select":
+                    # Let user select specific tasks
+                    selection = Prompt.ask(
+                        "Enter task numbers to execute (comma-separated)", 
+                        default="1"
+                    )
+                    try:
+                        selected_indices = [int(idx.strip()) - 1 for idx in selection.split(",")]
+                        for idx in selected_indices:
+                            if 0 <= idx < len(ready_tasks):
+                                tasks_to_execute.append(ready_tasks[idx][0])  # Add task_id
+                    except ValueError:
+                        self.console.print("[bold red]Invalid selection[/bold red]")
+                        return
+                else:
+                    # Execute all ready tasks
+                    tasks_to_execute = [task[0] for task in ready_tasks]  # Get all task_ids
+                
+                # Execute each selected task
+                for task_id in tasks_to_execute:
+                    self.console.print(f"\n[bold blue]Executing task {task_id}...[/bold blue]")
+                    
+                    try:
+                        result = self.agent.execute_task(task_id)
+                        
+                        # Check for errors
+                        error_element = ET.fromstring(result).find(".//error")
+                        if error_element is not None and error_element.text:
+                            self.console.print(f"[bold red]Error:[/bold red] {error_element.text}")
+                            continue
+                        
+                        # Save the actions to a file
+                        with open(f"agent_actions_{task_id}.xml", 'w') as f:
+                            f.write(result)
+                        
+                        # Save the updated plan
+                        with open("agent_plan.xml", 'w') as f:
+                            f.write(self.agent.format_xml_response({"plan": self.agent.plan_tree}))
+                        
+                        # Display the actions
+                        actions_xml = self.agent.extract_xml_from_response(result, "actions")
+                        if actions_xml:
+                            # Parse the actions to show them individually for confirmation
+                            try:
+                                actions_root = ET.fromstring(actions_xml)
+                                actions_count = len(actions_root.findall("./action"))
+                                
+                                # Ask if user wants to execute all actions or confirm each one
+                                if actions_count > 1:
+                                    execute_mode = Prompt.ask(
+                                        "\nHow do you want to execute actions?", 
+                                        choices=["all", "one-by-one", "cancel"], 
+                                        default="one-by-one"
+                                    )
+                                    
+                                    if execute_mode == "cancel":
+                                        self.console.print("[bold yellow]Execution cancelled[/bold yellow]")
+                                        continue
+                                else:
+                                    execute_mode = "one-by-one"
+                                
+                                successful_actions = 0
+                                
+                                if execute_mode == "all":
+                                    # Execute all actions with a single confirmation
+                                    confirm = Prompt.ask(
+                                        f"\nExecute all {actions_count} actions?", 
+                                        choices=["y", "n"], 
+                                        default="n"
+                                    )
+                                    
+                                    if confirm.lower() == "y":
+                                        with self.console.status(f"[bold blue]Executing {actions_count} actions...[/bold blue]"):
+                                            for i, action in enumerate(actions_root.findall("./action")):
+                                                self.console.print(f"\n[bold cyan]Action {i+1}/{actions_count}:[/bold cyan]")
+                                                if self.execute_action(action):
+                                                    successful_actions += 1
+                                    else:
+                                        self.console.print("[bold yellow]Execution cancelled[/bold yellow]")
+                                        continue
+                                else:
+                                    # Execute actions one by one with confirmation for each
+                                    for i, action in enumerate(actions_root.findall("./action")):
+                                        self.console.print(f"\n[bold cyan]Action {i+1}/{actions_count}:[/bold cyan]")
+                                        
+                                        # Execute the action with confirmation
+                                        if self.execute_action(action):
+                                            successful_actions += 1
+                                
+                                # Update task progress based on completed actions
+                                if actions_count > 0:
+                                    completion_percentage = int((successful_actions / actions_count) * 30) + 70
+                                    if successful_actions == actions_count:
+                                        # All actions completed successfully
+                                        self.console.print("[bold green]All actions completed successfully[/bold green]")
+                                        
+                                        # Parse the plan tree
+                                        root = ET.fromstring(self.agent.plan_tree)
+                                        task_element = root.find(f".//task[@id='{task_id}']")
+                                        if task_element is not None:
+                                            task_element.set("status", "completed")
+                                            task_element.set("progress", "100")
+                                            
+                                            # Update dependent tasks to be ready
+                                            self.update_dependent_tasks(root, task_id)
+                                            
+                                            self.agent.plan_tree = ET.tostring(root, encoding='unicode')
+                                            
+                                            # Save the updated plan
+                                            with open("agent_plan.xml", 'w') as f:
+                                                f.write(self.agent.format_xml_response({"plan": self.agent.plan_tree}))
+                                            
+                                            self.console.print(f"[bold green]Task {task_id} marked as completed[/bold green]")
+                                    else:
+                                        # Some actions failed
+                                        self.console.print(f"[bold yellow]{successful_actions}/{actions_count} actions completed[/bold yellow]")
+                                        
+                                        # Parse the plan tree
+                                        root = ET.fromstring(self.agent.plan_tree)
+                                        task_element = root.find(f".//task[@id='{task_id}']")
+                                        if task_element is not None:
+                                            task_element.set("progress", str(completion_percentage))
+                                            self.agent.plan_tree = ET.tostring(root, encoding='unicode')
+                                            
+                                            # Save the updated plan
+                                            with open("agent_plan.xml", 'w') as f:
+                                                f.write(self.agent.format_xml_response({"plan": self.agent.plan_tree}))
+                                            
+                                            self.console.print(f"[bold yellow]Task {task_id} progress updated to {completion_percentage}%[/bold yellow]")
+                            
+                            except ET.ParseError:
+                                self.console.print("[bold red]Error parsing actions XML[/bold red]")
+                        
+                        self.console.print(f"[bold green]Actions saved to agent_actions_{task_id}.xml[/bold green]")
+                        
+                    except KeyboardInterrupt:
+                        self.console.print("\n[bold yellow]Operation cancelled by user[/bold yellow]")
+                        break
+                    except Exception as e:
+                        self.console.print(f"[bold red]Error executing task {task_id}: {e}[/bold red]")
+                
+                # Display the updated plan
+                self.display_plan_tree(self.agent.format_xml_response({"plan": self.agent.plan_tree}))
+                
+            except ET.ParseError:
+                self.console.print("[bold red]Error parsing plan XML[/bold red]")
+            except Exception as e:
+                self.console.print(f"[bold red]Error: {e}[/bold red]")
+        
         elif cmd == "execute":
             if not args:
                 self.console.print("[bold red]Error:[/bold red] Missing task_id")
@@ -478,50 +826,88 @@ class AgentInterface:
                     try:
                         actions_root = ET.fromstring(actions_xml)
                         actions_count = len(actions_root.findall("./action"))
-                        successful_actions = 0
-                        
-                        for i, action in enumerate(actions_root.findall("./action")):
-                            self.console.print(f"\n[bold cyan]Action {i+1}/{actions_count}:[/bold cyan]")
                             
-                            # Execute the action with confirmation
-                            if self.execute_action(action):
-                                successful_actions += 1
-                        
+                        # Ask if user wants to execute all actions or confirm each one
+                        if actions_count > 1:
+                            execute_mode = Prompt.ask(
+                                "\nHow do you want to execute actions?", 
+                                choices=["all", "one-by-one", "cancel"], 
+                                default="one-by-one"
+                            )
+                                
+                            if execute_mode == "cancel":
+                                self.console.print("[bold yellow]Execution cancelled[/bold yellow]")
+                                return
+                        else:
+                            execute_mode = "one-by-one"
+                            
+                        successful_actions = 0
+                            
+                        if execute_mode == "all":
+                            # Execute all actions with a single confirmation
+                            confirm = Prompt.ask(
+                                f"\nExecute all {actions_count} actions?", 
+                                choices=["y", "n"], 
+                                default="n"
+                            )
+                                
+                            if confirm.lower() == "y":
+                                with self.console.status(f"[bold blue]Executing {actions_count} actions...[/bold blue]"):
+                                    for i, action in enumerate(actions_root.findall("./action")):
+                                        self.console.print(f"\n[bold cyan]Action {i+1}/{actions_count}:[/bold cyan]")
+                                        if self.execute_action(action):
+                                            successful_actions += 1
+                            else:
+                                self.console.print("[bold yellow]Execution cancelled[/bold yellow]")
+                                return
+                        else:
+                            # Execute actions one by one with confirmation for each
+                            for i, action in enumerate(actions_root.findall("./action")):
+                                self.console.print(f"\n[bold cyan]Action {i+1}/{actions_count}:[/bold cyan]")
+                                    
+                                # Execute the action with confirmation
+                                if self.execute_action(action):
+                                    successful_actions += 1
+                            
                         # Update task progress based on completed actions
                         if actions_count > 0:
                             completion_percentage = int((successful_actions / actions_count) * 30) + 70
                             if successful_actions == actions_count:
                                 # All actions completed successfully
                                 self.console.print("[bold green]All actions completed successfully[/bold green]")
-                                
+                                    
                                 # Parse the plan tree
                                 root = ET.fromstring(self.agent.plan_tree)
                                 task_element = root.find(f".//task[@id='{task_id}']")
                                 if task_element is not None:
                                     task_element.set("status", "completed")
                                     task_element.set("progress", "100")
+                                        
+                                    # Update dependent tasks to be ready
+                                    self.update_dependent_tasks(root, task_id)
+                                        
                                     self.agent.plan_tree = ET.tostring(root, encoding='unicode')
-                                    
+                                        
                                     # Save the updated plan
                                     with open("agent_plan.xml", 'w') as f:
                                         f.write(self.agent.format_xml_response({"plan": self.agent.plan_tree}))
-                                    
+                                        
                                     self.console.print(f"[bold green]Task {task_id} marked as completed[/bold green]")
                             else:
                                 # Some actions failed
                                 self.console.print(f"[bold yellow]{successful_actions}/{actions_count} actions completed[/bold yellow]")
-                                
+                                    
                                 # Parse the plan tree
                                 root = ET.fromstring(self.agent.plan_tree)
                                 task_element = root.find(f".//task[@id='{task_id}']")
                                 if task_element is not None:
                                     task_element.set("progress", str(completion_percentage))
                                     self.agent.plan_tree = ET.tostring(root, encoding='unicode')
-                                    
+                                        
                                     # Save the updated plan
                                     with open("agent_plan.xml", 'w') as f:
                                         f.write(self.agent.format_xml_response({"plan": self.agent.plan_tree}))
-                                    
+                                        
                                     self.console.print(f"[bold yellow]Task {task_id} progress updated to {completion_percentage}%[/bold yellow]")
                     
                     except ET.ParseError:
