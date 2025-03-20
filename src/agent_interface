@@ -13,22 +13,33 @@ from rich.syntax import Syntax
 from rich.prompt import Prompt
 from rich.markdown import Markdown
 
-# Import the Agent class from the agent script
+# Import the Agent class directly
 import os
 import sys
-# Get the absolute path of the current script
-current_dir = os.path.dirname(os.path.abspath(__file__))
-# Add the current directory to the path
-sys.path.insert(0, current_dir)
-# Import the Agent class by directly loading the module
-agent_path = os.path.join(current_dir, "agent")
-sys.path.insert(0, os.path.dirname(agent_path))
-# Use importlib to load the module dynamically
 import importlib.util
-spec = importlib.util.spec_from_file_location("agent_module", agent_path)
-agent_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(agent_module)
-Agent = agent_module.Agent
+
+# Get the absolute path of the current script and agent file
+current_dir = os.path.dirname(os.path.abspath(__file__))
+agent_path = os.path.join(current_dir, "agent")
+
+# Check if the agent file exists
+if not os.path.exists(agent_path):
+    print(f"Error: Agent file not found at {agent_path}")
+    sys.exit(1)
+
+# Load the agent module directly from file
+try:
+    spec = importlib.util.spec_from_file_location("agent_module", agent_path)
+    if spec is None:
+        print(f"Error: Could not create spec for {agent_path}")
+        sys.exit(1)
+    
+    agent_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(agent_module)
+    Agent = agent_module.Agent
+except Exception as e:
+    print(f"Error importing Agent: {e}")
+    sys.exit(1)
 
 class AgentInterface:
     def __init__(self):
