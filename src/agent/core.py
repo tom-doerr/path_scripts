@@ -261,85 +261,29 @@ class Agent:
             print(f"\nError during streaming: {e}")
             return full_response or f"Error: {str(e)}"
     
-    def extract_xml_from_response(self, response: str, tag_name: str) -> Optional[str]:
-        """Extract XML content for a specific tag from the response"""
-        try:
-            # Look for XML content in the response
-            start_tag = f"<{tag_name}"
-            end_tag = f"</{tag_name}>"
-            
-            start_index = response.find(start_tag)
-            end_index = response.find(end_tag, start_index) + len(end_tag)
-            
-            if start_index != -1 and end_index != -1:
-                return response[start_index:end_index]
-            return None
-        except Exception as e:
-            print(f"Error extracting XML: {e}")
-            return None
-    
-    def _get_terminal_height(self) -> int:
-        """Get the terminal height for proper screen clearing"""
-        try:
-            import shutil
-            terminal_size = shutil.get_terminal_size()
-            return terminal_size.lines
-        except Exception:
-            # Fallback to a reasonable default if we can't get the terminal size
-            return 40
-            
-    def pretty_format_xml(self, xml_string: str) -> str:
-        """Format XML string in a cleaner way than minidom."""
-        try:
-            import xml.etree.ElementTree as ET
-            from xml.dom import minidom
-            
-            # Parse the XML
-            root = ET.fromstring(xml_string)
-            
-            # Define a recursive function to format elements
-            def format_elem(elem, level=0):
-                indent = "  " * level
-                result = f"{indent}<{elem.tag}"
-                
-                # Add attributes
-                for name, value in elem.attrib.items():
-                    result += f' {name}="{value}""
-                
-                # Check if element has children or text
-                if len(elem) == 0 and (elem.text is None or elem.text.strip() == ""):
-                    result += "/>\n"
-                else:
-                    result += ">"
-                    
-                    # Add text if present and not just whitespace
-                    if elem.text and elem.text.strip():
-                        if "\n" in elem.text:
-                            # For multiline text, add a newline after the opening tag
-                            result += "\n"
-                            # Indent each line of the text
-                            text_lines = elem.text.split("\n")
-                            for line in text_lines:
-                                if line.strip():  # Skip empty lines
-                                    result += f"{indent}  {line.strip()}\n"
-                        else:
-                            result += elem.text
-                    
-                    # Add children
-                    if len(elem) > 0:
-                        result += "\n"
-                        for child in elem:
-                            result += format_elem(child, level + 1)
-                        result += f"{indent}"
-                    
-                    result += f"</{elem.tag}>\n"
-                
-                return result
-            
-            # Start formatting from the root
-            formatted_xml = format_elem(root)
-            return formatted_xml
-            
-        except Exception as e:
-            print(f"Error formatting XML: {e}")
-            return xml_string  # Return original if formatting fails
+    # Plan management methods
+    def generate_plan(self, spec: str) -> str:
+        """Generate a plan tree based on the specification"""
+        return generate_plan(self, spec)
+
+    def update_plan(self, task_id: str, new_status: str, notes: Optional[str] = None, progress: Optional[str] = None) -> str:
+        """Update the status of a task in the plan"""
+        return update_plan(self, task_id, new_status, notes, progress)
+
+    def display_plan_tree(self) -> str:
+        """Display the current plan tree"""
+        if not self.plan_tree:
+            return format_xml_response({"error": "No plan exists"})
+        return format_xml_response({"plan": self.plan_tree})
+
+    def apply_plan_updates(self, plan_update_xml: str) -> None:
+        """Apply updates to the plan tree based on the plan_update XML"""
+        apply_plan_updates(self, plan_update_xml)
+
+    def check_dependencies(self, task_id: str) -> Tuple[bool, List[str]]:
+        """Check if all dependencies for a task are completed"""
+        return check_dependencies(self, task_id)
+
+    def execute_task(self, task_id: str) -> str:
+        """Execute a specific task from the plan"""
+        return execute_task(self, task_id)
