@@ -19,7 +19,7 @@ class DopamineReward:
 
         Args:
             quality_score: Optional score from 0-100 indicating quality of performance
-                           If None, will use a slight variation from the last score
+                           If None, will use current dopamine level as base
 
         Returns:
             A dopamine reward message
@@ -32,10 +32,10 @@ class DopamineReward:
             '🙂 [blue]DOPAMINE TRICKLE[/blue] Good progress.'
         """
         if quality_score is None:
-            # Vary slightly from last score if no new score provided
-            quality_score = max(0, min(100, self.last_score + random.randint(-10, 10)))
+            # Use current dopamine level with small random variation
+            quality_score = max(0, min(100, self.dopamine_level + random.randint(-10, 10)))
 
-        self.last_score = quality_score
+        self.dopamine_level = max(0, min(100, quality_score))  # Update dopamine level directly
 
         if quality_score >= 90:
             return "🌟 [bold green]DOPAMINE SURGE![/bold green] Exceptional work!"
