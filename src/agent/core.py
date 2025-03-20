@@ -3,6 +3,7 @@
 
 import os
 import sys
+import threading
 import json
 from typing import Dict, List, Optional, Any, Tuple, Callable
 import xml.etree.ElementTree as ET
@@ -211,6 +212,7 @@ class Agent:
         self.console = Console()
         self.model_name = model_name
         self.plan_tree = None
+        self.plan_lock = threading.Lock()  # Thread safety for plan_tree access
         self.repository_info = {}
         self.config = {
             "stream_reasoning": True,

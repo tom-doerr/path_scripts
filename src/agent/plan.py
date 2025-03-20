@@ -102,7 +102,8 @@ def update_plan(agent, task_id: str, new_status: str, notes: Optional[str] = Non
     
     try:
         # Parse the plan tree
-        root = ET.fromstring(agent.plan_tree)
+        parser = ET.XMLParser(resolve_entities=False)
+        root = ET.fromstring(agent.plan_tree, parser=parser)
         
         # Find the task with the given ID
         task_found = False
@@ -190,7 +191,8 @@ def apply_plan_updates(agent, plan_update_xml: str) -> None:
     try:
         # Parse the plan tree and updates
         plan_root = ET.fromstring(agent.plan_tree)
-        updates_root = ET.fromstring(plan_update_xml)
+        parser = ET.XMLParser(resolve_entities=False)
+        updates_root = ET.fromstring(plan_update_xml, parser=parser)
         
         # Track changes for reporting
         changes = []

@@ -22,7 +22,8 @@ def execute_task(agent, task_id: str) -> str:
     
     try:
         # Parse the plan tree
-        root = ET.fromstring(agent.plan_tree)
+        parser = ET.XMLParser(resolve_entities=False)
+        root = ET.fromstring(agent.plan_tree, parser=parser)
         
         # Find the task with the given ID
         task_element = root.find(f".//task[@id='{task_id}']")

@@ -1,5 +1,6 @@
 import os
 import subprocess
+import shlex
 import datetime
 from typing import Tuple, Dict, List, Optional
 import xml.etree.ElementTree as ET
@@ -121,8 +122,8 @@ def execute_action(action_element, console: Console) -> bool:
             
             # Run the command and capture output
             process = subprocess.Popen(
-                command,
-                shell=True,
+                command.split(),
+                shell=False,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
@@ -301,9 +302,10 @@ def execute_shell_command(command: str, console: Console, auto_run: bool = False
     console.print(f"[bold blue]Running command: {command}[/bold blue]")
     
     # Run the command and capture output
+    # Split command into list and use shell=False for security
     process = subprocess.Popen(
-        command,
-        shell=True,
+        shlex.split(command),
+        shell=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True
