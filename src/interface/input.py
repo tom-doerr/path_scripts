@@ -241,3 +241,201 @@ def _get_terminal_height() -> int:
     except Exception:
         # Fallback to a reasonable default if we can't get the terminal size
         return 40
+"""
+Input handling for the agent interface.
+"""
+import os
+import datetime
+import xml.etree.ElementTree as ET
+from typing import List, Dict, Any, Optional, Callable
+from rich.console import Console
+
+from src.interface.display import get_system_info
+from src.interface.chat import process_chat_response
+
+def process_user_input(agent, user_input: str, chat_history: List[Dict[str, Any]], history_file: str, console: Console):
+    """Prepare the chat message to send to the model"""
+    # Add user message to history
+    chat_history.append({"role": "user", "content": user_input})
+    save_chat_history(chat_history, history_file)
+    
+    # Format history for the prompt
+    formatted_history = _format_history_for_prompt(chat_history)
+    
+    # Get persistent memory
+    memory_content = _load_persistent_memory()
+    
+    # Get system information
+    system_info = get_system_info()
+    
+    # Import the input schema formatter
+    from src.utils.input_schema import format_input_message
+    
+    # Format the message with XML tags using the schema
+    formatted_input = format_input_message(
+        message=user_input,
+        system_info=system_info,
+        memory=memory_content,
+        history=formatted_history
+    )
+    
+    # Construct a prompt that instructs the model to respond in XML format
+    from src.interface.chat import process_chat_message
+    prompt = process_chat_message(formatted_input, formatted_history, memory_content, system_info)
+    
+    # Set a callback to handle streaming in the interface
+    def stream_callback(content, is_reasoning=False):
+        if is_reasoning:
+            # Use yellow color for reasoning tokens
+            console.print(f"[yellow]{content}[/yellow]", end="")
+        else:
+            # Use rich for normal content
+            console.print(content, end="", highlight=False)
+            
+    # Pass the callback to the agent
+    agent.stream_callback = stream_callback
+    response = agent.stream_reasoning(prompt)
+    
+    # Process the response
+    process_chat_response(
+        agent, 
+        console, 
+        response, 
+        chat_history,
+        _update_persistent_memory,
+        _get_terminal_height,
+        _load_persistent_memory,
+        _format_history_for_prompt,
+        lambda: save_chat_history(chat_history, history_file)
+    )
+
+def _format_history_for_prompt(chat_history: List[Dict[str, Any]]) -> str:
+    """
+    Format chat history for inclusion in the prompt.
+    
+    Args:
+        chat_history: List of chat history entries
+        
+    Returns:
+        Formatted history string
+    """
+    formatted_history = []
+    
+    # Get the last few messages (up to 10)
+    recent_history = chat_history[-10:] if len(chat_history) > 10 else chat_history
+    
+    for entry in recent_history:
+        role = entry.get("role", "unknown")
+        content = entry.get("content", "")
+        formatted_history.append(f"<message role=\"{role}\">{content}</message>")
+    
+    return "\n".join(formatted_history)
+
+def save_chat_history(chat_history: List[Dict[str, Any]], history_file: str):
+    """
+    Save chat history to file.
+    
+    Args:
+        chat_history: List of chat history entries
+        history_file: Path to the history file
+    """
+    try:
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(history_file), exist_ok=True)
+        
+        with open(history_file, 'w') as f:
+            import json
+            json.dump(chat_history, f, indent=2)
+    except Exception as e:
+        print(f"Could not save chat history: {e}")
+
+def _load_persistent_memory() -> str:
+    """
+    Load memory from file.
+    
+    Returns:
+        Memory content as string
+    """
+    memory_file = "agent_memory.xml"
+    try:
+        if os.path.exists(memory_file):
+            with open(memory_file, 'r') as f:
+                return f.read()
+        else:
+            # Create default memory structure - simple and flexible
+            default_memory = "<memory>\n  <!-- Agent can structure this as needed -->\n</memory>"
+            with open(memory_file, 'w') as f:
+                f.write(default_memory)
+            return default_memory
+    except Exception as e:
+        print(f"Could not load memory: {e}")
+        return "<memory></memory>"
+
+def _update_persistent_memory(memory_updates_xml):
+    """
+    Update the persistent memory with the provided updates.
+    
+    Args:
+        memory_updates_xml: XML string containing memory updates
+    """
+    try:
+        # Parse the memory updates
+        updates_root = ET.fromstring(memory_updates_xml)
+        
+        # Load the current memory
+        memory_content = _load_persistent_memory()
+        memory_root = ET.fromstring(memory_content)
+        
+        # Process edits
+        for edit in updates_root.findall("./edit"):
+            search = edit.find("./search")
+            replace = edit.find("./replace")
+            
+            if search is not None and replace is not None:
+                search_text = search.text if search.text else ""
+                replace_text = replace.text if replace.text else ""
+                
+                # Convert memory to string for search/replace
+                memory_str = ET.tostring(memory_root, encoding='unicode')
+                memory_str = memory_str.replace(search_text, replace_text)
+                
+                # Parse back to XML
+                memory_root = ET.fromstring(memory_str)
+        
+        # Process appends
+        for append in updates_root.findall("./append"):
+            append_text = append.text if append.text else ""
+            
+            # Create a temporary root to parse the append text
+            try:
+                # Try to parse as XML first
+                append_elem = ET.fromstring(f"<root>{append_text}</root>")
+                for child in append_elem:
+                    memory_root.append(child)
+            except ET.ParseError:
+                # If not valid XML, add as text node to a new element
+                new_elem = ET.SubElement(memory_root, "entry")
+                new_elem.text = append_text
+                new_elem.set("timestamp", datetime.datetime.now().isoformat())
+        
+        # Save the updated memory
+        with open("agent_memory.xml", 'w') as f:
+            f.write(ET.tostring(memory_root, encoding='unicode'))
+            
+    except ET.ParseError as e:
+        print(f"Could not parse memory updates XML: {e}")
+    except Exception as e:
+        print(f"Error updating memory: {e}")
+
+def _get_terminal_height() -> int:
+    """
+    Get the terminal height.
+    
+    Returns:
+        Terminal height in lines
+    """
+    try:
+        import os
+        return os.get_terminal_size().lines
+    except:
+        return 24  # Fallback value

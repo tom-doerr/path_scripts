@@ -181,6 +181,10 @@ def process_command(
                 
                 # Import the input schema formatter
                 from src.utils.input_schema import format_input_message
+                from src.interface.display import get_system_info
+                
+                # Get system information
+                system_info = get_system_info()
                 
                 # Format the message with XML tags using the schema
                 formatted_message = format_input_message(

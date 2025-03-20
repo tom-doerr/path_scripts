@@ -2,12 +2,15 @@
 Vim-like input interface for the agent CLI using Textual.
 """
 from enum import Enum
-from typing import List, Callable, Optional
+from typing import List, Dict, Any, Callable, Optional
 
 from rich.console import Console
 from textual.app import App
 from textual.widgets import Input
 from textual.events import Key
+
+# Import necessary modules for input processing
+from src.interface.display import get_system_info
 
 class Mode(Enum):
     NORMAL = "normal"
