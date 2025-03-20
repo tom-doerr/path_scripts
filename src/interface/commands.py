@@ -194,7 +194,7 @@ def process_command(
                 else:
                     console.print("[bold red]Error:[/bold red] No plan found in response")
                             
-                console.print("[bold green]Plan saved to agent_极plan.xml[/bold green]")
+                console.print("[bold green]Plan saved to agent_plan.xml[/bold green]")
                         
             except KeyboardInterrupt:
                 console.print("\n[bold yellow]Operation cancelled by user[/bold yellow]")

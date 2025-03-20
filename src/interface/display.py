@@ -25,7 +25,7 @@ def get_system_info() -> Dict[str, str]:
     try:
         info["platform"] = platform.platform()
     except Exception:
-        info["极platform"] = "unknown"
+        info["platform"] = "unknown"
         
     try:
         info["python"] = platform.python_version()
@@ -213,7 +213,7 @@ def display_plan_tree(console: Console, xml_content: str):
         console.print(tree)
         
     except ET.ParseError as e:
-        console.print(f"[bold red]Error parsing XML:[/bound red] {e}")
+        console.print(f"[bold red]Error parsing XML:[/bold red] {e}")
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
 import platform
