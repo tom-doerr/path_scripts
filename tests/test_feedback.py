@@ -14,7 +14,7 @@ if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
 from rich.console import Console
-from src.utils.feedback import DopamineReward
+from utils.feedback import DopamineReward
 
 
 def test_initial_score():
