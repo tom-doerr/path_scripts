@@ -49,7 +49,7 @@
 2. **Add Vim-like Interface** - Implement vim-like navigation and editing in the interface.
    - Priority: LOW
    - Status: Not started
-   - Notes: Would allow using j/k to navigate history and i/Esc for editing mode
+   - Notes: Would require implementing mode switching (normal/insert), navigation with j/k, and basic text manipulation commands. Could leverage prompt_toolkit or textual libraries.
 
 3. **Add Textual UI Integration** - Consider integrating with Textual for a more advanced TUI.
    - Priority: LOW
