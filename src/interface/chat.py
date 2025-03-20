@@ -13,7 +13,8 @@ def process_chat_message(
     formatted_message: str, 
     formatted_history: str, 
     memory_content: str,
-    system_info: Dict[str, str]
+    system_info: Dict[str, str],
+    config: Dict[str, Any] = None
 ) -> str:
     """Prepare the chat message to send to the model"""
     # Get current date, time and timezone
@@ -71,7 +72,7 @@ def process_chat_message(
 </xml>"""
     
     # Print the full prompt for debugging only if verbose mode is enabled
-    if getattr(agent, 'config', {}).get('verbose', False):
+    if config and config.get('verbose', False):
         print("=== Message Sent to Model ===")
         print(prompt)
         print("=== End Message ===")
@@ -183,7 +184,7 @@ def _continue_execution_with_context(
 </xml>"""
     
     # Print the full prompt only if verbose mode is enabled
-    if getattr(agent, 'config', {}).get('verbose', False):
+    if config and config.get('verbose', False):
         print(prompt)
         print("=== End Message ===")
     

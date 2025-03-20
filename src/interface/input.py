@@ -44,7 +44,13 @@ def process_user_input(agent, user_input: str, chat_history: List[Dict[str, Any]
     
     # Construct a prompt that instructs the model to respond in XML format
     from src.interface.chat import process_chat_message
-    prompt = process_chat_message(formatted_input, formatted_history, memory_content, system_info)
+    prompt = process_chat_message(
+        formatted_input, 
+        formatted_history, 
+        memory_content, 
+        system_info,
+        getattr(agent, 'config', {})
+    )
     
     try:
         # Set a callback to handle streaming in the interface
