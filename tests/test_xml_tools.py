@@ -54,7 +54,9 @@ def test_pretty_format_xml():
         "    Test\n"
         "  </message>\n"
         "  <data>\n"
-        "    <item>1</item>\n"
+        "    <item>\n"
+        "      1\n"
+        "    </item>\n"
         "  </data>\n"
         "</response>"
     )
