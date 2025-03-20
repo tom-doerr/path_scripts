@@ -1,27 +1,3 @@
-        if not self.config["stream_reasoning"]:
-            # Non-streaming mode
-            try:
-                response = litellm.completion(
-                    model=self.model_name,
-                    messages=messages,
-                    timeout=120  # Increase timeout to prevent hanging
-                )
-                return response.choices[0].message.content
-            except Exception as e:
-                error_msg = str(e)
-                print(f"Error in non-streaming mode: {error_msg}")
-                
-                # Provide more specific error messages
-                if "rate limit" in error_msg.lower():
-                    return "Error: Rate limit exceeded. Please try again later."
-                elif "timeout" in error_msg.lower():
-                    return "Error: Request timed out. The model may be overloaded."
-                elif "connection" in error_msg.lower():
-                    return "Error: Connection failed. Please check your internet connection."
-                else:
-                    return f"Error: {error_msg}"
-        
-        # Streaming mode
         full_response = ""
         reasoning_output = ""
         

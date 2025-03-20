@@ -119,16 +119,16 @@ def main():
     # These methods are now imported from utils.xml_operations
                 
 def _get_terminal_height(self) -> int:
-        """Get the terminal height for proper screen clearing"""
-        try:
-            import shutil
-            terminal_size = shutil.get_terminal_size()
-            return terminal_size.lines
-        except Exception:
-            # Fallback to a reasonable default if we can't get the terminal size
-            return 40
-    
-    def update_plan(self, task_id: str, new_status: str, notes: Optional[str] = None, progress: Optional[str] = None) -> str:
+    """Get the terminal height for proper screen clearing"""
+    try:
+        import shutil
+        terminal_size = shutil.get_terminal_size()
+        return terminal_size.lines
+    except Exception:
+        # Fallback to a reasonable default if we can't get the terminal size
+        return 40
+
+def update_plan(self, task_id: str, new_status: str, notes: Optional[str] = None, progress: Optional[str] = None) -> str:
         """Update the status of a task in the plan"""
         return update_plan(self, task_id, new_status, notes, progress)
     
