@@ -11,8 +11,8 @@ from rich.tree import Tree
 from rich.table import Table
 from rich.syntax import Syntax
 
-from ..agent import Agent
-from ..utils.xml_tools import extract_xml_from_response
+from agent.core import Agent
+from utils.xml_tools import extract_xml_from_response
 
 def get_system_info() -> Dict[str, str]:
     """

@@ -12,8 +12,8 @@ from rich.prompt import Prompt
 from rich.syntax import Syntax
 from rich.markdown import Markdown
 
-from ..agent import Agent
-from ..utils.xml_tools import extract_xml_from_response, format_xml_response
+from agent.core import Agent
+from utils.xml_tools import extract_xml_from_response, format_xml_response
 from .display import display_help, display_plan_tree
 from .input import process_user_input, save_chat_history
 
