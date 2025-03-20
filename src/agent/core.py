@@ -1,11 +1,8 @@
 """Core agent functionality."""
 
-import os
-import sys
-import json
 import threading
-import datetime
-from typing import Dict, List, Optional, Any, Tuple, Callable
+import shutil
+from typing import Dict, Optional, Callable
 import litellm
 from rich.console import Console
 from src.agent.plan import (
@@ -74,63 +71,14 @@ class Agent:
         reasoning_output = ""
 
         try:
-            # Add timeout to prevent hanging
             response = litellm.completion(
                 model=self.model_name, messages=messages, stream=True, timeout=60
             )
 
             for chunk in response:
-                # Handle regular content
-                if hasattr(chunk.choices[0], "delta") and hasattr(
-                    chunk.choices[0].delta, "content"
-                ):
-                    content = chunk.choices[0].delta.content
-                    if content:
-                        # We've transitioned to regular content
-                        reasoning_phase = False
+                self.handle_response_content(chunk, full_response, reasoning_output)
 
-                        # Clean content of control characters
-                        clean_content = content.replace("\r", "").replace("\b", "")
-
-                        if self.stream_callback:
-                            if callable(self.stream_callback):
-                                self.stream_callback(clean_content, is_reasoning=False)
-                        else:
-                            # Print without any special formatting
-                            print(clean_content, end="", flush=True)
-                        full_response += clean_content
-
-                # Handle reasoning content separately (for deepseek models)
-                if hasattr(chunk.choices[0], "delta") and hasattr(
-                    chunk.choices[0].delta, "reasoning_content"
-                ):
-                    reasoning = chunk.choices[0].delta.reasoning_content
-                    if reasoning:
-                        # Clean up control chars and handle newlines
-                        clean_reasoning = reasoning.replace("\r", "").replace("\b", "")
-
-                        # Use callback if available, otherwise use console
-                        if self.stream_callback:
-                            if callable(self.stream_callback):
-                                self.stream_callback(clean_reasoning, is_reasoning=True)
-                        else:
-                            # Use yellow color for reasoning
-                            self.console.print(
-                                f"[yellow]{clean_reasoning}[/yellow]",
-                                end="",
-                                highlight=False,
-                            )
-                        reasoning_output += clean_reasoning
-
-            print("\n")
-
-            # Save reasoning to a file for reference
-            if reasoning_output:
-                try:
-                    with open("last_reasoning.txt", "w") as f:
-                        f.write(reasoning_output)
-                except Exception as e:
-                    print(f"Warning: Could not save reasoning to file: {e}")
+            self.finalize_response(reasoning_output)
 
             return full_response
 
@@ -140,6 +88,45 @@ class Agent:
         except Exception as e:
             print(f"\nError during streaming: {e}")
             return full_response or f"Error: {str(e)}"
+
+    def handle_response_content(self, chunk, full_response: str, reasoning_output: str) -> None:
+        """Handle different types of response content."""
+        if hasattr(chunk.choices[0].delta, "content"):
+            self.handle_regular_content(chunk, full_response)
+        elif hasattr(chunk.choices[0].delta, "reasoning_content"):
+            self.handle_reasoning_content(chunk, reasoning_output)
+
+    def handle_regular_content(self, chunk, full_response: str) -> None:
+        """Process regular content chunks."""
+        content = chunk.choices[0].delta.content
+        if content:
+            clean_content = content.replace("\r", "").replace("\b", "")
+            if self.stream_callback and callable(self.stream_callback):
+                self.stream_callback(clean_content, False)
+            else:
+                print(clean_content, end="", flush=True)
+            full_response += clean_content
+
+    def handle_reasoning_content(self, chunk, reasoning_output: str) -> None:
+        """Process reasoning content chunks."""
+        reasoning = chunk.choices[0].delta.reasoning_content
+        if reasoning:
+            clean_reasoning = reasoning.replace("\r", "").replace("\b", "")
+            if self.stream_callback and callable(self.stream_callback):
+                self.stream_callback(clean_reasoning, True)
+            else:
+                self.console.print(f"[yellow]{clean_reasoning}[/yellow]", 
+                                 end="", highlight=False)
+            reasoning_output += clean_reasoning
+
+    def finalize_response(self, reasoning_output: str) -> None:
+        """Save reasoning output to file."""
+        if reasoning_output:
+            try:
+                with open("last_reasoning.txt", "w") as f:
+                    f.write(reasoning_output)
+            except Exception as e:
+                print(f"Warning: Could not save reasoning to file: {e}")
 
     # Plan management methods
     def generate_plan(self, spec: str) -> str:
