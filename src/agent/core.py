@@ -1,12 +1,3 @@
-        messages = [{"role": "user", "content": prompt}]
-        
-        # Print the full message being sent to the model
-        print("\n=== Message Sent to Model ===\n")
-        print(f"Model: {self.model_name}")
-        print(prompt)
-        print("\n=== End Message ===\n")
-        
-        
         if not self.config["stream_reasoning"]:
             # Non-streaming mode
             try:

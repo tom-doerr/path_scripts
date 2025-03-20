@@ -118,7 +118,7 @@ def main():
     
     # These methods are now imported from utils.xml_operations
                 
-    def _get_terminal_height(self) -> int:
+def _get_terminal_height(self) -> int:
         """Get the terminal height for proper screen clearing"""
         try:
             import shutil
