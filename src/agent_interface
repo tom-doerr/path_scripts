@@ -57,6 +57,37 @@ class AgentInterface:
             path = action_element.get("path", "")
             command = action_element.get("command", "")
             
+            # Ask for confirmation before executing
+            if action_type == "create_file":
+                content = action_element.text.strip() if action_element.text else ""
+                self.console.print(f"[bold cyan]Action:[/bold cyan] Create file '{path}'")
+                self.console.print(Syntax(content, "python", theme="monokai"))
+                
+            elif action_type == "modify_file":
+                self.console.print(f"[bold cyan]Action:[/bold cyan] Modify file '{path}'")
+                for change in action_element.findall("./change"):
+                    original = change.find("original").text if change.find("original") is not None else ""
+                    new = change.find("new").text if change.find("new") is not None else ""
+                    self.console.print("[bold red]- Original:[/bold red]")
+                    self.console.print(Syntax(original, "python", theme="monokai"))
+                    self.console.print("[bold green]+ New:[/bold green]")
+                    self.console.print(Syntax(new, "python", theme="monokai"))
+                    
+            elif action_type == "run_command":
+                self.console.print(f"[bold cyan]Action:[/bold cyan] Run command '{command}'")
+            
+            # Ask for confirmation
+            confirm = Prompt.ask(
+                "\nExecute this action?", 
+                choices=["y", "n"], 
+                default="n"
+            )
+            
+            if confirm.lower() != "y":
+                self.console.print("[bold yellow]Action skipped[/bold yellow]")
+                return False
+            
+            # Execute the action
             if action_type == "create_file":
                 # Create the file with the content
                 content = action_element.text.strip() if action_element.text else ""
@@ -76,29 +107,38 @@ class AgentInterface:
                     os.chmod(path, 0o755)
                     self.console.print(f"[bold green]Made file executable: {path}[/bold green]")
                 
+                return True
+                
             elif action_type == "modify_file":
                 if not os.path.exists(path):
                     self.console.print(f"[bold red]Error: File {path} does not exist[/bold red]")
-                    return
+                    return False
                 
                 # Read the original file
                 with open(path, 'r') as f:
                     file_content = f.read()
                 
                 # Apply each change
+                changes_applied = False
                 for change in action_element.findall("./change"):
                     original = change.find("original").text if change.find("original") is not None else ""
                     new = change.find("new").text if change.find("new") is not None else ""
                     
                     if original in file_content:
                         file_content = file_content.replace(original, new)
-                        self.console.print(f"[bold green]Modified file: {path}[/bold green]")
+                        changes_applied = True
                     else:
                         self.console.print(f"[bold yellow]Warning: Could not find text to replace in {path}[/bold yellow]")
                 
                 # Write the modified content back
-                with open(path, 'w') as f:
-                    f.write(file_content)
+                if changes_applied:
+                    with open(path, 'w') as f:
+                        f.write(file_content)
+                    self.console.print(f"[bold green]Modified file: {path}[/bold green]")
+                    return True
+                else:
+                    self.console.print(f"[bold yellow]No changes applied to {path}[/bold yellow]")
+                    return False
                 
             elif action_type == "run_command":
                 self.console.print(f"[bold blue]Running command: {command}[/bold blue]")
@@ -121,17 +161,21 @@ class AgentInterface:
                 
                 if process.returncode == 0:
                     self.console.print(f"[bold green]Command completed successfully[/bold green]")
+                    return True
                 else:
                     stderr = process.stderr.read()
                     self.console.print(f"[bold red]Command failed with exit code {process.returncode}[/bold red]")
                     if stderr:
                         self.console.print(f"[bold red]Error: {stderr}[/bold red]")
+                    return False
             
             else:
                 self.console.print(f"[bold yellow]Unknown action type: {action_type}[/bold yellow]")
+                return False
                 
         except Exception as e:
             self.console.print(f"[bold red]Error executing action: {e}[/bold red]")
+            return False
     
     def display_plan_tree(self, xml_content: str):
         """Display the plan as a rich tree"""
@@ -355,10 +399,32 @@ class AgentInterface:
                     self.console.print("[bold red]Error:[/bold red] No plan file found. Generate a plan first.")
                     return
             
+            # Check dependencies first
+            deps_met, missing_deps = self.agent.check_dependencies(task_id)
+            if not deps_met:
+                self.console.print("[bold red]Error:[/bold red] Dependencies not met")
+                for dep in missing_deps:
+                    self.console.print(f"[bold yellow]- {dep}[/bold yellow]")
+                
+                confirm = Prompt.ask(
+                    "\nContinue anyway?", 
+                    choices=["y", "n"], 
+                    default="n"
+                )
+                if confirm.lower() != "y":
+                    self.console.print("[bold yellow]Execution cancelled[/bold yellow]")
+                    return
+            
             self.console.print(f"[bold blue]Executing task {task_id}...[/bold blue]")
             
             try:
                 result = self.agent.execute_task(task_id)
+                
+                # Check for errors
+                error_element = ET.fromstring(result).find(".//error")
+                if error_element is not None and error_element.text:
+                    self.console.print(f"[bold red]Error:[/bold red] {error_element.text}")
+                    return
                 
                 # Save the actions to a file
                 with open(f"agent_actions_{task_id}.xml", 'w') as f:
@@ -377,52 +443,52 @@ class AgentInterface:
                     # Parse the actions to show them individually for confirmation
                     try:
                         actions_root = ET.fromstring(actions_xml)
+                        actions_count = len(actions_root.findall("./action"))
+                        successful_actions = 0
+                        
                         for i, action in enumerate(actions_root.findall("./action")):
-                            action_type = action.get("type", "unknown")
-                            path = action.get("path", "")
-                            command = action.get("command", "")
+                            self.console.print(f"\n[bold cyan]Action {i+1}/{actions_count}:[/bold cyan]")
                             
-                            if action_type == "create_file":
-                                self.console.print(f"\n[bold cyan]Action {i+1}:[/bold cyan] Create file '{path}'")
-                                content = action.text.strip() if action.text else ""
-                                self.console.print(Syntax(content, "python", theme="monokai"))
+                            # Execute the action with confirmation
+                            if self.execute_action(action):
+                                successful_actions += 1
+                        
+                        # Update task progress based on completed actions
+                        if actions_count > 0:
+                            completion_percentage = int((successful_actions / actions_count) * 30) + 70
+                            if successful_actions == actions_count:
+                                # All actions completed successfully
+                                self.console.print("[bold green]All actions completed successfully[/bold green]")
                                 
-                            elif action_type == "modify_file":
-                                self.console.print(f"\n[bold cyan]Action {i+1}:[/bold cyan] Modify file '{path}'")
-                                for change in action.findall("./change"):
-                                    original = change.find("original").text if change.find("original") is not None else ""
-                                    new = change.find("new").text if change.find("new") is not None else ""
-                                    self.console.print("[bold red]- Original:[/bold red]")
-                                    self.console.print(Syntax(original, "python", theme="monokai"))
-                                    self.console.print("[bold green]+ New:[/bold green]")
-                                    self.console.print(Syntax(new, "python", theme="monokai"))
+                                # Parse the plan tree
+                                root = ET.fromstring(self.agent.plan_tree)
+                                task_element = root.find(f".//task[@id='{task_id}']")
+                                if task_element is not None:
+                                    task_element.set("status", "completed")
+                                    task_element.set("progress", "100")
+                                    self.agent.plan_tree = ET.tostring(root, encoding='unicode')
                                     
-                            elif action_type == "run_command":
-                                self.console.print(f"\n[bold cyan]Action {i+1}:[/bold cyan] Run command '{command}'")
-                            
-                            # Ask for confirmation for each action
-                            confirm = Prompt.ask(
-                                "\nExecute this action?", 
-                                choices=["y", "n", "all", "none"], 
-                                default="n"
-                            )
-                            
-                            if confirm.lower() == "none":
-                                self.console.print("[bold yellow]Skipping all remaining actions[/bold yellow]")
-                                break
-                            elif confirm.lower() == "all":
-                                self.console.print("[bold green]Executing all remaining actions[/bold green]")
-                                # Execute this and all remaining actions
-                                execute_all = True
-                                self.execute_action(action)
-                                for remaining_action in list(actions_root.findall("./action"))[i+1:]:
-                                    self.execute_action(remaining_action)
-                                break
-                            elif confirm.lower() == "y":
-                                self.console.print("[bold green]Executing action...[/bold green]")
-                                self.execute_action(action)
+                                    # Save the updated plan
+                                    with open("agent_plan.xml", 'w') as f:
+                                        f.write(self.agent.format_xml_response({"plan": self.agent.plan_tree}))
+                                    
+                                    self.console.print(f"[bold green]Task {task_id} marked as completed[/bold green]")
                             else:
-                                self.console.print("[bold yellow]Action skipped[/bold yellow]")
+                                # Some actions failed
+                                self.console.print(f"[bold yellow]{successful_actions}/{actions_count} actions completed[/bold yellow]")
+                                
+                                # Parse the plan tree
+                                root = ET.fromstring(self.agent.plan_tree)
+                                task_element = root.find(f".//task[@id='{task_id}']")
+                                if task_element is not None:
+                                    task_element.set("progress", str(completion_percentage))
+                                    self.agent.plan_tree = ET.tostring(root, encoding='unicode')
+                                    
+                                    # Save the updated plan
+                                    with open("agent_plan.xml", 'w') as f:
+                                        f.write(self.agent.format_xml_response({"plan": self.agent.plan_tree}))
+                                    
+                                    self.console.print(f"[bold yellow]Task {task_id} progress updated to {completion_percentage}%[/bold yellow]")
                     
                     except ET.ParseError:
                         self.console.print("[bold red]Error parsing actions XML[/bold red]")
