@@ -2,9 +2,8 @@
 """Task execution functionality."""
 
 import xml.etree.ElementTree as ET
-from typing import Dict, Any, Optional
-
 from ..utils.xml_tools import extract_xml_from_response, format_xml_response
+from .plan import check_dependencies, apply_plan_updates
 
 
 def execute_task(agent, task_id: str) -> str:
@@ -49,8 +48,6 @@ def execute_task(agent, task_id: str) -> str:
             )
 
         # Check dependencies
-        from .plan import check_dependencies
-
         deps_met, missing_deps = check_dependencies(agent, task_id)
         if not deps_met:
             return format_xml_response(
@@ -67,7 +64,7 @@ def execute_task(agent, task_id: str) -> str:
         agent.plan_tree = ET.tostring(root, encoding="unicode")
 
         print(f"Executing task {task_id}: {description}")
-        print(f"Status updated to: in-progress (10%)")
+        print("Status updated to: in-progress (10%)")
 
         # Get parent task information for context
         parent_info = ""
@@ -93,7 +90,7 @@ def execute_task(agent, task_id: str) -> str:
         {agent.repository_info}
         
         CURRENT PLAN:
-        {agent.极plan_tree}
+        {agent.plan_tree}
         
         Generate the necessary actions to complete this task. The actions should be in XML format:
         
@@ -172,14 +169,14 @@ def execute_task(agent, task_id: str) -> str:
         # Update progress to 30% - planning phase
         task_element.set("progress", "30")
         agent.plan_tree = ET.tostring(root, encoding="unicode")
-        print(f"Progress updated to: 30% (planning phase)")
+        print("Progress updated to: 30% (planning phase)")
 
         response = agent.stream_reasoning(prompt)
 
         # Update progress to 50% - actions generated
         task_element.set("progress", "50")
         agent.plan_tree = ET.tostring(root, encoding="unicode")
-        print(f"Progress updated to: 50% (actions generated)")
+        print("Progress updated to: 50% (actions generated)")
 
         # Extract actions XML from the response
         actions_xml = extract_xml_from_response(response, "actions")
@@ -187,15 +184,13 @@ def execute_task(agent, task_id: str) -> str:
 
         # Apply plan updates if present
         if plan_update_xml:
-            from .plan import apply_plan_updates
-
             apply_plan_updates(agent, plan_update_xml)
 
         if actions_xml:
             # Update progress to 70% - ready for execution
             task_element.set("progress", "70")
             agent.plan_tree = ET.tostring(root, encoding="unicode")
-            print(f"Progress updated to: 70% (ready for execution)")
+            print("Progress updated to: 70% (ready for execution)")
 
             return format_xml_response(
                 {
@@ -208,10 +203,10 @@ def execute_task(agent, task_id: str) -> str:
                     "plan_update": plan_update_xml if plan_update_xml else None,
                 }
             )
-        else:
-            # Update task status to failed
-            task_element.set("status", "failed")
-            task_element.set("notes", "Failed to generate actions")
+
+        # Update task status to failed
+        task_element.set("status", "failed")
+        task_element.set("notes", "Failed to generate actions")
             task_element.set("progress", "0")
             agent.plan_tree = ET.tostring(root, encoding="unicode")
             print(f"Task {task_id} failed: Could not generate actions")
