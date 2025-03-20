@@ -41,7 +41,8 @@ def execute_task(agent, task_id: str) -> str:
             }
         })
 
-    try:
+    except Exception as e:
+        return format_xml_response({"error": f"Error executing task: {str(e)}"})
         # Parse the plan tree
         root = ET.fromstring(agent.plan_tree)
 
