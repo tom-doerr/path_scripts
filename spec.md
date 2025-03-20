@@ -1,26 +1,4 @@
-# Aider Code Change Specification
-
-## *SEARCH/REPLACE* Block Formatting Rules
-
-1. **File Path**  
-   Must be the full path on its own line with no formatting:
-   ```
-   path/to/file.py
-   ```
-
-2. **Code Fences**  
-   Use quadruple backticks with language identifier:
-   ````python
-   ```` 
-
-3. **Block Structure**  
-   Exact sequence:
-   ```
-   <<<<<<< SEARCH
-   [existing code]
-   def new_function():
-       print("Created!")
-   def log_transaction(amount, description):
-       """Log a financial transaction"""
-       timestamp = datetime.now().isoformat()
-       print(f"[{timestamp}] ${amount:.2f} - {description}")
+- has a cli interface
+- uses rich to create good looking tables
+- shows the ping jitter to locations in a table
+- by default without args analyses and shows ping jitter to new york as a demo
