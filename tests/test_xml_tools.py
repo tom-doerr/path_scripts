@@ -1,6 +1,6 @@
 """Tests for XML tools functionality."""
 
-from src.xml_tools import extract_xml_from_response, pretty_format_xml
+from src.utils.xml_tools import extract_xml_from_response, pretty_format_xml
 
 SAMPLE_XML = """<response>
     <message>Test content</message>
@@ -22,7 +22,7 @@ def test_extract_xml_no_match():
 
 def test_extract_xml_nested_tag():
     """Test extraction of nested XML tags."""
-    nested_xml = f"""Before<outer><response><message>Nested</message></response></outer>After"""
+    nested_xml = """Before<outer><response><message>Nested</message></response></outer>After"""
     result = extract_xml_from_response(nested_xml, "response")
     assert "<message>Nested</message>" in result
 
