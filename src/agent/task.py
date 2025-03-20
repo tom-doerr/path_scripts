@@ -4,8 +4,9 @@
 import json
 import xml.etree.ElementTree as ET
 from typing import Dict, Any, Optional
-
-from utils.xml_operations import extract_xml_from_response, format_xml_response
+from src.utils.xml_tools import extract_xml_from_response, format_xml_response
+from src.agent.plan import check_dependencies, apply_plan_updates
+from src.utils.feedback import DopamineReward
 
 
 def execute_task(agent, task_id: str) -> str:
@@ -67,7 +68,7 @@ def execute_task(agent, task_id: str) -> str:
         agent.plan_tree = ET.tostring(root, encoding="unicode")
 
         print(f"Executing task {task_id}: {description}")
-        print(f"Status updated to: in-progress (10%)")
+        print("Status updated to: in-progress (10%)")
 
         # Get parent task information for context
         parent_info = ""
@@ -172,14 +173,14 @@ def execute_task(agent, task_id: str) -> str:
         # Update progress to 30% - planning phase
         task_element.set("progress", "30")
         agent.plan_tree = ET.tostring(root, encoding="unicode")
-        print(f"Progress updated to: 30% (planning phase)")
+        print("Progress updated to: 30% (planning phase)")
 
         response = agent.stream_reasoning(prompt)
 
         # Update progress to 50% - actions generated
         task_element.set("progress", "50")
         agent.plan_tree = ET.tostring(root, encoding="unicode")
-        print(f"Progress updated to: 50% (actions generated)")
+        print("Progress updated to: 50% (actions generated)")
 
         # Extract actions XML from the response
         actions_xml = extract_xml_from_response(response, "actions")
@@ -195,7 +196,7 @@ def execute_task(agent, task_id: str) -> str:
             # Update progress to 70% - ready for execution
             task_element.set("progress", "70")
             agent.plan_tree = ET.tostring(root, encoding="unicode")
-            print(f"Progress updated to: 70% (ready for execution)")
+            print("Progress updated to: 70% (ready for execution)")
 
             # Generate dopamine reward for successful action generation
             if hasattr(agent, "dopamine_reward"):

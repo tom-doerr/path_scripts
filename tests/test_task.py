@@ -2,12 +2,10 @@
 
 from src.agent.task import execute_task
 from src.agent.core import Agent
-from rich.console import Console
 
 def test_execute_task_with_no_plan():
     """Test executing a task when no plan exists."""
     agent = Agent()
-    console = Console()
     
     # Execute task with no plan
     result = execute_task(agent, "task1")
