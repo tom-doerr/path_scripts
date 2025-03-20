@@ -42,11 +42,11 @@ def test_xml_response_reward():
     """Test reward generation for XML responses."""
     reward = DopamineReward(Console())
     response = "<response><message>Test</message></response>"
-    
+
     # Test positive observation
     positive_result = reward.reward_for_xml_response(response, "Great work!")
     assert "DOPAMINE" in positive_result
-    
+
     # Test negative observation
     negative_result = reward.reward_for_xml_response(response, "This is bad")
     assert "DOPAMINE" in negative_result
