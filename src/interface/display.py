@@ -49,14 +49,16 @@ def get_system_info() -> Dict[str, str]:
         
     return info
 
-def display_welcome(console: Console):
+def display_welcome(console: Console, system_info: Dict[str, str] = None):
     """
     Display welcome message and instructions.
     
     Args:
         console: Rich console instance
+        system_info: Optional dictionary of system information
     """
-    system_info = get_system_info()
+    if system_info is None:
+        system_info = get_system_info()
     system_info_text = f"Running on: {system_info['platform']} | Python {system_info['python']} | {system_info['shell']}"
     
     console.print(Panel.fit(
@@ -216,19 +218,6 @@ def display_plan_tree(console: Console, xml_content: str):
         console.print(f"[bold red]Error parsing XML:[/bold red] {e}")
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
-
-def display_from_top(console: Console, content: str, preserve_history: bool = True):
-    """
-    Display content without clearing terminal history.
-    
-    Args:
-        console: Rich console instance
-        content: Content to display
-        preserve_history: Not used, kept for backward compatibility
-    """
-    # Simply print the content without any clearing or cursor manipulation
-    console.print(content)
-from rich.console import Console
 
 def display_from_top(console: Console, content: str, preserve_history: bool = True):
     """
