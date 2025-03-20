@@ -62,6 +62,7 @@ def test_pretty_format_xml():
         "</response>"
     )
 
+
 def test_pretty_format_invalid_xml():
     """Test formatting handles invalid XML gracefully."""
     invalid_xml = "<root><unclosed>test"
@@ -81,11 +82,19 @@ def test_validate_good_xml():
     valid_xml = "<root><element>text</element></root>"
     assert validate_xml(valid_xml) is True
 
+
 def test_escape_xml_content():
     """Test XML content escaping."""
-    original = 'Hello "World" & Co. <3 >'
-    escaped = escape_xml_content(original)
-    assert escaped == "Hello &quot;World&quot; &amp; Co. &lt;3 &gt;"
+    test_cases = [
+        ('Hello "World" & Co. <3 >', "Hello &quot;World&quot; &amp; Co. &lt;3 &gt;"),
+        ('<tag>content</tag>', "&lt;tag&gt;content&lt;/tag&gt;"),
+        ('', ''),
+        ('No special chars', 'No special chars'),
+        ('&&&&&', "&amp;&amp;&amp;&amp;&amp;")
+    ]
+    
+    for original, expected in test_cases:
+        assert escape_xml_content(original) == expected, f"Failed for: {original}"
 
 
 def test_validate_bad_xml():
