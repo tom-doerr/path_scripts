@@ -587,13 +587,60 @@ class Agent:
               <action type="run_command" command="pytest tests/test_example.py" />
             </actions>
             
-            You can also suggest modifications to the plan if needed:
-            
-            <plan_update>
-              <add_task parent_id="task1" id="task1.3" description="New subtask" status="pending" complexity="medium" depends_on="" progress="0" />
-              <modify_task id="task2" description="Updated description" />
-              <remove_task id="task3" />
-            </plan_update>
+            <!-- XML Schema for Response -->
+            <response>
+              <!-- Simple message to the user -->
+              <message>Your response text here</message>
+          
+              <!-- Actions to execute -->
+              <actions>
+                <action type="create_file" path="example.py">
+                  # Python code here
+                </action>
+                <action type="modify_file" path="existing.py">
+                  <change>
+                    <original>def old_function():</original>
+                    <new>def new_function():</new>
+                  </change>
+                </action>
+                <action type="run_command" command="pytest tests/test_example.py" />
+              </actions>
+          
+              <!-- File edits (search and replace) -->
+              <file_edits>
+                <edit path="path/to/file.py">
+                  <search>def old_function():</search>
+                  <replace>def new_function():</replace>
+                </edit>
+              </file_edits>
+          
+              <!-- Shell commands -->
+              <shell_commands>
+                <command safe_to_autorun="true">echo "Hello World"</command>
+                <command safe_to_autorun="false">rm -rf some_directory</command>
+              </shell_commands>
+          
+              <!-- Memory updates -->
+              <memory_updates>
+                <edit>
+                  <search>Old information to replace</search>
+                  <replace>Updated information</replace>
+                </edit>
+                <add>New information to remember</add>
+              </memory_updates>
+          
+              <!-- Execution status -->
+              <execution_status complete="true|false" needs_user_input="true|false">
+                <message>Status message explaining what's done or what's needed</message>
+              </execution_status>
+          
+              <!-- Plan updates -->
+              <plan_update>
+                <add_task parent_id="task1" id="task1.3" description="New subtask" status="pending" complexity="medium" depends_on="" progress="0" />
+                <modify_task id="task2" description="Updated description" />
+                <remove_task id="task3" />
+              </plan_update>
+            </response>
             
             Think step by step about what needs to be done to complete this task.
             Focus on creating actions that are specific, concrete, and directly implement the task.

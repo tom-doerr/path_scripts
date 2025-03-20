@@ -1276,9 +1276,9 @@ class AgentInterface:
           <conversation_history>
             {self._format_history_for_prompt()}
           </conversation_history>
-          <persistent_memory>
+          <memory>
             {memory_content}
-          </persistent_memory>
+          </memory>
           {formatted_message}
         </context>
         
