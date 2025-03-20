@@ -16,6 +16,11 @@ from rich.markdown import Markdown
 # Use a local import with the full path to avoid package conflicts
 import os
 import sys
+# Get the directory of the current script
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Add the parent directory to the path to find the agent module
+sys.path.insert(0, current_dir)
+# Now import the Agent class
 from agent import Agent
 
 class AgentInterface:
