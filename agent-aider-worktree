@@ -292,80 +292,6 @@ def _add_test_samples_to_context(f, worktree_path):
                     f.write(f"\n# Error reading file: {str(e)}")
 
 
-def _create_fallback_test(worktree_path, task):
-    """Create a fallback test file if aider fails to make changes."""
-    # Extract the target file from the task
-    target_file = None
-    task_lower = task.lower()
-    
-    # Look for common patterns in the task description
-    if "test" in task_lower and ".py" in task_lower:
-        # Extract filename from task
-        match = re.search(r'test[s\s_]*for\s+([a-zA-Z0-9_/\\]+\.py)', task_lower)
-        if match:
-            target_file = match.group(1)
-    
-    if not target_file:
-        # Default to a generic test file
-        target_file = "commands.py"  # Default assumption based on common task
-    
-    # Clean up the target file name
-    target_file = target_file.replace("src/", "").replace("\\", "/")
-    module_path = target_file.replace(".py", "").replace("/", ".")
-    
-    # Create the test directory if it doesn't exist
-    tests_dir = os.path.join(worktree_path, "tests")
-    os.makedirs(tests_dir, exist_ok=True)
-    
-    # Create a simple test file
-    test_file_name = f"test_{os.path.basename(target_file)}"
-    test_file_path = os.path.join(tests_dir, test_file_name)
-    
-    console.print(f"[bold green]Creating fallback test file:[/bold green] {test_file_path}")
-    
-    with open(test_file_path, 'w') as f:
-        f.write(f"""import pytest
-from unittest.mock import MagicMock, patch
-import sys
-import os
-
-# Add the src directory to the path so we can import the module
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-# Import the module to test
-try:
-    from src.interface.{module_path} import process_command
-except ImportError:
-    # If the specific module can't be imported, create a dummy test
-    def test_dummy():
-        assert True
-else:
-    # Basic test for process_command
-    def test_process_command_help():
-        # Mock dependencies
-        agent = MagicMock()
-        console = MagicMock()
-        
-        # Call the function with 'help' command
-        process_command(
-            agent=agent,
-            command=["help"],
-            chat_history=[],
-            history_file="",
-            console=console,
-            multiline_input_mode=False,
-            multiline_input_buffer=[]
-        )
-        
-        # Verify console.print was called at least once
-        assert console.print.called
-""")
-    
-    # Add the file to git
-    run_command(f"git add {test_file_path}", cwd=worktree_path)
-    run_command(f"git commit -m 'Add fallback test for {target_file}'", cwd=worktree_path, check=False)
-    
-    return True
 
 
 # Aider integration
@@ -819,11 +745,6 @@ def run_iteration(iteration, max_iterations, worktree_path, task, args, start_ti
     
     if not changes_made:
         console.print("[bold red]No changes were made during this iteration.[/bold red]")
-        # If we're on the last iteration, create a simple test file as a fallback
-        if iteration == max_iterations:
-            console.print("[bold yellow]Creating a fallback test file...[/bold yellow]")
-            _create_fallback_test(worktree_path, task)
-            return True
         return False
     
     # Check if tests pass after aider run
