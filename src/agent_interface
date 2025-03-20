@@ -18,8 +18,9 @@ from rich.markdown import Markdown
 
 # Import the Agent class directly
 current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, current_dir)
-from agent_main import Agent
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)  # Add parent directory to path
+from src.agent_main import Agent
 
 class AgentInterface:
     def __init__(self):

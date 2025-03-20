@@ -9,11 +9,11 @@ import litellm
 from rich.console import Console
 
 # Import refactored modules
-from agent.repository import analyze_repository
-from agent.plan import generate_plan, update_plan, check_dependencies, apply_plan_updates
-from agent.task import execute_task
-from utils.xml_operations import extract_xml_from_response, format_xml_response, pretty_format_xml
-from utils.feedback import DopamineReward
+from src.agent.repository import analyze_repository
+from src.agent.plan import generate_plan, update_plan, check_dependencies, apply_plan_updates
+from src.agent.task import execute_task
+from src.utils.xml_operations import extract_xml_from_response, format_xml_response, pretty_format_xml
+from src.utils.feedback import DopamineReward
 
 class Agent:
     def __init__(self, model_name: str = "openrouter/deepseek/deepseek-r1"):
