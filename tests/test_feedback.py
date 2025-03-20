@@ -1,7 +1,7 @@
 """Tests for feedback functionality."""
 
 from rich.console import Console
-from src.utils.feedback import DopamineReward
+from src.utils.feedback import DopamineReward  # pylint: disable=no-name-in-module
 
 
 def test_initial_score_neutral():
@@ -36,3 +36,9 @@ def test_empty_feedback_defaults_neutral():
     reward = DopamineReward(Console())
     feedback = reward.reward_for_xml_response("", "")
     assert "NEUTRAL" in feedback
+
+def test_default_reward_score():
+    """Test reward generation with default scoring."""
+    reward = DopamineReward(Console())
+    feedback = reward.generate_reward()
+    assert "DOPAMINE" in feedback  # Should handle None score

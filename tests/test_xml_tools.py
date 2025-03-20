@@ -4,6 +4,7 @@ from src.utils.xml_tools import (  # pylint: disable=no-name-in-module
     extract_xml_from_response,
     pretty_format_xml,
     validate_xml,
+    escape_xml_content,
 )
 
 SAMPLE_XML = """<response>
@@ -61,6 +62,12 @@ def test_pretty_format_xml():
         "</response>"
     )
 
+def test_pretty_format_invalid_xml():
+    """Test formatting handles invalid XML gracefully."""
+    invalid_xml = "<root><unclosed>test"
+    formatted = pretty_format_xml(invalid_xml)
+    assert invalid_xml in formatted  # Should return original string
+
 
 def test_extract_xml_with_whitespace():
     """Test XML extraction with surrounding whitespace."""
@@ -73,6 +80,12 @@ def test_validate_good_xml():
     """Test validation of properly formatted XML."""
     valid_xml = "<root><element>text</element></root>"
     assert validate_xml(valid_xml) is True
+
+def test_escape_xml_content():
+    """Test XML content escaping."""
+    original = 'Hello "World" & Co. <3 >'
+    escaped = escape_xml_content(original)
+    assert escaped == "Hello &quot;World&quot; &amp; Co. &lt;3 &gt;"
 
 
 def test_validate_bad_xml():
