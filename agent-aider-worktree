@@ -387,6 +387,18 @@ def run_aider(worktree_path, task, args, model=None, weak_model=None, inner_loop
         for line in after_status.strip().split('\n'):
             if line.strip():
                 console.print(f"  - [yellow]{line}[/yellow]")
+        
+        # Show git diff for each modified file
+        console.print("[bold yellow]File changes (git diff):[/bold yellow]")
+        diff_result = run_command("git diff --staged --color=always", cwd=worktree_path, check=False)
+        if diff_result.stdout.strip():
+            console.print(diff_result.stdout)
+        
+        # Also show unstaged changes
+        unstaged_diff = run_command("git diff --color=always", cwd=worktree_path, check=False)
+        if unstaged_diff.stdout.strip():
+            console.print("[bold yellow]Unstaged changes:[/bold yellow]")
+            console.print(unstaged_diff.stdout)
     
     # If no changes detected
     if not new_files and not after_status:
