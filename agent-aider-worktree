@@ -283,7 +283,7 @@ def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
     files_to_include = _prepare_files_for_aider(worktree_path, args)
     
     # Create the message
-    message = f"TDD! Create tests first for all features or functionality you want to implement or modify if they do not already exist. Improve code quality and fix any issues found in tests or linting. Task: {task}"
+    message = f"TDD! Create tests first for all features or functionality you want to implement or modify if they do not already exist. Improve code quality and fix any issues found in tests or linting. Keep it very simple. Please do the minimal, cleanest, low complexity of the task possible. Please also keep the tests simple. Both tests and tasks do actually need to be implemented, do not just mock. Task: {task}"
     
     
     # Build the aider command
