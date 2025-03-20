@@ -1,0 +1,445 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import json
+import subprocess
+import xml.etree.ElementTree as ET
+import xml.dom.minidom as minidom
+from typing import Dict, List, Optional, Any, Tuple
+import litellm
+
+class Agent:
+    def __init__(self, model_name: str = "deepseek/deepseek-reasoner"):
+        self.model_name = model_name
+        self.plan_tree = None
+        self.repository_info = {}
+        self.config = {
+            "stream_reasoning": True,
+            "verbose": True
+        }
+        
+    def initialize(self, repo_path: str = ".") -> None:
+        """Initialize the agent with repository information"""
+        self.repository_info = self.analyze_repository(repo_path)
+        print(f"Agent initialized for repository: {repo_path}")
+        
+    def analyze_repository(self, repo_path: str) -> Dict[str, Any]:
+        """Analyze the repository structure and return information"""
+        repo_info = {
+            "files": [],
+            "directories": [],
+            "git_info": {}
+        }
+        
+        # Get list of files (excluding .git directory)
+        try:
+            result = subprocess.run(
+                ["git", "ls-files"], 
+                cwd=repo_path,
+                capture_output=True, 
+                text=True, 
+                check=True
+            )
+            repo_info["files"] = result.stdout.strip().split("\n")
+        except subprocess.CalledProcessError:
+            # Fallback if git command fails
+            for root, dirs, files in os.walk(repo_path):
+                if ".git" in root:
+                    continue
+                for file in files:
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, repo_path)
+                    repo_info["files"].append(rel_path)
+                for dir in dirs:
+                    if dir != ".git":
+                        full_path = os.path.join(root, dir)
+                        rel_path = os.path.relpath(full_path, repo_path)
+                        repo_info["directories"].append(rel_path)
+        
+        # Get git info if available
+        try:
+            result = subprocess.run(
+                ["git", "branch", "--show-current"], 
+                cwd=repo_path,
+                capture_output=True, 
+                text=True, 
+                check=True
+            )
+            repo_info["git_info"]["current_branch"] = result.stdout.strip()
+        except subprocess.CalledProcessError:
+            repo_info["git_info"]["current_branch"] = "unknown"
+            
+        return repo_info
+    
+    def generate_plan(self, spec: str) -> str:
+        """Generate a plan tree based on the specification"""
+        prompt = f"""
+        Based on the following specification, create a hierarchical plan as an XML tree.
+        
+        SPECIFICATION:
+        {spec}
+        
+        REPOSITORY INFORMATION:
+        {json.dumps(self.repository_info, indent=2)}
+        
+        Create a detailed plan with tasks and subtasks. The plan should be in XML format with the following structure:
+        
+        <plan>
+          <task id="root" description="Main project goal">
+            <task id="task1" description="Component 1">
+              <task id="task1.1" description="Subtask 1.1" status="pending" complexity="medium" />
+              <task id="task1.2" description="Subtask 1.2" status="pending" complexity="low" />
+            </task>
+            <task id="task2" description="Component 2">
+              <task id="task2.1" description="Subtask 2.1" status="pending" complexity="high" />
+            </task>
+          </task>
+        </plan>
+        
+        Each task should have:
+        - A unique id
+        - A clear description
+        - A status (pending, in-progress, completed, failed)
+        - A complexity estimate (low, medium, high)
+        - Subtasks where appropriate
+        
+        Think step by step about the dependencies between tasks and how to break down the problem effectively.
+        """
+        
+        response = self.stream_reasoning(prompt)
+        
+        # Extract XML from the response
+        xml_content = self.extract_xml_from_response(response, "plan")
+        if xml_content:
+            self.plan_tree = xml_content
+            return self.format_xml_response({"plan": xml_content})
+        else:
+            return self.format_xml_response({"error": "Failed to generate plan"})
+    
+    def extract_xml_from_response(self, response: str, tag_name: str) -> Optional[str]:
+        """Extract XML content for a specific tag from the response"""
+        try:
+            # Look for XML content in the response
+            start_tag = f"<{tag_name}"
+            end_tag = f"</{tag_name}>"
+            
+            start_index = response.find(start_tag)
+            end_index = response.find(end_tag, start_index) + len(end_tag)
+            
+            if start_index != -1 and end_index != -1:
+                return response[start_index:end_index]
+            return None
+        except Exception as e:
+            print(f"Error extracting XML: {e}")
+            return None
+    
+    def stream_reasoning(self, prompt: str) -> str:
+        """Stream the reasoning process from the model and return the final response"""
+        messages = [{"role": "user", "content": prompt}]
+        
+        if not self.config["stream_reasoning"]:
+            # Non-streaming mode
+            response = litellm.completion(
+                model=self.model_name,
+                messages=messages
+            )
+            return response.choices[0].message.content
+        
+        # Streaming mode
+        print("\n--- Streaming Reasoning ---\n")
+        full_response = ""
+        
+        try:
+            response = litellm.completion(
+                model=self.model_name,
+                messages=messages,
+                stream=True
+            )
+            
+            for chunk in response:
+                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                    content = chunk.choices[0].delta.content
+                    if content:
+                        print(content, end='', flush=True)
+                        full_response += content
+                
+                # Check for reasoning content in deepseek models
+                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'reasoning_content'):
+                    reasoning = chunk.choices[0].delta.reasoning_content
+                    if reasoning:
+                        print(reasoning, end='', flush=True)
+            
+            print("\n\n--- End of Reasoning ---\n")
+            return full_response
+            
+        except Exception as e:
+            print(f"Error during streaming: {e}")
+            return ""
+    
+    def format_xml_response(self, content_dict: Dict[str, Any]) -> str:
+        """Format various content pieces into an XML response"""
+        root = ET.Element("agent-response")
+        
+        for key, value in content_dict.items():
+            if isinstance(value, str) and value.strip().startswith("<") and value.strip().endswith(">"):
+                # This is already XML content, parse it and add as a subtree
+                try:
+                    # Parse the XML string
+                    element = ET.fromstring(value)
+                    root.append(element)
+                except ET.ParseError:
+                    # If parsing fails, add as text
+                    child = ET.SubElement(root, key)
+                    child.text = value
+            else:
+                # Add as regular element
+                child = ET.SubElement(root, key)
+                if isinstance(value, dict):
+                    child.text = json.dumps(value)
+                else:
+                    child.text = str(value)
+        
+        # Convert to string with pretty formatting
+        xml_str = ET.tostring(root, encoding='unicode')
+        pretty_xml = minidom.parseString(xml_str).toprettyxml(indent="  ")
+        
+        # Remove extra whitespace
+        lines = [line for line in pretty_xml.split('\n') if line.strip()]
+        return '\n'.join(lines)
+    
+    def update_plan(self, task_id: str, new_status: str, notes: Optional[str] = None) -> str:
+        """Update the status of a task in the plan"""
+        if not self.plan_tree:
+            return self.format_xml_response({"error": "No plan exists"})
+        
+        try:
+            # Parse the plan tree
+            root = ET.fromstring(self.plan_tree)
+            
+            # Find the task with the given ID
+            task_found = False
+            for task in root.findall(".//task[@id='{}']".format(task_id)):
+                task.set("status", new_status)
+                if notes:
+                    task.set("notes", notes)
+                task_found = True
+            
+            if not task_found:
+                return self.format_xml_response({"error": f"Task {task_id} not found"})
+            
+            # Update the plan tree
+            self.plan_tree = ET.tostring(root, encoding='unicode')
+            
+            return self.format_xml_response({
+                "plan": self.plan_tree,
+                "status": f"Updated task {task_id} to {new_status}"
+            })
+            
+        except Exception as e:
+            return self.format_xml_response({"error": f"Error updating plan: {str(e)}"})
+    
+    def display_plan_tree(self) -> str:
+        """Display the current plan tree"""
+        if not self.plan_tree:
+            return self.format_xml_response({"error": "No plan exists"})
+        
+        return self.format_xml_response({"plan": self.plan_tree})
+    
+    def execute_task(self, task_id: str) -> str:
+        """Execute a specific task from the plan"""
+        if not self.plan_tree:
+            return self.format_xml_response({"error": "No plan exists"})
+        
+        try:
+            # Parse the plan tree
+            root = ET.fromstring(self.plan_tree)
+            
+            # Find the task with the given ID
+            task_element = root.find(".//task[@id='{}']".format(task_id))
+            if task_element is None:
+                return self.format_xml_response({"error": f"Task {task_id} not found"})
+            
+            # Get task details
+            description = task_element.get("description", "")
+            
+            # Update task status to in-progress
+            task_element.set("status", "in-progress")
+            self.plan_tree = ET.tostring(root, encoding='unicode')
+            
+            # Generate actions for this task
+            prompt = f"""
+            I need to execute the following task:
+            
+            TASK ID: {task_id}
+            DESCRIPTION: {description}
+            
+            REPOSITORY INFORMATION:
+            {json.dumps(self.repository_info, indent=2)}
+            
+            Generate the necessary actions to complete this task. The actions should be in XML format:
+            
+            <actions>
+              <action type="create_file" path="example.py">
+                # Python code here
+              </action>
+              <action type="modify_file" path="existing.py">
+                <change>
+                  <original>def old_function():</original>
+                  <new>def new_function():</new>
+                </change>
+              </action>
+              <action type="run_command" command="pytest tests/test_example.py" />
+            </actions>
+            
+            Think step by step about what needs to be done to complete this task.
+            """
+            
+            response = self.stream_reasoning(prompt)
+            
+            # Extract actions XML from the response
+            actions_xml = self.extract_xml_from_response(response, "actions")
+            
+            if actions_xml:
+                return self.format_xml_response({
+                    "task": {
+                        "id": task_id,
+                        "description": description
+                    },
+                    "actions": actions_xml
+                })
+            else:
+                # Update task status to failed
+                task_element.set("status", "failed")
+                task_element.set("notes", "Failed to generate actions")
+                self.plan_tree = ET.tostring(root, encoding='unicode')
+                
+                return self.format_xml_response({
+                    "error": "Failed to generate actions for task",
+                    "task": {
+                        "id": task_id,
+                        "description": description
+                    }
+                })
+                
+        except Exception as e:
+            return self.format_xml_response({"error": f"Error executing task: {str(e)}"})
+
+def main():
+    """Main function to handle command line arguments and run the agent"""
+    agent = Agent()
+    
+    if len(sys.argv) < 2:
+        print("Usage: ./agent <command> [arguments]")
+        print("Commands:")
+        print("  init                  - Initialize the agent")
+        print("  plan <spec_file>      - Generate a plan from specification")
+        print("  display               - Display the current plan")
+        print("  update <task_id> <status> [notes] - Update task status")
+        print("  execute <task_id>     - Execute a specific task")
+        sys.exit(1)
+    
+    command = sys.argv[1]
+    
+    if command == "init":
+        agent.initialize()
+        print("Agent initialized successfully")
+    
+    elif command == "plan":
+        if len(sys.argv) < 3:
+            print("Error: Missing specification file")
+            sys.exit(1)
+        
+        spec_file = sys.argv[2]
+        try:
+            with open(spec_file, 'r') as f:
+                spec = f.read()
+            
+            agent.initialize()
+            result = agent.generate_plan(spec)
+            print(result)
+            
+            # Save the plan to a file
+            with open("agent_plan.xml", 'w') as f:
+                f.write(result)
+            print("Plan saved to agent_plan.xml")
+            
+        except FileNotFoundError:
+            print(f"Error: Specification file '{spec_file}' not found")
+            sys.exit(1)
+    
+    elif command == "display":
+        # Load the plan from file
+        try:
+            with open("agent_plan.xml", 'r') as f:
+                xml_content = f.read()
+                agent.plan_tree = agent.extract_xml_from_response(xml_content, "plan")
+            
+            result = agent.display_plan_tree()
+            print(result)
+            
+        except FileNotFoundError:
+            print("Error: No plan file found. Generate a plan first.")
+            sys.exit(1)
+    
+    elif command == "update":
+        if len(sys.argv) < 4:
+            print("Error: Missing task_id or status")
+            sys.exit(1)
+        
+        task_id = sys.argv[2]
+        status = sys.argv[3]
+        notes = sys.argv[4] if len(sys.argv) > 4 else None
+        
+        # Load the plan from file
+        try:
+            with open("agent_plan.xml", 'r') as f:
+                xml_content = f.read()
+                agent.plan_tree = agent.extract_xml_from_response(xml_content, "plan")
+            
+            result = agent.update_plan(task_id, status, notes)
+            print(result)
+            
+            # Save the updated plan
+            with open("agent_plan.xml", 'w') as f:
+                f.write(result)
+            
+        except FileNotFoundError:
+            print("Error: No plan file found. Generate a plan first.")
+            sys.exit(1)
+    
+    elif command == "execute":
+        if len(sys.argv) < 3:
+            print("Error: Missing task_id")
+            sys.exit(1)
+        
+        task_id = sys.argv[2]
+        
+        # Load the plan from file
+        try:
+            with open("agent_plan.xml", 'r') as f:
+                xml_content = f.read()
+                agent.plan_tree = agent.extract_xml_from_response(xml_content, "plan")
+            
+            result = agent.execute_task(task_id)
+            print(result)
+            
+            # Save the actions to a file
+            with open(f"agent_actions_{task_id}.xml", 'w') as f:
+                f.write(result)
+            print(f"Actions saved to agent_actions_{task_id}.xml")
+            
+            # Save the updated plan
+            with open("agent_plan.xml", 'w') as f:
+                f.write(agent.format_xml_response({"plan": agent.plan_tree}))
+            
+        except FileNotFoundError:
+            print("Error: No plan file found. Generate a plan first.")
+            sys.exit(1)
+    
+    else:
+        print(f"Error: Unknown command '{command}'")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
