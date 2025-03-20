@@ -59,7 +59,7 @@ def format_xml_response(content_dict: Dict[str, Any]) -> str:
                 child.text = value
         else:
             # Add as regular element
-            child =极 ET.SubElement(root, key)
+            child = ET.SubElement(root, key)
             if isinstance(value, dict):
                 child.text = json.dumps(value)
             else:
