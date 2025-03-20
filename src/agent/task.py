@@ -32,6 +32,24 @@ def execute_task(agent, task_id: str) -> str:
         if task_element is None:
             return format_xml_response({"error": f"Task {task_id} not found"})
 
+        # Return basic task info
+        return format_xml_response({
+            "task": {
+                "id": task_id,
+                "description": task_element.get("description", ""),
+                "status": task_element.get("status", "pending")
+            }
+        })
+
+    try:
+        # Parse the plan tree
+        root = ET.fromstring(agent.plan_tree)
+
+        # Find the task with the given ID
+        task_element = root.find(f".//task[@id='{task_id}']")
+        if task_element is None:
+            return format_xml_response({"error": f"Task {task_id} not found"})
+
         # Get task details
         description = task_element.get("description", "")
         current_status = task_element.get("status", "pending")
