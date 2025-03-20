@@ -5,6 +5,15 @@ from typing import Optional, Dict, Any, List
 
 
 def extract_xml_from_response(response: str, tag_name: str) -> Optional[str]:
+    """Extract the first XML section with the specified tag from a response string.
+    
+    Args:
+        response: String containing potential XML content
+        tag_name: Name of the root XML tag to look for
+        
+    Returns:
+        Extracted XML string or None if not found
+    """
     """Extract XML content for a specific tag from a response string."""
     try:
         start_tag = f"<{tag_name}"
@@ -89,18 +98,18 @@ def format_xml_response(content_dict: Dict[str, Any]) -> str:
 
 
 def pretty_format_xml(xml_string: str) -> str:
-    """
-    Format XML string in a cleaner way than minidom.
-
+    """Format XML string with consistent indentation.
+    
     Args:
-        xml_string: Raw XML string
-
+        xml_string: Raw XML string to format
+        
     Returns:
-        Formatted XML string with proper indentation
+        Beautifully formatted XML string. Returns original string if parsing fails.
     """
     try:
-        # Parse the XML
-        root = ET.fromstring(xml_string)
+        # Parse the XML safely
+        parser = ET.XMLParser(resolve_entities=False)
+        root = ET.fromstring(xml_string, parser=parser)
 
         # Function to recursively format XML
         def format_elem(elem, level=0):
