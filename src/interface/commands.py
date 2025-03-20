@@ -548,6 +548,26 @@ def _load_persistent_memory() -> str:
             return
         
         query = " ".join(args)
+        from src.utils.web_search import search_web
+        results = search_web(query)
+        
+        if not results:
+            console.print("[bold yellow]No results found[/bold yellow]")
+            return
+            
+        console.print(f"[bold blue]Search results for '{query}':[/bold blue]")
+        for i, result in enumerate(results, 1):
+            console.print(f"{i}. [bold]{result['title']}[/bold]")
+            console.print(f"   {result['snippet']}")
+            console.print(f"   [dim]{result['link']}[/dim]")
+            console.print()
+
+    elif cmd == "search":
+        if not args:
+            console.print("[bold red]Error:[/bold red] Please provide a search query")
+            return
+        
+        query = " ".join(args)
         results = search_web(query)
         
         if not results:

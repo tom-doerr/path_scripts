@@ -21,7 +21,13 @@ def search_web(query: str) -> List[Dict[str, str]]:
         # Use DuckDuckGo's Instant Answer API
         response = requests.get(
             "https://api.duckduckgo.com/",
-            params={"q": query, "format": "json", "no_html": 1, "skip_disambig": 1},
+            params={
+                "q": query,
+                "format": "json",
+                "no_html": 1,
+                "skip_disambig": 1,
+                "no_redirect": 1
+            },
             timeout=10,
         )
         response.raise_for_status()
@@ -43,5 +49,6 @@ def search_web(query: str) -> List[Dict[str, str]]:
 
         return results[:5]  # Return top 5 results
 
-    except requests.RequestException:
+    except requests.RequestException as e:
+        print(f"Web search error: {str(e)}")
         return []
