@@ -9,10 +9,9 @@ setup(
         "litellm",
         "textual==0.1.18",  # Pin to the installed version
     ],
-    scripts=['bin/agent'],
     entry_points={
         'console_scripts': [
-            'agent-cli=src.interface.cli:main',
+            'agent=src.interface.cli:main',
         ],
     },
 )

@@ -9,8 +9,8 @@
 
 2. **Fix Command Line Interface** - Make the agent command work globally.
    - Priority: HIGH
-   - Status: In progress
-   - Notes: Created bin/agent script, but still need to resolve installation issues
+   - Status: Completed
+   - Notes: Fixed setup.py to use entry_points instead of scripts for better compatibility
 
 ## Medium Priority Tasks
 
