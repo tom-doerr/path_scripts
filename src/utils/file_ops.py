@@ -22,8 +22,10 @@ def read_file(path: str) -> Tuple[bool, str]:
         with open(path, "r") as f:
             content = f.read()
         return True, content
+    except FileNotFoundError:
+        return False, f"File not found: {path}"
     except Exception as e:
-        return False, f"Error reading file: {e}"
+        return False, f"Error reading file: {str(e)}"
 
 
 def write_file(path: str, content: str, create_dirs: bool = True) -> Tuple[bool, str]:
