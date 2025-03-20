@@ -149,7 +149,8 @@ class Agent:
         self.repository_info: Dict[str, Any] = {}
         self.config = {
             "stream_reasoning": True,
-            "verbose": True
+            "verbose": True,
+            "rate_limit": 5  # Requests per minute
         }
         self.stream_callback: Optional[Callable[[str, bool], None]] = None
         
