@@ -33,40 +33,45 @@ def generate_plan(agent, spec: str, formatted_message: str = None) -> str:
             system_info=system_info
         )
     
-    prompt = f"""
-    Based on the following specification, create a hierarchical plan as an XML tree.
-    
-    SPECIFICATION:
-    {spec}
-    
-    REPOSITORY INFORMATION:
-    {json.dumps(agent.repository_info, indent=2)}
-    
-    Create a detailed plan with tasks and subtasks. The plan should be in XML format with the following structure:
-    
-    <plan>
-      <task id="root" description="Main project goal">
-        <task id="task1" description="Component 1">
-          <task id="极task1.1" description="Subtask 1.1" status="pending" complexity="medium" depends_on="" progress="0" />
-          <task id="task1.2" description="Subtask 1.2" status="pending" complexity="low" depends_on="task1.1" progress="0" />
-        </task>
-        <task id="task2" description="Component 2">
-          <task id="task2.1" description="Subtask 2.1" status="pending" complexity="high" depends_on="task1.2" progress="0" />
-        </task>
-      </task>
-    </plan>
-    
-    Each task should have:
-    - A unique id
-    - A clear description
-    - A status (pending, in-progress, completed, failed)
-    - A complexity estimate (极low, medium, high)
-    - Dependencies (depends_on attribute with comma-separated task IDs)
-    - Progress indicator (0-100)
-    - Subtasks where appropriate
-    
-    Think step by step about the dependencies between tasks and how to break down the problem effectively.
-    """
+    prompt = f"""<xml>
+  <system>
+    <instructions>
+      Based on the following specification, create a hierarchical plan as an XML tree.
+      Think step by step about the dependencies between tasks and how to break down the problem effectively.
+    </instructions>
+    <context>
+      <specification>
+        {spec}
+      </specification>
+      <repository_information>
+        {json.dumps(agent.repository_info, indent=2)}
+      </repository_information>
+      <plan_schema>
+        Each task should have:
+        - A unique id
+        - A clear description
+        - A status (pending, in-progress, completed, failed)
+        - A complexity estimate (low, medium, high)
+        - Dependencies (depends_on attribute with comma-separated task IDs)
+        - Progress indicator (0-100)
+        - Subtasks where appropriate
+        
+        Example structure:
+        <plan>
+          <task id="root" description="Main project goal">
+            <task id="task1" description="Component 1">
+              <task id="task1.1" description="Subtask 1.1" status="pending" complexity="medium" depends_on="" progress="0" />
+              <task id="task1.2" description="Subtask 1.2" status="pending" complexity="low" depends_on="task1.1" progress="0" />
+            </task>
+            <task id="task2" description="Component 2">
+              <task id="task2.1" description="Subtask 2.1" status="pending" complexity="high" depends_on="task1.2" progress="0" />
+            </task>
+          </task>
+        </plan>
+      </plan_schema>
+    </context>
+  </system>
+</xml>"""
     
     response = agent.stream_reasoning(prompt)
     

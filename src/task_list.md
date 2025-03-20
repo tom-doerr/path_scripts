@@ -83,6 +83,11 @@
    - Status: Completed
    - Notes: Created input_schema.py with standardized format for all model interactions
 
+3. **XML-Formatted Prompts** - Make all prompts to the model fully XML-formatted.
+   - Priority: HIGH
+   - Status: Completed
+   - Notes: Restructured all prompts to use consistent XML formatting for better model understanding
+
 2. **File Editing Functionality** - Add ability to edit files using search/replace.
    - Priority: HIGH
    - Status: Completed

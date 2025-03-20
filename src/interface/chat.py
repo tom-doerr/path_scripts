@@ -35,8 +35,19 @@ def process_chat_message(
             history=formatted_history
         )
     
+    # Get the response schema
+    response_schema = get_schema()
+    
     # Construct a prompt that instructs the model to respond in XML format
-    prompt = f"""
+    prompt = f"""<xml>
+  <system>
+    <instructions>
+      You are an AI assistant that can respond to user queries and also perform actions.
+      You must respond using the response schema provided below.
+      For shell commands, set safe_to_autorun="true" only for commands that are completely safe and have no destructive potential.
+      When you need to update your persistent memory, use the memory_updates tag to edit or add information.
+      Use the execution_status tag to indicate if you've completed the task or need more input from the user.
+    </instructions>
     <context>
       <system_info>
         <date>{now.strftime('%Y-%m-%d')}</date>
@@ -53,81 +64,18 @@ def process_chat_message(
       </memory>
       {formatted_message}
     </context>
-    
-    You are an AI assistant that can respond to user queries and also perform actions.
-    
-    <xml_schema>
-      <!-- Response schema - all responses must follow this structure -->
-      <response>
-        <!-- Optional message to the user -->
-        <message>Your response text here. Can include markdown formatting.</message>
-        
-        <!-- Optional actions to execute -->
-        <actions>
-          <!-- Create a new file -->
-          <action type="create_file" path="example.py">
-            # Python code here
-          </action>
-          
-          <!-- Modify an existing file -->
-          <action type="modify_file" path="existing.py">
-            <change>
-              <original>def old_function():</original>
-              <new>def new_function():</new>
-            </change>
-          </action>
-          
-          <!-- Run a shell command -->
-          <action type="run_command" command="echo 'Hello World'">
-          </action>
-        </actions>
-        
-        <!-- Optional file edits (search and replace) -->
-        <file_edits>
-          <edit path="path/to/file.py">
-            <search>def old_function():</search>
-            <replace>def new_function():</replace>
-          </edit>
-          <edit path="path/to/new_file.py">
-            <search></search>
-            <replace># New file content here</replace>
-          </edit>
-        </file_edits>
-        
-        <!-- Optional shell commands -->
-        <shell_commands>
-          <command safe_to_autorun="true">echo "Hello World"</command>
-          <command safe_to_autorun="false">rm -rf some_directory</command>
-        </shell_commands>
-        
-        <!-- Optional memory updates -->
-        <memory_updates>
-          <edit>
-            <search>Old information to replace</search>
-            <replace>Updated information</replace>
-          </edit>
-          <append>New information to remember</append>
-        </memory_updates>
-        
-        <!-- Optional execution status -->
-        <execution_status complete="true|false" needs_user_input="true|false">
-          <message>Status message explaining what's done or what's needed</message>
-        </execution_status>
-      </response>
-    </xml_schema>
-    
-    You must respond using the XML schema above. You can include multiple response types in a single reply.
-    For shell commands, set safe_to_autorun="true" only for commands that are completely safe and have no destructive potential.
-    
-    When you need to update your persistent memory, use the memory_updates tag to edit or add information.
-    
-    Use the execution_status tag to indicate if you've completed the task or need more input from the user.
-    """
+    <response_schema>
+      {response_schema}
+    </response_schema>
+  </system>
+</xml>"""
     
     # Print the full prompt for debugging
     print("\n=== Message Sent to Model ===\n")
     print(prompt)
     print("\n=== End Message ===\n")
+    
+    # Return the XML-formatted prompt
     
     return prompt
 
@@ -209,7 +157,16 @@ def _continue_execution_with_context(
     print("\n=== Message Sent to Model ===\n")
     print(f"Model: {agent.model_name}")
     
-    prompt = f"""
+    # Get the response schema
+    response_schema = xml_schema
+    
+    prompt = f"""<xml>
+  <system>
+    <instructions>
+      You are continuing a task based on the results of previous commands.
+      Based on these results, please continue with the task. 
+      You must respond using the response schema provided below.
+    </instructions>
     <context>
       <previous_message>{message_content}</previous_message>
       <command_results>
@@ -222,13 +179,11 @@ def _continue_execution_with_context(
       </system_info>
       {formatted_message}
     </context>
-    
-    {xml_schema}
-    
-    You are continuing a task based on the results of previous commands.
-    
-    Based on these results, please continue with the task. You must respond using the XML schema above.
-    """
+    <response_schema>
+      {response_schema}
+    </response_schema>
+  </system>
+</xml>"""
     
     # Print the full prompt
     print(prompt)
