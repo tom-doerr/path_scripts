@@ -5,14 +5,14 @@ import shutil
 from typing import Dict, Optional, Callable, Any, List, Tuple
 import litellm
 from rich.console import Console
-from .plan import (
+from src.agent.plan import (
     generate_plan,
     update_plan,
     check_dependencies,
     apply_plan_updates,
 )
-from .task import execute_task
-from src.utils.xml_operations import format_xml_response
+from src.agent.task import execute_task
+from src.utils.xml_tools import format_xml_response
 
 
 class Agent:
@@ -101,7 +101,7 @@ class Agent:
         if content:
             clean_content = content.replace("\r", "").replace("\b", "")
             if self.stream_callback and callable(self.stream_callback):
-                self.stream_callback(clean_content, False)
+                self.stream_callback(clean_content, False)  # pylint: disable=not-callable
             else:
                 print(clean_content, end="", flush=True)
             full_response += clean_content
@@ -112,7 +112,7 @@ class Agent:
         if reasoning:
             clean_reasoning = reasoning.replace("\r", "").replace("\b", "")
             if self.stream_callback and callable(self.stream_callback):
-                self.stream_callback(clean_reasoning, True)
+                self.stream_callback(clean_reasoning, True)  # pylint: disable=not-callable
             else:
                 self.console.print(f"[yellow]{clean_reasoning}[/yellow]", 
                                  end="", highlight=False)
