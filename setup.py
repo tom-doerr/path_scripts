@@ -8,9 +8,10 @@ setup(
         "rich",
         "litellm",
     ],
+    scripts=['bin/agent'],
     entry_points={
         'console_scripts': [
-            'agent=src.interface.cli:main',
+            'agent-cli=src.interface.cli:main',
         ],
     },
 )

@@ -4,18 +4,13 @@
 
 1. **Implement Direct Model Chat** - Enhance the chat interface to allow direct interaction with the model.
    - Priority: HIGH
-   - Status: In progress
-   - Notes: Need to improve the conversation flow and context preservation
+   - Status: Completed
+   - Notes: Successfully implemented direct model chat functionality
 
-2. **Improve Error Handling** - Add better error handling for API failures and timeouts.
-   - Priority: HIGH
-   - Status: Not started
-   - Notes: Need to handle API errors gracefully and provide helpful error messages
-
-3. **Implement Dopamine Feedback Mechanism** - Add dopamine rewards to XML responses based on performance.
+2. **Fix Command Line Interface** - Make the agent command work globally.
    - Priority: HIGH
    - Status: In progress
-   - Notes: Initial implementation in plan.py, needs to be extended to other modules
+   - Notes: Need to fix the entry point in setup.py and ensure proper installation
 
 ## Medium Priority Tasks
 
