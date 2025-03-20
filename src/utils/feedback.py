@@ -10,7 +10,8 @@ class DopamineReward:
 
     def __init__(self, console: Optional[Console] = None):
         self.console = console or Console()
-        self.last_score = 50  # Neutral starting point
+        self.dopamine_level = 50.0  # Track as float for more precise calculations
+        self.history = []
 
     def generate_reward(self, quality_score: Optional[int] = None) -> str:
         """
@@ -51,6 +52,7 @@ class DopamineReward:
     def reward_for_xml_response(self, _response: str, observation: str) -> str:
         """
         Analyze the XML response and observation to determine a reward.
+        Updates dopamine level based on feedback quality.
 
         Args:
             response: The XML response from the agent
@@ -61,45 +63,37 @@ class DopamineReward:
         """
         # Simple heuristic based on positive/negative words in observation
         positive_words = [
-            "good",
-            "great",
-            "excellent",
-            "perfect",
-            "nice",
-            "helpful",
-            "useful",
-            "correct",
-            "right",
-            "well",
-            "thanks",
-            "thank",
+            "good", "great", "excellent", "perfect", "nice", "helpful",
+            "useful", "correct", "right", "well", "thanks", "thank"
         ]
         negative_words = [
-            "bad",
-            "wrong",
-            "incorrect",
-            "error",
-            "mistake",
-            "useless",
-            "unhelpful",
-            "poor",
-            "terrible",
-            "fail",
-            "failed",
-            "not working",
+            "bad", "wrong", "incorrect", "error", "mistake", "useless",
+            "unhelpful", "poor", "terrible", "fail", "failed", "not working"
         ]
 
         observation_lower = observation.lower()
-
-        # Count positive and negative words
         positive_count = sum(1 for word in positive_words if word in observation_lower)
         negative_count = sum(1 for word in negative_words if word in observation_lower)
 
-        # Calculate a simple score
+        # Calculate score and update dopamine level
         if positive_count + negative_count == 0:
-            # No clear feedback, maintain previous score
-            return self.generate_reward(None)
-
-        # Calculate percentage of positive words
-        score = int(100 * positive_count / (positive_count + negative_count))
+            return self.generate_reward(None)  # Neutral
+        
+        score = 100 * positive_count / (positive_count + negative_count)
+        self._update_dopamine_level(score)
         return self.generate_reward(score)
+
+    def _update_dopamine_level(self, score: float):
+        """Update dopamine level using a moving average with decay factor."""
+        # Keep last 5 scores for smoothing
+        self.history = (self.history + [score])[-5:]
+        # Calculate weighted average with decay
+        weights = [0.5**i for i in range(len(self.history),0,-1)]
+        weighted_avg = sum(w*s for w,s in zip(weights, self.history)) / sum(weights)
+        # Update dopamine level (clamped between 0-100)
+        self.dopamine_level = max(0, min(100, weighted_avg))
+        return self.dopamine_level
+
+    def get_current_dopamine_level(self) -> float:
+        """Get the current dopamine level for prompt optimization."""
+        return self.dopamine_level

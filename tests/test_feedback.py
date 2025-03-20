@@ -46,17 +46,19 @@ def test_negative_feedback_edge_case():
 
 
 def test_reward_with_positive_observation():
-    """Test reward generation with positive user feedback."""
+    """Test reward generation with positive user feedback affects dopamine level."""
     reward = DopamineReward(Console())
-    feedback = reward.reward_for_xml_response("", "Good job! This is perfect!")
-    assert "SURGE" in feedback
+    initial_level = reward.dopamine_level
+    reward.reward_for_xml_response("", "Good job! This is perfect!")
+    assert reward.dopamine_level > initial_level
 
 
 def test_reward_with_negative_observation():
-    """Test reward generation with negative user feedback."""
+    """Test reward generation with negative user feedback affects dopamine level."""
     reward = DopamineReward(Console())
-    feedback = reward.reward_for_xml_response("", "Bad result! Wrong and useless!")
-    assert "LOW" in feedback
+    initial_level = reward.dopamine_level
+    reward.reward_for_xml_response("", "Bad result! Wrong and useless!")
+    assert reward.dopamine_level < initial_level
 
 
 def test_reward_with_neutral_observation():
