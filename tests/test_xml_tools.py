@@ -1,6 +1,12 @@
 """Tests for XML tools functionality."""
 
-from src.utils.xml_tools import extract_xml_from_response, pretty_format_xml
+from src.utils.xml_tools import (
+    extract_xml_from_response,
+    pretty_format_xml,
+    validate_xml,
+    escape_xml_content,
+    format_xml_response
+)
 
 SAMPLE_XML = """<response>
     <message>Test content</message>
