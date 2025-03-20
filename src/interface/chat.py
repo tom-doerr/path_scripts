@@ -216,7 +216,6 @@ def process_chat_response(
     save_history_callback: Callable
 ):
     """Process the XML response from the model chat"""
-    # Display full XML response (only if verbose mode is enabled)
     if getattr(agent, 'config', {}).get('verbose', False):
         console.print("[bold blue]Full Agent Response XML:[/bold blue]")
         try:

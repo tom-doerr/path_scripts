@@ -13,6 +13,7 @@ from src.interface.chat import process_chat_response
 
 def process_user_input(agent, user_input: str, chat_history: List[Dict[str, Any]], history_file: str, console: Console):
     """Process user input and send to the model."""
+    
     # Add user message to history
     timestamp = datetime.datetime.now().isoformat()
     chat_history.append({
