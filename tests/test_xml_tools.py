@@ -20,6 +20,17 @@ def test_extract_xml_no_match():
     result = extract_xml_from_response("No XML here", "response")
     assert result is None
 
+def test_extract_xml_nested_tag():
+    """Test extraction of nested XML tags."""
+    nested_xml = f"""Before<outer><response><message>Nested</message></response></outer>After"""
+    result = extract_xml_from_response(nested_xml, "response")
+    assert "<message>Nested</message>" in result
+
+def test_extract_xml_multiple_matches():
+    """Test extraction returns first match when multiple exist."""
+    multi_xml = "<response>First</response><response>Second</response>"
+    result = extract_xml_from_response(multi_xml, "response")
+    assert "First" in result and "Second" not in result
 
 def test_pretty_format_xml():
     """Test XML formatting produces indented output."""
