@@ -238,9 +238,9 @@ def process_command(
         # Load the plan from file if not already loaded
         if not agent.plan_tree:
             try:
-            with open("agent_plan.xml", 'r') as f:
-                xml_content = f.read()
-                agent.plan_tree = extract_xml_from_response(xml_content, "plan")
+                with open("agent_plan.xml", 'r') as f:
+                    xml_content = f.read()
+                    agent.plan_tree = extract_xml_from_response(xml_content, "plan")
             except FileNotFoundError:
                 console.print("[bold red]Error:[/bold red] No plan file found. Generate a plan first.")
                 return
