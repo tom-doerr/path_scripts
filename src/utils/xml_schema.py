@@ -62,6 +62,7 @@ RESPONSE_SCHEMA = """
 </xml_schema>
 """
 
+
 def get_schema():
     """Return the XML schema for agent responses."""
     return RESPONSE_SCHEMA

@@ -11,8 +11,8 @@ setup(
         "lxml",  # For better XML handling
     ],
     entry_points={
-        'console_scripts': [
-            'agent=src.interface.cli:main',
+        "console_scripts": [
+            "agent=src.interface.cli:main",
         ],
     },
 )
