@@ -1,7 +1,7 @@
 """Display formatting for the agent interface."""
 
 import platform
-from typing import Dict, Any
+from typing import Dict
 from rich.console import Console
 from rich.panel import Panel
 
@@ -56,7 +56,7 @@ def display_plan_tree(console: Console, xml_content: str):
     console.print(xml_content)
 
 
-def display_from_top(console: Console, content: str, preserve_history: bool = True):
+def display_from_top(console: Console, content: str, _preserve_history: bool = True):
     """
     Display content without clearing terminal history.
 
