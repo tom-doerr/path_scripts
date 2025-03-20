@@ -43,7 +43,8 @@ class Agent:
 
     def initialize(self, repo_path: str = ".") -> None:
         """Initialize the agent with repository information"""
-        from utils.file_ops import read_file
+        from ..utils.file_ops import read_file
+        from ..utils.xml_operations import format_xml_response, extract_xml_from_response
 
         self.repository_info = {"path": repo_path}
         print(f"Agent initialized for repository: {repo_path}")
