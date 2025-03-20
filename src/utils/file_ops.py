@@ -2,7 +2,7 @@
 """File operation utilities."""
 
 import os
-from typing import Tuple, Optional
+from typing import Tuple
 
 
 def read_file(path: str) -> Tuple[bool, str]:
@@ -28,7 +28,7 @@ def read_file(path: str) -> Tuple[bool, str]:
         return False, f"Error reading file: {str(e)}"
 
 
-def write_file(path: str, content: str, create_dirs: bool = True) -> Tuple[bool, str]:
+def write_file(path: str, file_content: str, create_dirs: bool = True) -> Tuple[bool, str]:
     """
     Write content to a file.
 
@@ -48,7 +48,7 @@ def write_file(path: str, content: str, create_dirs: bool = True) -> Tuple[bool,
                 os.makedirs(directory)
 
         with open(path, "w") as f:
-            f.write(content)
+            f.write(file_content)
 
         # Make executable if it's a Python file or has no extension
         if path.endswith(".py") or not os.path.splitext(path)[1]:
@@ -60,7 +60,7 @@ def write_file(path: str, content: str, create_dirs: bool = True) -> Tuple[bool,
         return False, f"Error writing file: {e}"
 
 
-def edit_file(path: str, search: str, replace: str) -> Tuple[bool, str]:
+def edit_file(path: str, search_text: str, replace_text: str) -> Tuple[bool, str]:
     """
     Edit a file by replacing text.
 
@@ -79,10 +79,10 @@ def edit_file(path: str, search: str, replace: str) -> Tuple[bool, str]:
         with open(path, "r") as f:
             content = f.read()
 
-        if search not in content:
+        if search_text not in content:
             return False, f"Search text not found in {path}"
 
-        new_content = content.replace(search, replace, 1)
+        new_content = content.replace(search_text, replace_text, 1)
 
         with open(path, "w") as f:
             f.write(new_content)
@@ -92,7 +92,7 @@ def edit_file(path: str, search: str, replace: str) -> Tuple[bool, str]:
         return False, f"Error editing file: {e}"
 
 
-def append_to_file(path: str, content: str) -> Tuple[bool, str]:
+def append_to_file(path: str, text_to_append: str) -> Tuple[bool, str]:
     """
     Append content to a file.
 
@@ -108,7 +108,7 @@ def append_to_file(path: str, content: str) -> Tuple[bool, str]:
             return False, f"File not found: {path}"
 
         with open(path, "a") as f:
-            f.write(content)
+            f.write(text_to_append)
 
         return True, f"Content appended to: {path}"
     except Exception as e:
