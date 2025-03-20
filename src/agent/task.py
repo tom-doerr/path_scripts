@@ -247,10 +247,9 @@ def execute_task(agent, task_id: str) -> str:
                 "dopamine": dopamine,
             }
         )
-            task_element.set("notes", "Failed to generate actions")
-            task_element.set("progress", "0")
-            agent.plan_tree = ET.tostring(root, encoding="unicode")
-            print(f"Task {task_id} failed: Could not generate actions")
+
+    except Exception as e:
+        return format_xml_response({"error": f"Error executing task: {str(e)}"})
 
             # Generate dopamine reward for failure
             if hasattr(agent, "dopamine_reward"):
