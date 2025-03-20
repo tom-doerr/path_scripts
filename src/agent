@@ -114,6 +114,9 @@ class Agent:
         Think step by step about the dependencies between tasks and how to break down the problem effectively.
         """
         
+        print("\n=== Prompt Sent to Model ===\n")
+        print(prompt)
+        print("\n=== End Prompt ===\n")
         response = self.stream_reasoning(prompt)
         
         # Extract XML from the response
