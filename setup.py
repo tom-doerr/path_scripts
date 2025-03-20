@@ -9,6 +9,7 @@ setup(
         "litellm",
         "textual==0.1.18",  # Pin to the installed version
         "lxml",  # For better XML handling
+        "requests",  # For web search
     ],
     entry_points={
         "console_scripts": [

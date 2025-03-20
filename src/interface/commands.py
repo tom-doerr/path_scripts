@@ -554,6 +554,26 @@ def process_command(
         console.print("- [bold]claude[/bold]: openrouter/anthropic/claude-3.7-sonnet")
         console.print("\n[bold blue]Current model:[/bold blue] " + agent.model_name)
 
+    elif cmd == "search":
+        if not args:
+            console.print("[bold red]Error:[/bold red] Please provide a search query")
+            return
+        
+        from src.utils.web_search import search_web
+        query = " ".join(args)
+        results = search_web(query)
+        
+        if not results:
+            console.print("[bold yellow]No results found[/bold yellow]")
+            return
+            
+        console.print(f"[bold blue]Search results for '{query}':[/bold blue]")
+        for i, result in enumerate(results, 1):
+            console.print(f"{i}. [bold]{result['title']}[/bold]")
+            console.print(f"   {result['snippet']}")
+            console.print(f"   [dim]{result['link']}[/dim]")
+            console.print()
+
     else:
         console.print(f"[bold red]Unknown command:[/bold red] {cmd}")
         console.print("Type [bold]/help[/bold] for available commands")
