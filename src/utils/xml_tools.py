@@ -1,6 +1,7 @@
 """XML parsing and formatting utilities."""
 
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
 import json
 from typing import Optional, Dict, Any
 
@@ -157,7 +158,6 @@ def pretty_format_xml(xml_string: str) -> str:
     except ET.ParseError:
         # Fallback to minidom if our custom formatter fails
         try:
-            from xml.dom import minidom
 
             pretty_xml = minidom.parseString(xml_string).toprettyxml(indent="  ")
             lines = [line for line in pretty_xml.split("\n") if line.strip()]
