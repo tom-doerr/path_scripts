@@ -1,5 +1,5 @@
 """Tests for core agent functionality."""
-from src.agent.core import Agent
+from src.agent.core import Agent  # pylint: disable=no-name-in-module
 
 def test_agent_initialization():
     """Test agent initializes with correct repository info."""
