@@ -2,9 +2,8 @@
 """Task execution functionality."""
 
 import xml.etree.ElementTree as ET
-from typing import Dict, Any, Optional
-
 from src.utils.xml_tools import extract_xml_from_response, format_xml_response
+from src.agent.plan import check_dependencies, apply_plan_updates
 
 
 def execute_task(agent, task_id: str) -> str:
@@ -49,8 +48,6 @@ def execute_task(agent, task_id: str) -> str:
             )
 
         # Check dependencies
-        from .plan import check_dependencies
-
         deps_met, missing_deps = check_dependencies(agent, task_id)
         if not deps_met:
             return format_xml_response(
@@ -187,8 +184,6 @@ def execute_task(agent, task_id: str) -> str:
 
         # Apply plan updates if present
         if plan_update_xml:
-            from .plan import apply_plan_updates
-
             apply_plan_updates(agent, plan_update_xml)
 
         if actions_xml:
@@ -208,8 +203,9 @@ def execute_task(agent, task_id: str) -> str:
                     "plan_update": plan_update_xml if plan_update_xml else None,
                 }
             )
-        else:
-            # Update task status to failed
+            return  # Early return
+
+        # Update task status to failed
             task_element.set("status", "failed")
             task_element.set("notes", "Failed to generate actions")
             task_element.set("progress", "0")
