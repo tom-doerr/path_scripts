@@ -28,7 +28,7 @@ def display_welcome(console: Console, system_info: Dict[str, str] = None):
     """Display welcome message."""
     if system_info is None:
         system_info = get_system_info()
-        
+
     console.print(
         Panel.fit(
             "[bold blue]Agent Interface[/bold blue]\n"
@@ -56,7 +56,7 @@ def display_plan_tree(console: Console, xml_content: str):
     if not xml_content:
         console.print("[bold red]Error: No plan content[/bold red]")
         return
-    
+
     console.print("[bold blue]Plan Tree:[/bold blue]")
     console.print(xml_content[:100])  # Print first 100 chars for simplicity
 
