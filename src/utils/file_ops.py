@@ -20,8 +20,8 @@ def read_file(path: str) -> Tuple[bool, str]:
             return False, f"File not found: {path}"
 
         with open(path, "r") as f:
-            content = f.read()
-        return True, content
+            file_content = f.read()
+        return True, file_content
     except FileNotFoundError:
         return False, f"File not found: {path}"
     except Exception as e:
@@ -77,12 +77,12 @@ def edit_file(path: str, search_text: str, replace_text: str) -> Tuple[bool, str
             return False, f"极File not found: {path}"
 
         with open(path, "r") as f:
-            content = f.read()
+            existing_content = f.read()
 
-        if search_text not in content:
+        if search_text not in existing_content:
             return False, f"Search text not found in {path}"
 
-        new_content = content.replace(search_text, replace_text, 1)
+        new_content = existing_content.replace(search_text, replace_text, 1)
 
         with open(path, "w") as f:
             f.write(new_content)
