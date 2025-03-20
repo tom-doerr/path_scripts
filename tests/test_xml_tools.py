@@ -5,7 +5,7 @@ from src.utils.xml_tools import (
     pretty_format_xml,
     validate_xml,
     escape_xml_content,
-    format_xml_response
+    format_xml_response,
 )
 
 SAMPLE_XML = """<response>
@@ -26,17 +26,22 @@ def test_extract_xml_no_match():
     result = extract_xml_from_response("No XML here", "response")
     assert result is None
 
+
 def test_extract_xml_nested_tag():
     """Test extraction of nested XML tags."""
-    nested_xml = """Before<outer><response><message>Nested</message></response></outer>After"""
+    nested_xml = (
+        """Before<outer><response><message>Nested</message></response></outer>After"""
+    )
     result = extract_xml_from_response(nested_xml, "response")
     assert "<message>Nested</message>" in result
+
 
 def test_extract_xml_multiple_matches():
     """Test extraction returns first match when multiple exist."""
     multi_xml = "<response>First</response><response>Second</response>"
     result = extract_xml_from_response(multi_xml, "response")
     assert "First" in result and "Second" not in result
+
 
 def test_pretty_format_xml():
     """Test XML formatting produces indented output."""

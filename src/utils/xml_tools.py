@@ -7,11 +7,11 @@ from typing import Optional, Dict, Any
 
 def extract_xml_from_response(response: str, tag_name: str) -> Optional[str]:
     """Extract the first XML section with the specified tag from a response string.
-    
+
     Args:
         response: String containing potential XML content
         tag_name: Name of the root XML tag to look for
-        
+
     Returns:
         Extracted XML string or None if not found
     """
@@ -99,10 +99,10 @@ def format_xml_response(content_dict: Dict[str, Any]) -> str:
 
 def pretty_format_xml(xml_string: str) -> str:
     """Format XML string with consistent indentation.
-    
+
     Args:
         xml_string: Raw XML string to format
-        
+
     Returns:
         Beautifully formatted XML string. Returns original string if parsing fails.
     """
@@ -158,6 +158,7 @@ def pretty_format_xml(xml_string: str) -> str:
         # Fallback to minidom if our custom formatter fails
         try:
             from xml.dom import minidom
+
             pretty_xml = minidom.parseString(xml_string).toprettyxml(indent="  ")
             lines = [line for line in pretty_xml.split("\n") if line.strip()]
             return "\n".join(lines)
