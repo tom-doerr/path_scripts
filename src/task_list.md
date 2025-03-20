@@ -2,20 +2,20 @@
 
 ## High Priority Tasks
 
-1. **Add Task Dependency Tracking** - Improve tracking of task dependencies and status updates.
+1. **Implement Direct Model Chat** - Enhance the chat interface to allow direct interaction with the model.
    - Priority: HIGH
-   - Status: Partially implemented
-   - Notes: Need to enhance the dependency resolution and automatic status updates
+   - Status: In progress
+   - Notes: Need to improve the conversation flow and context preservation
 
-2. **Add Structured XML Input Format** - Allow users to send structured XML input to the agent.
+2. **Add File Editing Confirmation** - Add confirmation for each file edit before execution.
    - Priority: HIGH
-   - Status: Implemented
-   - Notes: Users can now send XML-formatted messages that match the response format
+   - Status: Not started
+   - Notes: Should show diff and ask for confirmation before applying changes
 
-3. **Add Persistent Memory** - Give the agent ability to maintain and update persistent memory.
+3. **Improve Error Handling** - Add better error handling for API failures and timeouts.
    - Priority: HIGH
-   - Status: Implemented
-   - Notes: Agent can now store and update information across sessions
+   - Status: Not started
+   - Notes: Need to handle API errors gracefully and provide helpful error messages
 
 ## Medium Priority Tasks
 
@@ -34,15 +34,15 @@
    - Status: Not started
    - Notes: Will require significant refactoring of execution logic
 
-4. **Add Execution Status Tracking** - Allow the agent to indicate if a task is complete or needs user input.
-   - Priority: MEDIUM
-   - Status: Implemented
-   - Notes: Added execution_status XML tag to indicate completion status and user input needs
-
-5. **Improve Memory Management** - Enhance the persistent memory system with better organization.
+4. **Improve Memory Management** - Enhance the persistent memory system with better organization.
    - Priority: MEDIUM
    - Status: Not started
    - Notes: Add categorization, tagging, and priority levels to memory items
+
+5. **Add Model Selection UI** - Create a better UI for selecting and switching between models.
+   - Priority: MEDIUM
+   - Status: Not started
+   - Notes: Should show available models and allow easy switching
 
 ## Low Priority Tasks
 
@@ -107,3 +107,33 @@
    - Priority: MEDIUM
    - Status: Completed
    - Notes: Added dedicated paste mode and improved multiline detection
+
+7. **Add Task Dependency Tracking** - Improve tracking of task dependencies and status updates.
+   - Priority: HIGH
+   - Status: Completed
+   - Notes: Enhanced dependency resolution and automatic status updates
+
+8. **Add Structured XML Input Format** - Allow users to send structured XML input to the agent.
+   - Priority: HIGH
+   - Status: Completed
+   - Notes: Users can now send XML-formatted messages that match the response format
+
+9. **Add Persistent Memory** - Give the agent ability to maintain and update persistent memory.
+   - Priority: HIGH
+   - Status: Completed
+   - Notes: Agent can now store and update information across sessions
+
+10. **Add Execution Status Tracking** - Allow the agent to indicate if a task is complete or needs user input.
+    - Priority: MEDIUM
+    - Status: Completed
+    - Notes: Added execution_status XML tag to indicate completion status and user input needs
+
+11. **Print Full Model Messages** - Show the complete messages being sent to the model.
+    - Priority: MEDIUM
+    - Status: Completed
+    - Notes: Added display of full prompts for better debugging and transparency
+
+12. **Preserve Terminal History** - Ensure terminal history is preserved when scrolling up.
+    - Priority: MEDIUM
+    - Status: Completed
+    - Notes: Added newlines to preserve history when generating new output
