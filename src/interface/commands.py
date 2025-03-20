@@ -486,7 +486,11 @@ def process_command(
         model_aliases = {
             "flash": "openrouter/google/gemini-2.0-flash-001",
             "r1": "deepseek/deepseek-reasoner",
-            "claude": "openrouter/anthropic/claude-3.7-sonnet"
+            "claude": "openrouter/anthropic/claude-3.7-sonnet",
+            "gpt4": "openrouter/openai/gpt-4-turbo",
+            "gpt3": "openrouter/openai/gpt-3.5-turbo",
+            "mistral": "openrouter/mistralai/mistral-large",
+            "llama3": "openrouter/meta-llama/llama-3-70b-instruct"
         }
         
         if model_name in model_aliases:
