@@ -18,7 +18,6 @@ def search_web(query: str) -> List[Dict[str, str]]:
         return []
 
     try:
-        # Use DuckDuckGo's Instant Answer API
         response = requests.get(
             "https://api.duckduckgo.com/",
             params={
@@ -26,29 +25,24 @@ def search_web(query: str) -> List[Dict[str, str]]:
                 "format": "json",
                 "no_html": 1,
                 "skip_disambig": 1,
-                "no_redirect": 1,
             },
-            timeout=10,
+            timeout=5,
         )
         response.raise_for_status()
 
         data = response.json()
-
-        # Extract relevant results
         results = []
-        if "RelatedTopics" in data:
-            for topic in data["RelatedTopics"]:
-                if "FirstURL" in topic and "Text" in topic:
-                    results.append(
-                        {
-                            "title": topic.get("Text", "").split(" - ")[0],
-                            "link": topic["FirstURL"],
-                            "snippet": topic.get("Text", ""),
-                        }
-                    )
+        
+        # Extract basic results from RelatedTopics
+        for topic in data.get("RelatedTopics", []):
+            if "FirstURL" in topic and "Text" in topic:
+                results.append({
+                    "title": topic["Text"].split(" - ")[0],
+                    "link": topic["FirstURL"],
+                    "snippet": topic["Text"]
+                })
 
-        return results[:5]  # Return top 5 results
+        return results[:3]  # Return top 3 results to keep it simple
 
-    except requests.RequestException as e:
-        print(f"Web search error: {str(e)}")
-        return []
+    except requests.RequestException:
+        return []  # Fail silently for now
