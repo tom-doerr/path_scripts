@@ -108,7 +108,7 @@ def _continue_execution_with_context(
     process_chat_response_callback: Callable
 ):
     """Continue execution with the model using command execution context"""
-    console.print("\n[bold blue]Continuing execution with command results...[/bold blue]")
+    console.print("[bold blue]Continuing execution with command results...[/bold blue]")
     
     # Extract message content if available
     message_content = ""
@@ -214,7 +214,6 @@ def process_chat_response(
     save_history_callback: Callable
 ):
     """Process the XML response from the model chat"""
-    console.print("\n")
     
     # Display full XML response
     console.print("[bold blue]Full Agent Response XML:[/bold blue]")

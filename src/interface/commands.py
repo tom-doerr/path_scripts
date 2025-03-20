@@ -165,7 +165,7 @@ def process_command(
                     agent.initialize()
             
             # Generate plan - don't use status context manager to allow streaming
-            console.print("\n[bold blue]Generating plan...[/bold blue]")
+            console.print("[bold blue]Generating plan...[/bold blue]")
             try:
                 # Set a callback to handle streaming in the interface
                 def stream_callback(content, is_reasoning=False):
