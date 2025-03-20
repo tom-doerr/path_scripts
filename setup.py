@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="path-scripts",
+    name="agent-cli",
     version="0.1.0",
     packages=find_packages(),
     install_requires=[
@@ -10,8 +10,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'agent=src.agent_main:main',
-            'agent-cli=src.interface.cli:main',
+            'agent=src.interface.cli:main',
         ],
     },
 )
