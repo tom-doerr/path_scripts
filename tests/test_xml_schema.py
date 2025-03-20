@@ -1,7 +1,7 @@
 """Tests for XML schema functionality."""
 
-from src.utils.xml_schema import get_schema
-from src.utils.xml_tools import validate_xml
+from src.utils.xml_schema import get_schema  # pylint: disable=no-name-in-module
+from src.utils.xml_tools import validate_xml  # pylint: disable=no-name-in-module
 
 def test_schema_is_valid_xml():
     """Test that the schema itself is valid XML."""
