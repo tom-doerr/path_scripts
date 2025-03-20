@@ -8,7 +8,12 @@ import datetime
 from typing import Dict, List, Optional, Any, Tuple, Callable
 import litellm
 from rich.console import Console
-from src.agent.plan import generate_plan, update_plan, check_dependencies, apply_plan_updates
+from src.agent.plan import (
+    generate_plan,
+    update_plan,
+    check_dependencies,
+    apply_plan_updates,
+)
 from src.agent.task import execute_task
 from src.utils.xml_operations import format_xml_response, extract_xml_from_response
 
@@ -73,7 +78,6 @@ class Agent:
             response = litellm.completion(
                 model=self.model_name, messages=messages, stream=True, timeout=60
             )
-
 
             for chunk in response:
                 # Handle regular content
