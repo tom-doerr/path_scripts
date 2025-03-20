@@ -2,7 +2,7 @@
 
 import os
 import tempfile
-from utils.file_ops import read_file, write_file, edit_file, append_to_file
+from src.utils.file_ops import read_file, write_file, edit_file, append_to_file
 
 def test_read_file_success():
     """Test reading an existing file."""
