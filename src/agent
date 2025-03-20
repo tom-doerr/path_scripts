@@ -188,10 +188,14 @@ class Agent:
                 if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'reasoning_content'):
                     reasoning = chunk.choices[0].delta.reasoning_content
                     if reasoning:
-                        # Clean up any control characters and print in yellow
+                        # Clean up control chars and split into tokens
                         clean_reasoning = reasoning.replace('\r', '').replace('\b', '')
-                        print(f"\033[33m{clean_reasoning}\033[0m", end='', flush=True)
-                        reasoning_output += clean_reasoning
+                        tokens = clean_reasoning.split(' ')
+                        
+                        # Buffer tokens and print with spaces
+                        for token in tokens:
+                            print(f"\033[33m{token}\033[0m", end=' ', flush=True)
+                            reasoning_output += token + ' '
             
             print("\n\n--- End of Reasoning ---\n")
             
