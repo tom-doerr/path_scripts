@@ -18,14 +18,17 @@ def test_schema_contains_required_elements():
     assert "<file_edits>" in schema, "Schema should contain file_edits element"
     assert "<shell_commands>" in schema, "Schema should contain shell_commands element"
     assert "<memory_updates>" in schema, "Schema should contain memory_updates element"
-    assert "<execution_status>" in schema, "Schema should contain execution_status element"
+    assert (
+        "<execution_status>" in schema
+    ), "Schema should contain execution_status element"
+
 
 def test_schema_example_structures():
     """Test that example structures in schema are valid"""
     schema = get_schema()
-    assert "type=\"create_file\"" in schema, "Should contain file creation example"
-    assert "type=\"modify_file\"" in schema, "Should contain file modification example"
-    assert "type=\"run_command\"" in schema, "Should contain command execution example"
+    assert 'type="create_file"' in schema, "Should contain file creation example"
+    assert 'type="modify_file"' in schema, "Should contain file modification example"
+    assert 'type="run_command"' in schema, "Should contain command execution example"
 
 
 def test_get_schema_returns_string():
