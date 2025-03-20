@@ -184,7 +184,7 @@ def _continue_execution_with_context(
 </xml>"""
     
     # Print the full prompt only if verbose mode is enabled
-    if config and config.get('verbose', False):
+    if getattr(agent, 'config', {}).get('verbose', False):
         print(prompt)
         print("=== End Message ===")
     
