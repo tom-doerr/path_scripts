@@ -28,7 +28,37 @@ def test_mixed_feedback_mid_score():
     """Test mid-range score generates mixed feedback."""
     reward = DopamineReward(Console())
     feedback = reward.generate_reward(65)
-    assert "TRICKLE" in feedback or "BOOST" in feedback
+    assert "TRICKLE" in feedback  # 65 should be in the TRICKLE range
+
+def test_positive_feedback_edge_case():
+    """Test edge case for positive feedback."""
+    reward = DopamineReward(Console())
+    feedback = reward.generate_reward(75)
+    assert "BOOST" in feedback
+
+def test_negative_feedback_edge_case():
+    """Test edge case for negative feedback."""
+    reward = DopamineReward(Console())
+    feedback = reward.generate_reward(39)
+    assert "DIP" in feedback
+
+def test_reward_with_positive_observation():
+    """Test reward generation with positive user feedback."""
+    reward = DopamineReward(Console())
+    feedback = reward.reward_for_xml_response("", "Good job! This is perfect!")
+    assert "SURGE" in feedback
+
+def test_reward_with_negative_observation():
+    """Test reward generation with negative user feedback."""
+    reward = DopamineReward(Console())
+    feedback = reward.reward_for_xml_response("", "Bad result! Wrong and useless!")
+    assert "LOW" in feedback
+
+def test_reward_with_neutral_observation():
+    """Test reward generation with mixed feedback."""
+    reward = DopamineReward(Console())
+    feedback = reward.reward_for_xml_response("", "OK but could be better")
+    assert "NEUTRAL" in feedback
 
 
 def test_empty_feedback_defaults_neutral():
@@ -36,6 +66,7 @@ def test_empty_feedback_defaults_neutral():
     reward = DopamineReward(Console())
     feedback = reward.reward_for_xml_response("", "")
     assert "NEUTRAL" in feedback
+
 
 def test_default_reward_score():
     """Test reward generation with default scoring."""
