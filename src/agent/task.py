@@ -3,10 +3,9 @@
 
 import json
 import xml.etree.ElementTree as ET
-from typing import Dict, Any, Optional
+import json
+import xml.etree.ElementTree as ET
 from src.utils.xml_tools import extract_xml_from_response, format_xml_response
-from src.agent.plan import check_dependencies, apply_plan_updates
-from src.utils.feedback import DopamineReward
 
 
 def execute_task(agent, task_id: str) -> str:
@@ -43,11 +42,6 @@ def execute_task(agent, task_id: str) -> str:
 
     except Exception as e:
         return format_xml_response({"error": f"Error executing task: {str(e)}"})
-        # Parse the plan tree
-        root = ET.fromstring(agent.plan_tree)
-
-        # Find the task with the given ID
-        task_element = root.find(f".//task[@id='{task_id}']")
         if task_element is None:
             return format_xml_response({"error": f"Task {task_id} not found"})
 
@@ -69,7 +63,7 @@ def execute_task(agent, task_id: str) -> str:
             )
 
         # Check dependencies
-        from agent.plan import check_dependencies
+        from src.agent.plan import check_dependencies
 
         deps_met, missing_deps = check_dependencies(agent, task_id)
         if not deps_met:
@@ -207,7 +201,7 @@ def execute_task(agent, task_id: str) -> str:
 
         # Apply plan updates if present
         if plan_update_xml:
-            from agent.plan import apply_plan_updates
+            from src.agent.plan import apply_plan_updates
 
             apply_plan_updates(agent, plan_update_xml)
 
@@ -223,7 +217,7 @@ def execute_task(agent, task_id: str) -> str:
             if hasattr(agent, "dopamine_reward"):
                 dopamine = agent.dopamine_reward.generate_reward(30)
             else:
-                from utils.feedback import DopamineReward
+                from src.utils.feedback import DopamineReward
 
                 agent.dopamine_reward = DopamineReward(agent.console)
                 dopamine = agent.dopamine_reward.generate_reward(30)
@@ -266,9 +260,6 @@ def execute_task(agent, task_id: str) -> str:
                 "dopamine": dopamine,
             }
         )
-
-    except Exception as e:
-        return format_xml_response({"error": f"Error executing task: {str(e)}"})
 
     except Exception as e:
         return format_xml_response({"error": f"Error executing task: {str(e)}"})
