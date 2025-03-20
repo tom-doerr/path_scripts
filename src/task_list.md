@@ -1,5 +1,21 @@
 # Agent Development Task List
 
+## Completed Tasks
+1. **Add Direct Model Interaction** - Allow users to chat directly with the model from the interface.
+   - Priority: HIGH
+   - Status: Completed
+   - Notes: Implemented chat mode where any text not starting with / is sent to the model
+
+2. **Add Model Aliases** - Support for model aliases like 'flash', 'r1', 'claude'.
+   - Priority: HIGH
+   - Status: Completed
+   - Notes: Added model_aliases dictionary to support easy model switching
+
+3. **Add Shell Command Execution** - Allow the model to suggest and execute shell commands.
+   - Priority: HIGH
+   - Status: Completed
+   - Notes: Implemented with safety checks and auto-run capability for safe commands
+
 ## High Priority Tasks
 
 1. **Fix Reasoning Token Display** - Improve how reasoning tokens are displayed during streaming.
@@ -7,56 +23,56 @@
    - Status: In progress
    - Notes: Need to ensure consistent formatting and avoid line breaks between tokens
 
-2. **Add Direct Model Interaction** - Allow users to chat directly with the model from the interface.
+2. **Implement Action Execution** - Allow the model to execute actions like file creation/modification.
    - Priority: HIGH
-   - Status: Not started
-   - Notes: Implement a chat mode within the interface for direct model interaction
+   - Status: Partially implemented
+   - Notes: Basic implementation exists, needs refinement and better confirmation flow
+
+3. **Add Task Dependency Tracking** - Improve tracking of task dependencies and status updates.
+   - Priority: HIGH
+   - Status: Partially implemented
+   - Notes: Need to enhance the dependency resolution and automatic status updates
 
 ## Medium Priority Tasks
 
-1. **Improve Error Handling** - Add better error handling throughout the codebase.
+1. **Allow Agent to Modify Its Own Plan** - Enable the agent to update its plan based on new information.
    - Priority: MEDIUM
    - Status: Basic implementation
-   - Notes: Focus on graceful recovery from API failures and invalid XML
+   - Notes: Need to improve the plan modification logic and validation
 
-2. **Add Task Status Visualization** - Enhance the visual representation of task status and dependencies.
+2. **Show Progress as Tasks are Completed** - Better visual feedback for task completion.
    - Priority: MEDIUM
    - Status: Basic implementation exists
-   - Notes: Consider adding graphical visualization options
+   - Notes: Add progress bars and better status indicators
 
 3. **Implement Parallel Task Execution** - Allow multiple non-dependent tasks to be executed in parallel.
    - Priority: MEDIUM
    - Status: Not started
    - Notes: Will require significant refactoring of execution logic
 
-4. **Add Plan Validation** - Validate plan structure and dependencies before execution.
+4. **Add Confirmation for Each Action** - Require user confirmation before executing actions.
    - Priority: MEDIUM
-   - Status: Basic implementation exists
-   - Notes: Need to add more comprehensive validation rules
+   - Status: Implemented
+   - Notes: Consider adding batch confirmation options for multiple actions
 
 ## Low Priority Tasks
 
-11. **Add Export/Import Functionality** - Allow plans to be exported and imported in different formats.
-    - Priority: LOW
-    - Status: Not started
-    - Notes: Consider supporting JSON, YAML, and Markdown formats
+1. **Add Export/Import Functionality** - Allow plans to be exported and imported in different formats.
+   - Priority: LOW
+   - Status: Not started
+   - Notes: Consider supporting JSON, YAML, and Markdown formats
 
-12. **Add Command History** - Implement command history in the interface.
-    - Priority: LOW
-    - Status: Not started
-    - Notes: Allow users to recall and edit previous commands
+2. **Add Command History** - Implement command history in the interface.
+   - Priority: LOW
+   - Status: Not started
+   - Notes: Allow users to recall and edit previous commands
 
-13. **Add Undo Functionality** - Allow users to undo actions.
-    - Priority: LOW
-    - Status: Not started
-    - Notes: Implement a simple undo stack for actions
+3. **Add Textual UI Integration** - Consider integrating with Textual for a more advanced TUI.
+   - Priority: LOW
+   - Status: Not started
+   - Notes: Would provide better layout and interaction capabilities
 
-14. **Add File Backup Before Modifications** - Create backups of files before modifying them.
-    - Priority: LOW
-    - Status: Not started
-    - Notes: Implement a simple backup system with restore capability
-
-15. **Add Template Support** - Allow users to create and use templates for common tasks.
-    - Priority: LOW
-    - Status: Not started
-    - Notes: Implement a template system for plans and actions
+4. **Refactor Code for Maintainability** - Improve code organization and reduce complexity.
+   - Priority: LOW
+   - Status: Not started
+   - Notes: Focus on keeping the codebase simple and maintainable
