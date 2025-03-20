@@ -206,7 +206,7 @@ def execute_task(agent, task_id: str) -> str:
 
         # Update task status to failed
         task_element.set("status", "failed")
-            task_element.set("notes", "Failed to generate actions")
+        task_element.set("notes", "Failed to generate actions")
             task_element.set("progress", "0")
             agent.plan_tree = ET.tostring(root, encoding="unicode")
             print(f"Task {task_id} failed: Could not generate actions")
