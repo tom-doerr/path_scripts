@@ -1,7 +1,8 @@
 """XML parsing and formatting utilities."""
 
 import xml.etree.ElementTree as ET
-from typing import Optional, Dict, Any, List
+import json
+from typing import Optional, Dict, Any
 
 
 def extract_xml_from_response(response: str, tag_name: str) -> Optional[str]:
@@ -14,7 +15,6 @@ def extract_xml_from_response(response: str, tag_name: str) -> Optional[str]:
     Returns:
         Extracted XML string or None if not found
     """
-    """Extract XML content for a specific tag from a response string."""
     try:
         start_tag = f"<{tag_name}"
         end_tag = f"</{tag_name}>"
@@ -28,7 +28,7 @@ def extract_xml_from_response(response: str, tag_name: str) -> Optional[str]:
             return None
 
         return response[start_index : end_index + len(end_tag)]
-    except Exception as e:
+    except Exception:
         return None
 
 
@@ -157,10 +157,11 @@ def pretty_format_xml(xml_string: str) -> str:
     except ET.ParseError:
         # Fallback to minidom if our custom formatter fails
         try:
+            from xml.dom import minidom
             pretty_xml = minidom.parseString(xml_string).toprettyxml(indent="  ")
             lines = [line for line in pretty_xml.split("\n") if line.strip()]
             return "\n".join(lines)
-        except:
+        except Exception:
             # If all else fails, return the original string
             return xml_string
 
