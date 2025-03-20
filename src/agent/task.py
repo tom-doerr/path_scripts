@@ -3,9 +3,9 @@
 
 import json
 import xml.etree.ElementTree as ET
-from typing import Dict, Any, Optional
-
-from utils.xml_operations import extract_xml_from_response, format_xml_response
+import json
+import xml.etree.ElementTree as ET
+from src.utils.xml_tools import extract_xml_from_response, format_xml_response
 
 
 def execute_task(agent, task_id: str) -> str:
@@ -19,7 +19,7 @@ def execute_task(agent, task_id: str) -> str:
     Returns:
         Formatted XML response with execution results
     """
-    if not agent.plan_tree:
+    if not hasattr(agent, 'plan_tree') or not agent.plan_tree:
         return format_xml_response({"error": "No plan exists"})
 
     try:
@@ -28,6 +28,20 @@ def execute_task(agent, task_id: str) -> str:
 
         # Find the task with the given ID
         task_element = root.find(f".//task[@id='{task_id}']")
+        if task_element is None:
+            return format_xml_response({"error": f"Task {task_id} not found"})
+
+        # Return basic task info
+        return format_xml_response({
+            "task": {
+                "id": task_id,
+                "description": task_element.get("description", ""),
+                "status": task_element.get("status", "pending")
+            }
+        })
+
+    except Exception as e:
+        return format_xml_response({"error": f"Error executing task: {str(e)}"})
         if task_element is None:
             return format_xml_response({"error": f"Task {task_id} not found"})
 
@@ -49,7 +63,7 @@ def execute_task(agent, task_id: str) -> str:
             )
 
         # Check dependencies
-        from agent.plan import check_dependencies
+        from src.agent.plan import check_dependencies
 
         deps_met, missing_deps = check_dependencies(agent, task_id)
         if not deps_met:
@@ -67,7 +81,7 @@ def execute_task(agent, task_id: str) -> str:
         agent.plan_tree = ET.tostring(root, encoding="unicode")
 
         print(f"Executing task {task_id}: {description}")
-        print(f"Status updated to: in-progress (10%)")
+        print("Status updated to: in-progress (10%)")
 
         # Get parent task information for context
         parent_info = ""
@@ -172,14 +186,14 @@ def execute_task(agent, task_id: str) -> str:
         # Update progress to 30% - planning phase
         task_element.set("progress", "30")
         agent.plan_tree = ET.tostring(root, encoding="unicode")
-        print(f"Progress updated to: 30% (planning phase)")
+        print("Progress updated to: 30% (planning phase)")
 
         response = agent.stream_reasoning(prompt)
 
         # Update progress to 50% - actions generated
         task_element.set("progress", "50")
         agent.plan_tree = ET.tostring(root, encoding="unicode")
-        print(f"Progress updated to: 50% (actions generated)")
+        print("Progress updated to: 50% (actions generated)")
 
         # Extract actions XML from the response
         actions_xml = extract_xml_from_response(response, "actions")
@@ -187,38 +201,11 @@ def execute_task(agent, task_id: str) -> str:
 
         # Apply plan updates if present
         if plan_update_xml:
-            from agent.plan import apply_plan_updates
+            from src.agent.plan import apply_plan_updates
 
             apply_plan_updates(agent, plan_update_xml)
 
-        if actions_xml:
-            # Update progress to 70% - ready for execution
-            task_element.set("progress", "70")
-            agent.plan_tree = ET.tostring(root, encoding="unicode")
-            print(f"Progress updated to: 70% (ready for execution)")
-
-            # Generate dopamine reward for successful action generation
-            if hasattr(agent, "dopamine_reward"):
-                dopamine = agent.dopamine_reward.generate_reward(75)
-            else:
-                from utils.feedback import DopamineReward
-
-                agent.dopamine_reward = DopamineReward(agent.console)
-                dopamine = agent.dopamine_reward.generate_reward(75)
-
-            return format_xml_response(
-                {
-                    "task": {
-                        "id": task_id,
-                        "description": description,
-                        "progress": "70",
-                    },
-                    "actions": actions_xml,
-                    "plan_update": plan_update_xml if plan_update_xml else None,
-                    "dopamine": dopamine,
-                }
-            )
-        else:
+        if not actions_xml:
             # Update task status to failed
             task_element.set("status", "failed")
             task_element.set("notes", "Failed to generate actions")
@@ -230,7 +217,7 @@ def execute_task(agent, task_id: str) -> str:
             if hasattr(agent, "dopamine_reward"):
                 dopamine = agent.dopamine_reward.generate_reward(30)
             else:
-                from utils.feedback import DopamineReward
+                from src.utils.feedback import DopamineReward
 
                 agent.dopamine_reward = DopamineReward(agent.console)
                 dopamine = agent.dopamine_reward.generate_reward(30)
@@ -246,6 +233,33 @@ def execute_task(agent, task_id: str) -> str:
                     "dopamine": dopamine,
                 }
             )
+
+        # Update progress to 70% - ready for execution
+        task_element.set("progress", "70")
+        agent.plan_tree = ET.tostring(root, encoding="unicode")
+        print("Progress updated to: 70% (ready for execution)")
+
+        # Generate dopamine reward for successful action generation
+        if hasattr(agent, "dopamine_reward"):
+            dopamine = agent.dopamine_reward.generate_reward(75)
+        else:
+            from utils.feedback import DopamineReward
+
+            agent.dopamine_reward = DopamineReward(agent.console)
+            dopamine = agent.dopamine_reward.generate_reward(75)
+
+        return format_xml_response(
+            {
+                "task": {
+                    "id": task_id,
+                    "description": description,
+                    "progress": "70",
+                },
+                "actions": actions_xml,
+                "plan_update": plan_update_xml if plan_update_xml else None,
+                "dopamine": dopamine,
+            }
+        )
 
     except Exception as e:
         return format_xml_response({"error": f"Error executing task: {str(e)}"})
