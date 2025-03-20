@@ -15,6 +15,7 @@ from rich.tree import Tree
 from rich.syntax import Syntax
 from rich.prompt import Prompt
 from rich.markdown import Markdown
+from src.utils.xml_schema import get_schema
 
 # Import the Agent class directly
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1269,7 +1270,13 @@ class AgentInterface:
         # Load persistent memory if it exists
         memory_content = self._load_persistent_memory()
         
+        # Get the XML schema
+        xml_schema = get_schema()
+        
         # Construct a prompt that instructs the model to respond in XML format
+        # Get the XML schema
+        xml_schema = get_schema()
+        
         prompt = f"""
         <context>
           <system_info>
@@ -1290,57 +1297,67 @@ class AgentInterface:
         
         You are an AI assistant that can respond to user queries and also perform actions.
         
-        You can respond in the following ways:
+        <xml_schema>
+          <!-- Response schema - all responses must follow this structure -->
+          <response>
+            <!-- Optional message to the user -->
+            <message>Your response text here. Can include markdown formatting.</message>
+            
+            <!-- Optional actions to execute -->
+            <actions>
+              <!-- Create a new file -->
+              <action type="create_file" path="example.py">
+                # Python code here
+              </action>
+              
+              <!-- Modify an existing file -->
+              <action type="modify_file" path="existing.py">
+                <change>
+                  <original>def old_function():</original>
+                  <new>def new_function():</new>
+                </change>
+              </action>
+              
+              <!-- Run a shell command -->
+              <action type="run_command" command="echo 'Hello World'">
+              </action>
+            </actions>
+            
+            <!-- Optional file edits (search and replace) -->
+            <file_edits>
+              <edit path="path/to/file.py">
+                <search>def old_function():</search>
+                <replace>def new_function():</replace>
+              </edit>
+              <edit path="path/to/new_file.py">
+                <search></search>
+                <replace># New file content here</replace>
+              </edit>
+            </file_edits>
+            
+            <!-- Optional shell commands -->
+            <shell_commands>
+              <command safe_to_autorun="true">echo "Hello World"</command>
+              <command safe_to_autorun="false">rm -rf some_directory</command>
+            </shell_commands>
+            
+            <!-- Optional memory updates -->
+            <memory_updates>
+              <edit>
+                <search>Old information to replace</search>
+                <replace>Updated information</replace>
+              </edit>
+              <append>New information to remember</append>
+            </memory_updates>
+            
+            <!-- Optional execution status -->
+            <execution_status complete="true|false" needs_user_input="true|false">
+              <message>Status message explaining what's done or what's needed</message>
+            </execution_status>
+          </response>
+        </xml_schema>
         
-        1. Simple message:
-        <message>Your response text here</message>
-        
-        2. Actions to execute:
-        <actions>
-          <action type="create_file" path="example.py">
-            # Python code here
-          </action>
-          <action type="modify_file" path="existing.py">
-            <change>
-              <original>def old_function():</original>
-              <new>def new_function():</new>
-            </change>
-          </action>
-        </actions>
-        
-        3. File edits (search and replace):
-        <file_edits>
-          <edit path="path/to/file.py">
-            <search>def old_function():</search>
-            <replace>def new_function():</replace>
-          </edit>
-          <edit path="path/to/new_file.py">
-            <search></search>
-            <replace># New file content here</replace>
-          </edit>
-        </file_edits>
-        
-        4. Shell commands:
-        <shell_commands>
-          <command safe_to_autorun="true">echo "Hello World"</command>
-          <command safe_to_autorun="false">rm -rf some_directory</command>
-        </shell_commands>
-        
-        5. Memory updates:
-        <memory_updates>
-          <edit>
-            <search>Old information to replace</search>
-            <replace>Updated information</replace>
-          </edit>
-          <append>New information to remember</append>
-        </memory_updates>
-        
-        6. Execution status:
-        <execution_status complete="true|false" needs_user_input="true|false">
-          <message>Status message explaining what's done or what's needed</message>
-        </execution_status>
-        
-        You can include multiple response types in a single reply.
+        You must respond using the XML schema above. You can include multiple response types in a single reply.
         For shell commands, set safe_to_autorun="true" only for commands that are completely safe and have no destructive potential.
         
         When you need to update your persistent memory, use the memory_updates tag to edit or add information.
@@ -1546,6 +1563,8 @@ class AgentInterface:
             <timezone>{timezone}</timezone>
           </system_info>
         </context>
+        
+        {xml_schema}
         
         You are continuing a task based on the results of previous commands.
         
