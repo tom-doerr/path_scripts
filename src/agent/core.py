@@ -1,15 +1,3 @@
-if __name__ == "__main__":
-    # Simple test when run directly
-    agent = Agent()
-    print(f"Initialized agent with model: {agent.model_name}")
-
-    # Test prompt if an argument is provided
-    if len(sys.argv) > 1:
-        prompt = sys.argv[1]
-        print(f"Testing with prompt: {prompt}")
-        response = agent.stream_reasoning(prompt)
-        print("\nFinal response:")
-        print(response)
 """Core agent functionality."""
 
 import os
@@ -20,9 +8,9 @@ import datetime
 from typing import Dict, List, Optional, Any, Tuple, Callable
 import litellm
 from rich.console import Console
-from .plan import generate_plan, update_plan, check_dependencies, apply_plan_updates
-from .task import execute_task
-from utils.xml_operations import format_xml_response
+from src.agent.plan import generate_plan, update_plan, check_dependencies, apply_plan_updates
+from src.agent.task import execute_task
+from src.utils.xml_operations import format_xml_response, extract_xml_from_response
 
 
 class Agent:
@@ -43,13 +31,21 @@ class Agent:
 
     def initialize(self, repo_path: str = ".") -> None:
         """Initialize the agent with repository information"""
-        from utils.file_ops import read_file
+        from src.utils.file_ops import read_file
 
         self.repository_info = {"path": repo_path}
         print(f"Agent initialized for repository: {repo_path}")
 
+    def _get_terminal_height(self) -> int:
+        """Get terminal height using shutil"""
+        try:
+            return shutil.get_terminal_size().lines
+        except Exception:
+            return 40  # Fallback default
+
     def stream_reasoning(self, prompt: str) -> str:
         """Stream the reasoning process from the model and return the final response"""
+        messages = [{"role": "user", "content": prompt}]
 
         # Get terminal height and add that many newlines to preserve history
         terminal_height = self._get_terminal_height()
@@ -78,8 +74,6 @@ class Agent:
                 model=self.model_name, messages=messages, stream=True, timeout=60
             )
 
-            # Track if we're in the reasoning phase
-            reasoning_phase = True
 
             for chunk in response:
                 # Handle regular content
@@ -95,7 +89,8 @@ class Agent:
                         clean_content = content.replace("\r", "").replace("\b", "")
 
                         if self.stream_callback:
-                            self.stream_callback(clean_content, is_reasoning=False)
+                            if callable(self.stream_callback):
+                                self.stream_callback(clean_content, is_reasoning=False)
                         else:
                             # Print without any special formatting
                             print(clean_content, end="", flush=True)
@@ -112,7 +107,8 @@ class Agent:
 
                         # Use callback if available, otherwise use console
                         if self.stream_callback:
-                            self.stream_callback(clean_reasoning, is_reasoning=True)
+                            if callable(self.stream_callback):
+                                self.stream_callback(clean_reasoning, is_reasoning=True)
                         else:
                             # Use yellow color for reasoning
                             self.console.print(
