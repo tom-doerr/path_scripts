@@ -6,6 +6,7 @@ import sys
 import json
 import datetime
 import subprocess
+import platform
 from typing import List, Optional, Dict, Tuple
 import xml.etree.ElementTree as ET
 from rich.console import Console
@@ -32,15 +33,32 @@ class AgentInterface:
         }
         self.chat_history = []
         self.history_file = "chat_history.json"
+        self.system_info = self.get_system_info()
+        self.multiline_input_buffer = []
+        self.multiline_input_mode = False
         self.load_chat_history()
+    
+    def get_system_info(self) -> Dict[str, str]:
+        """Get system information"""
+        info = {
+            "platform": platform.platform(),
+            "python": platform.python_version(),
+            "processor": platform.processor(),
+            "hostname": platform.node(),
+            "shell": os.environ.get("SHELL", "unknown")
+        }
+        return info
     
     def display_welcome(self):
         """Display welcome message and instructions"""
+        system_info_text = f"Running on: {self.system_info['platform']} | Python {self.system_info['python']} | {self.system_info['shell']}"
+        
         self.console.print(Panel.fit(
             "[bold blue]Agent Interface[/bold blue]\n"
             "A simple interface for the agent planning system\n"
             "Type [bold]/help[/bold] for available commands\n"
-            "Any text not starting with / will be sent directly to the model",
+            "Any text not starting with / will be sent directly to the model\n\n"
+            f"[dim]{system_info_text}[/dim]",
             title="Welcome",
             border_style="blue"
         ))
@@ -59,10 +77,13 @@ class AgentInterface:
         self.console.print("[bold green]/model <model_name>[/bold green]", "- Change the model (aliases: flash, r1, claude)")
         self.console.print("[bold green]/history [count][/bold green]", "- Display chat history (default: last 10 messages)")
         self.console.print("[bold green]/clear-history[/bold green]", "- Clear the chat history")
+        self.console.print("[bold green]/paste[/bold green]", "- Enter multiline paste mode (end with /end)")
+        self.console.print("[bold green]/end[/bold green]", "- End multiline paste mode")
         self.console.print("[bold green]/help[/bold green]", "- Show this help")
         self.console.print("[bold green]/exit[/bold green]", "- Exit the interface")
         self.console.print("")
         self.console.print("[italic]Any text not starting with / will be sent directly to the model as a chat message[/italic]")
+        self.console.print("[italic]For multiline input, use /paste to start and /end to finish[/italic]")
     
     def execute_action(self, action_element):
         """Execute a single action from the XML"""
@@ -320,6 +341,27 @@ class AgentInterface:
         # If not a slash command, treat as chat with the model
         if not is_slash_command:
             self.chat_with_model(" ".join([cmd] + args))
+            return
+        
+        # Handle paste mode commands
+        if cmd == "paste":
+            self.multiline_input_mode = True
+            self.multiline_input_buffer = []
+            self.console.print("[bold yellow]Entering multiline paste mode. Type /end when finished.[/bold yellow]")
+            return
+        
+        if cmd == "end":
+            if self.multiline_input_mode:
+                self.multiline_input_mode = False
+                if self.multiline_input_buffer:
+                    full_input = "\n".join(self.multiline_input_buffer)
+                    self.console.print(f"[dim]Processing {len(self.multiline_input_buffer)} lines of input...[/dim]")
+                    self.chat_with_model(full_input)
+                    self.multiline_input_buffer = []
+                else:
+                    self.console.print("[yellow]No input to process[/yellow]")
+            else:
+                self.console.print("[yellow]Not in paste mode[/yellow]")
             return
         
         if cmd == "help":
@@ -1131,6 +1173,7 @@ class AgentInterface:
             "content": message,
             "timestamp": timestamp
         })
+        self.save_chat_history()
         
         self.console.print(f"[bold blue]Sending message to model ({self.agent.model_name})...[/bold blue]")
         
@@ -1145,6 +1188,8 @@ class AgentInterface:
             <date>{now.strftime('%Y-%m-%d')}</date>
             <time>{now.strftime('%H:%M:%S')}</time>
             <timezone>{timezone}</timezone>
+            <platform>{self.system_info['platform']}</platform>
+            <shell>{self.system_info['shell']}</shell>
           </system_info>
           <conversation_history>
             {self._format_history_for_prompt()}
@@ -1451,14 +1496,30 @@ class AgentInterface:
         shell_commands_xml = self.agent.extract_xml_from_response(response, "shell_commands")
         file_edits_xml = self.agent.extract_xml_from_response(response, "file_edits")
         
+        # Extract only the non-reasoning part for history
+        # We don't want to save the reasoning tokens to avoid polluting the context
+        message_xml = self.agent.extract_xml_from_response(response, "message")
+        actions_xml = self.agent.extract_xml_from_response(response, "actions")
+        shell_commands_xml = self.agent.extract_xml_from_response(response, "shell_commands")
+        file_edits_xml = self.agent.extract_xml_from_response(response, "file_edits")
+            
+        # Combine the extracted parts for history
+        history_content = ""
+        for xml_part in [message_xml, actions_xml, shell_commands_xml, file_edits_xml]:
+            if xml_part:
+                history_content += xml_part + "\n"
+            
+        if not history_content:
+            history_content = response  # Fallback to full response if extraction failed
+            
         # Add response to history
         timestamp = datetime.datetime.now().isoformat()
         self.chat_history.append({
             "role": "assistant",
-            "content": response,
+            "content": history_content,
             "timestamp": timestamp
         })
-        
+            
         # Save updated history
         self.save_chat_history()
         
@@ -1543,23 +1604,64 @@ class AgentInterface:
         
         while True:
             try:
-                user_input = Prompt.ask("\n[bold blue]>[/bold blue]")
-                if user_input.lower() in ["exit", "quit", "q", "/exit", "/quit", "/q"]:
-                    self.console.print("[bold blue]Exiting...[/bold blue]")
-                    sys.exit(0)
-                
-                # Check if this is a slash command
-                if user_input.startswith('/'):
-                    # Remove the slash and split into command parts
-                    command = user_input[1:].strip().split()
-                    self.run_command(command)
+                # Handle multiline input mode
+                if self.multiline_input_mode:
+                    user_input = Prompt.ask("\n[bold yellow]paste>[/bold yellow]")
+                    
+                    # Check for end of multiline input
+                    if user_input.lower() in ["/end", "/done", "/finish"]:
+                        self.multiline_input_mode = False
+                        
+                        # Process the collected input
+                        if self.multiline_input_buffer:
+                            full_input = "\n".join(self.multiline_input_buffer)
+                            self.console.print(f"[dim]Processing {len(self.multiline_input_buffer)} lines of input...[/dim]")
+                            self.chat_with_model(full_input)
+                            self.multiline_input_buffer = []
+                        else:
+                            self.console.print("[yellow]No input to process[/yellow]")
+                    else:
+                        # Add to buffer
+                        self.multiline_input_buffer.append(user_input)
+                        self.console.print(f"[dim]Line {len(self.multiline_input_buffer)} added[/dim]")
                 else:
-                    # Treat as direct chat with the model
-                    self.chat_with_model(user_input)
+                    # Normal single-line input mode
+                    user_input = Prompt.ask("\n[bold blue]>[/bold blue]")
+                    
+                    if user_input.lower() in ["exit", "quit", "q", "/exit", "/quit", "/q"]:
+                        self.console.print("[bold blue]Exiting...[/bold blue]")
+                        sys.exit(0)
+                    
+                    # Check if this is a paste command
+                    if user_input.lower() == "/paste":
+                        self.multiline_input_mode = True
+                        self.multiline_input_buffer = []
+                        self.console.print("[bold yellow]Entering multiline paste mode. Type /end when finished.[/bold yellow]")
+                        continue
+                    
+                    # Check if this is a slash command
+                    if user_input.startswith('/'):
+                        # Remove the slash and split into command parts
+                        command = user_input[1:].strip().split()
+                        self.run_command(command)
+                    else:
+                        # Check if this might be a multiline paste
+                        if "\n" in user_input:
+                            lines = user_input.split("\n")
+                            self.console.print(f"[dim]Detected multiline paste with {len(lines)} lines[/dim]")
+                            self.chat_with_model(user_input)
+                        else:
+                            # Treat as direct chat with the model
+                            self.chat_with_model(user_input)
                     
             except KeyboardInterrupt:
-                self.console.print("\n[bold yellow]Exiting...[/bold yellow]")
-                sys.exit(0)
+                if self.multiline_input_mode:
+                    self.console.print("\n[bold yellow]Cancelling multiline input[/bold yellow]")
+                    self.multiline_input_mode = False
+                    self.multiline_input_buffer = []
+                else:
+                    self.console.print("\n[bold yellow]Exiting...[/bold yellow]")
+                    sys.exit(0)
             except EOFError:  # Handle Ctrl+D
                 self.console.print("\n[bold yellow]Exiting...[/bold yellow]")
                 sys.exit(0)

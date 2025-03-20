@@ -217,8 +217,11 @@ class Agent:
             
             # Save reasoning to a file for reference
             if reasoning_output:
-                with open("last_reasoning.txt", "w") as f:
-                    f.write(reasoning_output)
+                try:
+                    with open("last_reasoning.txt", "w") as f:
+                        f.write(reasoning_output)
+                except Exception as e:
+                    print(f"Warning: Could not save reasoning to file: {e}")
                 
             return full_response
             
