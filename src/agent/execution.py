@@ -174,7 +174,7 @@ def execute_task(agent, task_id: str) -> str:
         
         # Update progress to 50% - actions generated
         task_element.set("progress", "50")
-        agent.plan_tree =极 ET.tostring(root, encoding='unicode')
+        agent.plan_tree = ET.tostring(root, encoding='unicode')
         print(f"Progress updated to: 50% (actions generated)")
         
         # Extract actions XML from the response
