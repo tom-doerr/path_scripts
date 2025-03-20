@@ -432,8 +432,16 @@ class AgentInterface:
                 # Display the actions
                 actions_xml = self.agent.extract_xml_from_response(result, "actions")
                 if actions_xml:
-                    syntax = Syntax(actions_xml, "xml", theme="monokai", line_numbers=True)
-                    self.console.print(Panel(syntax, title=f"Actions for Task {task_id}", border_style="green"))
+                    # Clean up XML for display
+                    try:
+                        root = ET.fromstring(actions_xml)
+                        clean_xml = ET.tostring(root, encoding='unicode')
+                        syntax = Syntax(clean_xml, "xml", theme="monokai", line_numbers=True)
+                        self.console.print(Panel(syntax, title=f"Actions for Task {task_id}", border_style="green"))
+                    except ET.ParseError:
+                        # Fallback if XML parsing fails
+                        syntax = Syntax(actions_xml, "xml", theme="monokai", line_numbers=True)
+                        self.console.print(Panel(syntax, title=f"Actions for Task {task_id}", border_style="green"))
                     
                     # Parse the actions to show them individually for confirmation
                     try:

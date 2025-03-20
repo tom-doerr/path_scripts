@@ -177,8 +177,10 @@ class Agent:
                 if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
                     content = chunk.choices[0].delta.content
                     if content:
-                        # Clean up any control characters that might be causing display issues
+                        # More thorough cleaning of control characters and special tokens
                         clean_content = content.replace('\r', '').replace('\b', '')
+                        # Remove any potential token markers or brackets that might be causing display issues
+                        clean_content = clean_content.replace('[', '').replace(']', '')
                         print(clean_content, end='', flush=True)
                         full_response += clean_content
                 
@@ -186,9 +188,10 @@ class Agent:
                 if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'reasoning_content'):
                     reasoning = chunk.choices[0].delta.reasoning_content
                     if reasoning:
-                        # Print reasoning in a different color (yellow) without breaking lines
-                        print(f"\033[33m{reasoning}\033[0m", end='', flush=True)
-                        reasoning_output += reasoning
+                        # Clean up any control characters and print in yellow
+                        clean_reasoning = reasoning.replace('\r', '').replace('\b', '')
+                        print(f"\033[33m{clean_reasoning}\033[0m", end='', flush=True)
+                        reasoning_output += clean_reasoning
             
             print("\n\n--- End of Reasoning ---\n")
             
@@ -211,6 +214,9 @@ class Agent:
         root = ET.Element("agent-response")
         
         for key, value in content_dict.items():
+            if value is None:
+                continue
+                
             if isinstance(value, str) and value.strip().startswith("<") and value.strip().endswith(">"):
                 # This is already XML content, parse it and add as a subtree
                 try:
@@ -231,11 +237,68 @@ class Agent:
         
         # Convert to string with pretty formatting
         xml_str = ET.tostring(root, encoding='unicode')
-        pretty_xml = minidom.parseString(xml_str).toprettyxml(indent="  ")
         
-        # Remove extra whitespace
-        lines = [line for line in pretty_xml.split('\n') if line.strip()]
-        return '\n'.join(lines)
+        # Use a custom function to format XML more cleanly
+        return self.pretty_format_xml(xml_str)
+    
+    def pretty_format_xml(self, xml_string: str) -> str:
+        """Format XML string in a cleaner way than minidom"""
+        try:
+            # Parse the XML
+            root = ET.fromstring(xml_string)
+            
+            # Function to recursively format XML
+            def format_elem(elem, level=0):
+                indent = "  " * level
+                result = []
+                
+                # Add opening tag with attributes
+                attrs = " ".join([f'{k}="{v}"' for k, v in elem.attrib.items()])
+                tag_open = f"{indent}<{elem.tag}{' ' + attrs if attrs else ''}>"
+                
+                # Check if element has children or text
+                children = list(elem)
+                if children or (elem.text and elem.text.strip()):
+                    result.append(tag_open)
+                    
+                    # Add text if present
+                    if elem.text and elem.text.strip():
+                        text_lines = elem.text.strip().split('\n')
+                        if len(text_lines) > 1:
+                            # Multi-line text
+                            result.append("")
+                            for line in text_lines:
+                                result.append(f"{indent}  {line}")
+                            result.append("")
+                        else:
+                            # Single line text
+                            result.append(f"{indent}  {elem.text.strip()}")
+                    
+                    # Add children
+                    for child in children:
+                        result.extend(format_elem(child, level + 1))
+                    
+                    # Add closing tag
+                    result.append(f"{indent}</{elem.tag}>")
+                else:
+                    # Empty element
+                    result.append(f"{tag_open}</{elem.tag}>")
+                
+                return result
+            
+            # Format the XML
+            formatted = format_elem(root)
+            return "\n".join(formatted)
+            
+        except ET.ParseError:
+            # Fallback to minidom if our custom formatter fails
+            try:
+                pretty_xml = minidom.parseString(xml_string).toprettyxml(indent="  ")
+                lines = [line for line in pretty_xml.split('\n') if line.strip()]
+                return '\n'.join(lines)
+            except:
+                # If all else fails, return the original string
+                return xml_string
     
     def update_plan(self, task_id: str, new_status: str, notes: Optional[str] = None, progress: Optional[str] = None) -> str:
         """Update the status of a task in the plan"""
