@@ -869,8 +869,13 @@ def run_with_iterations(main_repo_path, args, iterations_to_use, start_time=None
                 
         return False
     except Exception as e:
-        console.print(f"[bold red]Error:[/bold red] {str(e)}")
-        console.print(f"[dim]{traceback.format_exc()}[/dim]")
+        # Escape the error message to prevent markup interpretation
+        error_msg = str(e).replace("[", "\\[").replace("]", "\\]")
+        console.print(f"[bold red]Error:[/bold red] {error_msg}")
+        
+        # Also escape the traceback
+        traceback_text = traceback.format_exc().replace("[", "\\[").replace("]", "\\]")
+        console.print(f"[dim]{traceback_text}[/dim]")
         return False
 
 
@@ -936,8 +941,13 @@ def main():
         try:
             run_with_iterations(main_repo_path, args, args.max_iterations, start_time)
         except Exception as e:
-            console.print(f"[bold red]Error:[/bold red] {str(e)}")
-            console.print(f"[dim]{traceback.format_exc()}[/dim]")
+            # Escape the error message to prevent markup interpretation
+            error_msg = str(e).replace("[", "\\[").replace("]", "\\]")
+            console.print(f"[bold red]Error:[/bold red] {error_msg}")
+            
+            # Also escape the traceback
+            traceback_text = traceback.format_exc().replace("[", "\\[").replace("]", "\\]")
+            console.print(f"[dim]{traceback_text}[/dim]")
             sys.exit(1)
 
 
