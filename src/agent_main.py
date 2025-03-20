@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# Make sure this file is executable with: chmod +x agent
 
 import os
 import sys
