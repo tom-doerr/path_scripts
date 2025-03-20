@@ -4,19 +4,22 @@ Command handling for the agent interface.
 
 import os
 import sys
-import json
 import datetime
 import xml.etree.ElementTree as ET
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.syntax import Syntax
 from rich.markdown import Markdown
 
 from src.agent.core import Agent
-from src.utils.xml_tools import extract_xml_from_response, format_xml_response
-from .display import display_help, display_plan_tree
+from src.utils.xml_tools import extract_xml_from_response
+from .display import display_help, display_plan_tree, display_models, get_system_info
 from src.interface.input import process_user_input, save_chat_history
+from src.utils.input_schema import format_input_message
+from src.agent.plan import generate_plan, update_plan
+from src.utils.web_search import search_web
+from src.utils.xml_tools import pretty_format_xml
 
 
 def process_command(
@@ -28,6 +31,7 @@ def process_command(
     multiline_input_mode: bool,
     multiline_input_buffer: List[str],
 ) -> None:
+    """Process a command and handle the result."""
     """
     Process a command and handle the result.
 
@@ -69,7 +73,7 @@ def process_command(
         if multiline_input_mode:
             multiline_input_mode = False
             if multiline_input_buffer:
-                full_input = "\n".join(multiline_input_buffer)
+                _ = "\n".join(multiline_input_buffer)  # Store but don't use
                 console.print(
                     f"[dim]Processing {len(multiline_input_buffer)} lines of input...[/dim]"
                 )
@@ -89,7 +93,6 @@ def process_command(
         try:
             # Format the XML for display
             memory_root = ET.fromstring(memory_content)
-            from ..utils.xml_tools import pretty_format_xml
 
             formatted_memory = pretty_format_xml(
                 ET.tostring(memory_root, encoding="unicode")
@@ -131,7 +134,6 @@ def process_command(
 
     # Handle model commands
     elif cmd == "models":
-        from .display import display_models
 
         display_models(agent, console)
         return
@@ -155,7 +157,7 @@ def process_command(
             "llama3": "openrouter/meta-llama/llama-3-70b-instruct",
         }
 
-        if model_name in model_aliases:
+        model_name = model_aliases.get(model_name, model_name)
             model_name = model_aliases[model_name]
 
         agent.model_name = model_name
@@ -194,8 +196,6 @@ def process_command(
                 agent.stream_callback = stream_callback
 
                 # Import the input schema formatter
-                from src.utils.input_schema import format_input_message
-                from src.interface.display import get_system_info
 
                 # Get system information
                 system_info = get_system_info()
@@ -206,7 +206,6 @@ def process_command(
                     system_info=system_info,
                 )
 
-                from ..agent.plan import generate_plan
 
                 result = generate_plan(agent, spec, formatted_message)
 
@@ -285,7 +284,6 @@ def process_command(
                 return
 
         with console.status(f"[bold blue]Updating task {task_id}...[/bold blue]"):
-            from ..agent.plan import update_plan
 
             result = update_plan(agent, task_id, status, notes, progress)
 
@@ -327,7 +325,7 @@ def process_command(
                 try:
                     dt = datetime.datetime.fromisoformat(timestamp)
                     time_str = f"[dim]{dt.strftime('%Y-%m-%d %H:%M:%S')}[/dim]"
-                except:
+                except Exception:
                     time_str = f"[dim]{timestamp}[/dim]"
 
             # Format based on role
@@ -343,7 +341,7 @@ def process_command(
                     try:
                         root = ET.fromstring(message_xml)
                         message_text = root.text if root.text else ""
-                        console.print(f"[bold blue]Assistant:[/bold blue]")
+                        console.print("[bold blue]Assistant:[/bold blue]")
                         console.print(Markdown(message_text))
                     except ET.ParseError:
                         console.print(
@@ -400,15 +398,6 @@ def _load_persistent_memory() -> str:
         return "<memory></memory>"
 
 
-def process_command(
-    agent,
-    command: List[str],
-    chat_history: List[Dict[str, Any]],
-    history_file: str,
-    console: Console,
-    multiline_input_mode: bool,
-    multiline_input_buffer: List[str],
-) -> None:
     """
     Process a command and handle the result.
 
@@ -541,7 +530,7 @@ def process_command(
             "llama3": "openrouter/meta-llama/llama-3-70b-instruct",
         }
 
-        if model_name in model_aliases:
+        model_name = model_aliases.get(model_name, model_name)
             model_name = model_aliases[model_name]
 
         agent.model_name = model_name
@@ -559,7 +548,6 @@ def process_command(
             console.print("[bold red]Error:[/bold red] Please provide a search query")
             return
         
-        from src.utils.web_search import search_web
         query = " ".join(args)
         results = search_web(query)
         
@@ -579,4 +567,3 @@ def process_command(
         console.print("Type [bold]/help[/bold] for available commands")
 
 
-from src.utils.helpers import load_persistent_memory

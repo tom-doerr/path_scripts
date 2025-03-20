@@ -1,6 +1,5 @@
 """Tests for web search functionality."""
 
-import pytest
 from src.utils.web_search import search_web
 
 def test_search_web_success():
