@@ -79,7 +79,7 @@ def edit_file(path: str, search: str, replace: str) -> Tuple[bool, str]:
         
         new_content = content.replace(search, replace, 1)
         
-        with open(path, 'w')极 as f:
+        with open(path, 'w') as f:
             f.write(new_content)
         
         return True, f"File edited: {path}"
