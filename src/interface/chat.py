@@ -70,10 +70,11 @@ def process_chat_message(
   </system>
 </xml>"""
     
-    # Print the full prompt for debugging
-    print("\n=== Message Sent to Model ===\n")
-    print(prompt)
-    print("\n=== End Message ===\n")
+    # Print the full prompt for debugging only if verbose mode is enabled
+    if getattr(agent, 'config', {}).get('verbose', False):
+        print("=== Message Sent to Model ===")
+        print(prompt)
+        print("=== End Message ===")
     
     # Return the XML-formatted prompt
     
@@ -181,9 +182,10 @@ def _continue_execution_with_context(
   </system>
 </xml>"""
     
-    # Print the full prompt
-    print(prompt)
-    print("\n=== End Message ===\n")
+    # Print the full prompt only if verbose mode is enabled
+    if getattr(agent, 'config', {}).get('verbose', False):
+        print(prompt)
+        print("=== End Message ===")
     
     # Set a callback to handle streaming in the interface
     def stream_callback(content, is_reasoning=False):
@@ -213,14 +215,15 @@ def process_chat_response(
     save_history_callback: Callable
 ):
     """Process the XML response from the model chat"""
-    # Display full XML response
-    console.print("[bold blue]Full Agent Response XML:[/bold blue]")
-    try:
-        formatted_xml = agent.pretty_format_xml(response)
-        console.print(Syntax(formatted_xml, "xml", theme="monokai", line_numbers=True))
-    except Exception as e:
-        console.print(f"[red]Error formatting XML: {e}[/red]")
-        console.print(response)
+    # Display full XML response (only if verbose mode is enabled)
+    if getattr(agent, 'config', {}).get('verbose', False):
+        console.print("[bold blue]Full Agent Response XML:[/bold blue]")
+        try:
+            formatted_xml = agent.pretty_format_xml(response)
+            console.print(Syntax(formatted_xml, "xml", theme="monokai", line_numbers=True))
+        except Exception as e:
+            console.print(f"[red]Error formatting XML: {e}[/red]")
+            console.print(response)
 
     # Extract different parts of the response
     message_xml = agent.extract_xml_from_response(response, "message")
