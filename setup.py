@@ -7,6 +7,7 @@ setup(
     install_requires=[
         "rich",
         "litellm",
+        "textual>=0.52.1",
     ],
     scripts=['bin/agent'],
     entry_points={
