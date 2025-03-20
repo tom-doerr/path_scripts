@@ -14,15 +14,21 @@ from rich.prompt import Prompt
 from rich.markdown import Markdown
 
 # Import the Agent class from the agent script
-# Use a local import with the full path to avoid package conflicts
 import os
 import sys
 # Get the absolute path of the current script
 current_dir = os.path.dirname(os.path.abspath(__file__))
 # Add the current directory to the path
 sys.path.insert(0, current_dir)
-# Now import the Agent class directly
-from agent import Agent
+# Import the Agent class by directly loading the module
+agent_path = os.path.join(current_dir, "agent")
+sys.path.insert(0, os.path.dirname(agent_path))
+# Use importlib to load the module dynamically
+import importlib.util
+spec = importlib.util.spec_from_file_location("agent_module", agent_path)
+agent_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(agent_module)
+Agent = agent_module.Agent
 
 class AgentInterface:
     def __init__(self):
