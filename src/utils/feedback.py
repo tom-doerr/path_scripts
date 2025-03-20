@@ -1,6 +1,6 @@
 """Feedback mechanisms for the agent, including dopamine rewards."""
 
-from typing import Dict, Any, Optional
+from typing import Optional
 import random
 from rich.console import Console
 
@@ -31,18 +31,17 @@ class DopamineReward:
 
         if quality_score >= 90:
             return "🌟 [bold green]DOPAMINE SURGE![/bold green] Exceptional work!"
-        elif quality_score >= 75:
+        if quality_score >= 75:
             return "😊 [green]DOPAMINE BOOST![/green] Great job!"
-        elif quality_score >= 60:
+        if quality_score >= 60:
             return "🙂 [blue]DOPAMINE TRICKLE[/blue] Good progress."
-        elif quality_score >= 40:
+        if quality_score >= 40:
             return "😐 [yellow]DOPAMINE NEUTRAL[/yellow] Acceptable."
-        elif quality_score >= 20:
+        if quality_score >= 20:
             return "😕 [orange]DOPAMINE DIP[/orange] Could be better."
-        else:
-            return "😟 [red]DOPAMINE LOW[/red] Needs improvement."
+        return "😟 [red]DOPAMINE LOW[/red] Needs improvement."
 
-    def reward_for_xml_response(self, response: str, observation: str) -> str:
+    def reward_for_xml_response(self, _response: str, observation: str) -> str:
         """
         Analyze the XML response and observation to determine a reward.
 
