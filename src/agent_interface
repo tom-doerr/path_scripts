@@ -1326,7 +1326,7 @@ class AgentInterface:
             <search>Old information to replace</search>
             <replace>Updated information</replace>
           </edit>
-          <add>New information to remember</add>
+          <append>New information to remember</append>
         </memory_updates>
         
         6. Execution status:
@@ -1663,15 +1663,14 @@ class AgentInterface:
                         memory_root = ET.fromstring(memory_str)
             
             # Process additions - just add text directly to memory
-            for add in updates_root.findall("./add"):
-                add_text = add.text if add.text else ""
-                if add_text:
-                    # Let the agent structure the memory as it wants
-                    # Just add the content directly to the memory root
+            for append in updates_root.findall("./append"):
+                append_text = append.text if append.text else ""
+                if append_text:
+                    # Append to existing memory text
                     if memory_root.text is None:
-                        memory_root.text = add_text
+                        memory_root.text = append_text
                     else:
-                        memory_root.text += "\n" + add_text
+                        memory_root.text += "\n" + append_text
             
             # Save the updated memory
             updated_memory = self.agent.pretty_format_xml(ET.tostring(memory_root, encoding='unicode'))
