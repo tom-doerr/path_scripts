@@ -19,34 +19,43 @@ def process_user_input(agent, user_input: str, chat_history: List[Dict[str, Any]
         history_file: Path to the history file
         console: Rich console instance
     """
-    # Format user message as XML if it's not already
-    if not user_input.strip().startswith("<"):
-        formatted_message = f"<user_message>{user_input}</user_message>"
-    else:
-        formatted_message = user_input
-    
     # Add user message to history
     timestamp = datetime.datetime.now().isoformat()
     chat_history.append({
         "role": "user",
-        "content": formatted_message,
+        "content": user_input,
         "timestamp": timestamp
     })
     save_chat_history(chat_history, history_file)
     
+    # Format history for the prompt
+    formatted_history = _format_history_for_prompt(chat_history)
+    
+    # Get persistent memory
+    memory_content = _load_persistent_memory()
+    
+    # Get system information
+    from src.interface.display import get_system_info
+    system_info = get_system_info()
+    
+    # Import the input schema formatter
+    from src.utils.input_schema import format_input_message
+    
+    # Format the message with XML tags using the schema
+    formatted_input = format_input_message(
+        message=user_input,
+        system_info=system_info,
+        memory=memory_content,
+        history=formatted_history
+    )
+    
     # Process the message using the chat module
     from src.interface.chat import process_chat_message, process_chat_response
     
-    # Get the full prompt
-    system_info = {
-        "platform": os.environ.get("PLATFORM", "unknown"),
-        "shell": os.environ.get("SHELL", "unknown"),
-    }
-    
     prompt = process_chat_message(
-        formatted_message, 
-        _format_history_for_prompt(chat_history), 
-        _load_persistent_memory(),
+        formatted_input, 
+        formatted_history, 
+        memory_content,
         system_info
     )
     

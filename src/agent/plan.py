@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Tuple, Optional
 
 from ..utils.xml_tools import extract_xml_from_response, format_xml_response
 
-def generate_plan(agent, spec: str) -> str:
+def generate_plan(agent, spec: str, formatted_message: str = None) -> str:
     """
     Generate a plan tree based on the specification.
     
