@@ -39,10 +39,11 @@ def test_search_web_long_query():
 
 def test_search_web_error_handling(monkeypatch):
     """Test error handling when API fails."""
+
     def mock_get(*args, **kwargs):
         raise requests.RequestException("API Error")
-    
+
     monkeypatch.setattr(requests, "get", mock_get)
-    
+
     results = search_web("test")
     assert results == []

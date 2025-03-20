@@ -26,7 +26,7 @@ def search_web(query: str) -> List[Dict[str, str]]:
                 "format": "json",
                 "no_html": 1,
                 "skip_disambig": 1,
-                "no_redirect": 1
+                "no_redirect": 1,
             },
             timeout=10,
         )

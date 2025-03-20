@@ -205,7 +205,6 @@ def process_command(
                     system_info=system_info,
                 )
 
-
                 result = generate_plan(agent, spec, formatted_message)
 
                 # Save the plan to a file
@@ -396,7 +395,6 @@ def _load_persistent_memory() -> str:
         print(f"Could not load memory: {e}")
         return "<memory></memory>"
 
-
     """
     Process a command and handle the result.
 
@@ -545,15 +543,16 @@ def _load_persistent_memory() -> str:
         if not args:
             console.print("[bold red]Error:[/bold red] Please provide a search query")
             return
-        
+
         query = " ".join(args)
         from src.utils.web_search import search_web
+
         results = search_web(query)
-        
+
         if not results:
             console.print("[bold yellow]No results found[/bold yellow]")
             return
-            
+
         console.print(f"[bold blue]Search results for '{query}':[/bold blue]")
         for i, result in enumerate(results, 1):
             console.print(f"{i}. [bold]{result['title']}[/bold]")
@@ -565,14 +564,14 @@ def _load_persistent_memory() -> str:
         if not args:
             console.print("[bold red]Error:[/bold red] Please provide a search query")
             return
-        
+
         query = " ".join(args)
         results = search_web(query)
-        
+
         if not results:
             console.print("[bold yellow]No results found[/bold yellow]")
             return
-            
+
         console.print(f"[bold blue]Search results for '{query}':[/bold blue]")
         for i, result in enumerate(results, 1):
             console.print(f"{i}. [bold]{result['title']}[/bold]")
@@ -583,5 +582,3 @@ def _load_persistent_memory() -> str:
     else:
         console.print(f"[bold red]Unknown command:[/bold red] {cmd}")
         console.print("Type [bold]/help[/bold] for available commands")
-
-
