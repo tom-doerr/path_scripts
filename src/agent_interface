@@ -1568,13 +1568,7 @@ class AgentInterface:
         
         You are continuing a task based on the results of previous commands.
         
-        Based on these results, please continue with the task. You can:
-        1. Provide additional information or explanation using <message> tags
-        2. Suggest new commands to run using <shell_commands> tags
-        3. Suggest file modifications using <file_edits> tags
-        4. Suggest actions using <actions> tags
-        
-        Respond using the appropriate XML tags for each part of your response.
+        Based on these results, please continue with the task. You must respond using the XML schema above.
         """
         
         # Print the full prompt
