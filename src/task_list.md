@@ -62,9 +62,9 @@
    - Notes: Would provide better layout and interaction capabilities
 
 4. **Refactor Code for Maintainability** - Improve code organization and reduce complexity.
-   - Priority: LOW
-   - Status: Not started
-   - Notes: Focus on keeping the codebase simple and maintainable
+   - Priority: MEDIUM
+   - Status: In progress
+   - Notes: Moving functionality from agent.py to specialized modules
 
 5. **Add Command Aliases** - Allow users to define custom aliases for common commands.
    - Priority: LOW

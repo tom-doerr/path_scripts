@@ -4,12 +4,16 @@
 import os
 import sys
 import json
-import subprocess
-import xml.etree.ElementTree as ET
-import xml.dom.minidom as minidom
 from typing import Dict, List, Optional, Any, Tuple
 import litellm
 from rich.console import Console
+
+# Import refactored modules
+from agent.repository import analyze_repository
+from agent.plan import generate_plan, update_plan, check_dependencies, apply_plan_updates
+from agent.task import execute_task
+from utils.xml_operations import extract_xml_from_response, format_xml_response, pretty_format_xml
+from utils.feedback import DopamineReward
 
 class Agent:
     def __init__(self, model_name: str = "openrouter/deepseek/deepseek-r1"):
@@ -25,106 +29,12 @@ class Agent:
         
     def initialize(self, repo_path: str = ".") -> None:
         """Initialize the agent with repository information"""
-        self.repository_info = self.analyze_repository(repo_path)
+        self.repository_info = analyze_repository(repo_path)
         print(f"Agent initialized for repository: {repo_path}")
-        
-    def analyze_repository(self, repo_path: str) -> Dict[str, Any]:
-        """Analyze the repository structure and return information"""
-        repo_info = {
-            "files": [],
-            "directories": [],
-            "git_info": {}
-        }
-        
-        # Get list of files (excluding .git directory)
-        try:
-            result = subprocess.run(
-                ["git", "ls-files"], 
-                cwd=repo_path,
-                capture_output=True, 
-                text=True, 
-                check=True
-            )
-            repo_info["files"] = result.stdout.strip().split("\n")
-        except subprocess.CalledProcessError:
-            # Fallback if git command fails
-            for root, dirs, files in os.walk(repo_path):
-                if ".git" in root:
-                    continue
-                for file in files:
-                    full_path = os.path.join(root, file)
-                    rel_path = os.path.relpath(full_path, repo_path)
-                    repo_info["files"].append(rel_path)
-                for dir in dirs:
-                    if dir != ".git":
-                        full_path = os.path.join(root, dir)
-                        rel_path = os.path.relpath(full_path, repo_path)
-                        repo_info["directories"].append(rel_path)
-        
-        # Get git info if available
-        try:
-            result = subprocess.run(
-                ["git", "branch", "--show-current"], 
-                cwd=repo_path,
-                capture_output=True, 
-                text=True, 
-                check=True
-            )
-            repo_info["git_info"]["current_branch"] = result.stdout.strip()
-        except subprocess.CalledProcessError:
-            repo_info["git_info"]["current_branch"] = "unknown"
-            
-        return repo_info
     
     def generate_plan(self, spec: str) -> str:
         """Generate a plan tree based on the specification"""
-        prompt = f"""
-        Based on the following specification, create a hierarchical plan as an XML tree.
-        
-        SPECIFICATION:
-        {spec}
-        
-        REPOSITORY INFORMATION:
-        {json.dumps(self.repository_info, indent=2)}
-        
-        Create a detailed plan with tasks and subtasks. The plan should be in XML format with the following structure:
-        
-        <plan>
-          <task id="root" description="Main project goal">
-            <task id="task1" description="Component 1">
-              <task id="task1.1" description="Subtask 1.1" status="pending" complexity="medium" depends_on="" progress="0" />
-              <task id="task1.2" description="Subtask 1.2" status="pending" complexity="low" depends_on="task1.1" progress="0" />
-            </task>
-            <task id="task2" description="Component 2">
-              <task id="task2.1" description="Subtask 2.1" status="pending" complexity="high" depends_on="task1.2" progress="0" />
-            </task>
-          </task>
-        </plan>
-        
-        Each task should have:
-        - A unique id
-        - A clear description
-        - A status (pending, in-progress, completed, failed)
-        - A complexity estimate (low, medium, high)
-        - Dependencies (depends_on attribute with comma-separated task IDs)
-        - Progress indicator (0-100)
-        - Subtasks where appropriate
-        
-        Think step by step about the dependencies between tasks and how to break down the problem effectively.
-        """
-        
-        print("\n=== Prompt Sent to Model ===\n")
-        print(prompt)
-        print("\n=== End Prompt ===\n")
-        response = self.stream_reasoning(prompt)
-        
-        # Extract XML from the response
-        xml_content = self.extract_xml_from_response(response, "plan")
-        if xml_content:
-            self.plan_tree = xml_content
-            return self.format_xml_response({"plan": xml_content})
-        else:
-            return self.format_xml_response({"error": "Failed to generate plan"})
+        return generate_plan(self, spec)
     
     def extract_xml_from_response(self, response: str, tag_name: str) -> Optional[str]:
         """Extract XML content for a specific tag from the response"""
@@ -341,365 +251,26 @@ class Agent:
     
     def update_plan(self, task_id: str, new_status: str, notes: Optional[str] = None, progress: Optional[str] = None) -> str:
         """Update the status of a task in the plan"""
-        if not self.plan_tree:
-            return self.format_xml_response({"error": "No plan exists"})
-        
-        try:
-            # Parse the plan tree
-            root = ET.fromstring(self.plan_tree)
-            
-            # Find the task with the given ID
-            task_found = False
-            for task in root.findall(".//task[@id='{}']".format(task_id)):
-                task.set("status", new_status)
-                if notes:
-                    task.set("notes", notes)
-                if progress and progress.isdigit() and 0 <= int(progress) <= 100:
-                    task.set("progress", progress)
-                task_found = True
-            
-            if not task_found:
-                return self.format_xml_response({"error": f"Task {task_id} not found"})
-            
-            # Update the plan tree
-            self.plan_tree = ET.tostring(root, encoding='unicode')
-            
-            return self.format_xml_response({
-                "plan": self.plan_tree,
-                "status": f"Updated task {task_id} to {new_status}"
-            })
-            
-        except Exception as e:
-            return self.format_xml_response({"error": f"Error updating plan: {str(e)}"})
+        return update_plan(self, task_id, new_status, notes, progress)
     
     def display_plan_tree(self) -> str:
         """Display the current plan tree"""
         if not self.plan_tree:
-            return self.format_xml_response({"error": "No plan exists"})
+            return format_xml_response({"error": "No plan exists"})
         
-        return self.format_xml_response({"plan": self.plan_tree})
+        return format_xml_response({"plan": self.plan_tree})
     
     def apply_plan_updates(self, plan_update_xml: str) -> None:
         """Apply updates to the plan tree based on the plan_update XML"""
-        if not self.plan_tree:
-            return
-        
-        try:
-            # Parse the plan tree and updates
-            plan_root = ET.fromstring(self.plan_tree)
-            updates_root = ET.fromstring(plan_update_xml)
-            
-            # Track changes for reporting
-            changes = []
-            
-            # Process add_task elements
-            for add_task in updates_root.findall("./add_task"):
-                parent_id = add_task.get("parent_id")
-                
-                # Find the parent task
-                parent = plan_root.find(f".//task[@id='{parent_id}']")
-                if parent is not None:
-                    # Create a new task element
-                    new_task = ET.Element("task")
-                    
-                    # Copy all attributes from add_task to new_task
-                    for attr, value in add_task.attrib.items():
-                        if attr != "parent_id":  # Skip the parent_id attribute
-                            new_task.set(attr, value)
-                    
-                    # Add the new task to the parent
-                    parent.append(new_task)
-                    changes.append(f"Added new task {new_task.get('id')}: {new_task.get('description')}")
-            
-            # Process modify_task elements
-            for modify_task in updates_root.findall("./modify_task"):
-                task_id = modify_task.get("id")
-                
-                # Find the task to modify
-                task = plan_root.find(f".//task[@id='{task_id}']")
-                if task is not None:
-                    old_desc = task.get("description", "")
-                    # Update attributes
-                    for attr, value in modify_task.attrib.items():
-                        if attr != "id":  # Skip the id attribute
-                            task.set(attr, value)
-                    new_desc = task.get("description", "")
-                    if old_desc != new_desc:
-                        changes.append(f"Modified task {task_id}: {old_desc} -> {new_desc}")
-                    else:
-                        changes.append(f"Updated attributes for task {task_id}")
-            
-            # Process remove_task elements
-            for remove_task in updates_root.findall("./remove_task"):
-                task_id = remove_task.get("id")
-                
-                # Find the task to remove
-                task = plan_root.find(f".//task[@id='{task_id}']")
-                if task is not None:
-                    desc = task.get("description", "")
-                    # ElementTree in Python doesn't have getparent() method
-                    # We need to find the parent manually
-                    for potential_parent in plan_root.findall(".//task"):
-                        for child in potential_parent.findall("./task"):
-                            if child.get("id") == task_id:
-                                potential_parent.remove(child)
-                                changes.append(f"Removed task {task_id}: {desc}")
-                                break
-            
-            # Update the plan tree
-            self.plan_tree = ET.tostring(plan_root, encoding='unicode')
-            
-            # Report changes
-            if changes:
-                print("\nPlan has been updated by the agent:")
-                for change in changes:
-                    print(f"- {change}")
-            
-        except Exception as e:
-            print(f"Error applying plan updates: {e}")
+        apply_plan_updates(self, plan_update_xml)
     
     def check_dependencies(self, task_id: str) -> Tuple[bool, List[str]]:
         """Check if all dependencies for a task are completed"""
-        if not self.plan_tree:
-            return False, ["No plan exists"]
-        
-        try:
-            # Parse the plan tree
-            root = ET.fromstring(self.plan_tree)
-            
-            # Find the task with the given ID
-            task_element = root.find(f".//task[@id='{task_id}']")
-            if task_element is None:
-                return False, [f"Task {task_id} not found"]
-            
-            # Get dependencies
-            depends_on = task_element.get("depends_on", "")
-            if not depends_on:
-                return True, []  # No dependencies
-            
-            # Check each dependency
-            dependency_ids = [dep.strip() for dep in depends_on.split(",") if dep.strip()]
-            incomplete_deps = []
-            
-            for dep_id in dependency_ids:
-                dep_element = root.find(f".//task[@id='{dep_id}']")
-                if dep_element is None:
-                    incomplete_deps.append(f"Dependency {dep_id} not found")
-                    continue
-                
-                status = dep_element.get("status", "")
-                if status != "completed":
-                    desc = dep_element.get("description", "")
-                    incomplete_deps.append(f"Dependency {dep_id} ({desc}) is not completed (status: {status})")
-            
-            return len(incomplete_deps) == 0, incomplete_deps
-            
-        except Exception as e:
-            return False, [f"Error checking dependencies: {str(e)}"]
+        return check_dependencies(self, task_id)
     
     def execute_task(self, task_id: str) -> str:
         """Execute a specific task from the plan"""
-        if not self.plan_tree:
-            return self.format_xml_response({"error": "No plan exists"})
-        
-        try:
-            # Parse the plan tree
-            root = ET.fromstring(self.plan_tree)
-            
-            # Find the task with the given ID
-            task_element = root.find(f".//task[@id='{task_id}']")
-            if task_element is None:
-                return self.format_xml_response({"error": f"Task {task_id} not found"})
-            
-            # Get task details
-            description = task_element.get("description", "")
-            current_status = task_element.get("status", "pending")
-            
-            # Check if task is already completed
-            if current_status == "completed":
-                return self.format_xml_response({
-                    "warning": f"Task {task_id} is already marked as completed",
-                    "task": {
-                        "id": task_id,
-                        "description": description,
-                        "status": current_status
-                    }
-                })
-            
-            # Check dependencies
-            deps_met, missing_deps = self.check_dependencies(task_id)
-            if not deps_met:
-                return self.format_xml_response({
-                    "error": "Dependencies not met",
-                    "task": {
-                        "id": task_id,
-                        "description": description
-                    },
-                    "missing_dependencies": missing_deps
-                })
-            
-            # Update task status to in-progress
-            task_element.set("status", "in-progress")
-            task_element.set("progress", "10")  # Start with 10% progress
-            self.plan_tree = ET.tostring(root, encoding='unicode')
-            
-            print(f"Executing task {task_id}: {description}")
-            print(f"Status updated to: in-progress (10%)")
-            
-            # Get parent task information for context
-            parent_info = ""
-            for potential_parent in root.findall(".//task"):
-                for child in potential_parent.findall("./task"):
-                    if child.get("id") == task_id:
-                        parent_id = potential_parent.get("id")
-                        parent_desc = potential_parent.get("description")
-                        parent_info = f"This task is part of: {parent_id} - {parent_desc}"
-                        break
-                if parent_info:
-                    break
-            
-            # Generate actions for this task
-            prompt = f"""
-            I need to execute the following task:
-            
-            TASK ID: {task_id}
-            DESCRIPTION: {description}
-            {parent_info}
-            
-            REPOSITORY INFORMATION:
-            {json.dumps(self.repository_info, indent=2)}
-            
-            CURRENT PLAN:
-            {self.plan_tree}
-            
-            Generate the necessary actions to complete this task. The actions should be in XML format:
-            
-            <actions>
-              <action type="create_file" path="example.py">
-                # Python code here
-              </action>
-              <action type="modify_file" path="existing.py">
-                <change>
-                  <original>def old_function():</original>
-                  <new>def new_function():</new>
-                </change>
-              </action>
-              <action type="run_command" command="pytest tests/test_example.py" />
-            </actions>
-            
-            <!-- XML Schema for Response -->
-            <response>
-              <!-- Simple message to the user -->
-              <message>Your response text here</message>
-          
-              <!-- Actions to execute -->
-              <actions>
-                <action type="create_file" path="example.py">
-                  # Python code here
-                </action>
-                <action type="modify_file" path="existing.py">
-                  <change>
-                    <original>def old_function():</original>
-                    <new>def new_function():</new>
-                  </change>
-                </action>
-                <action type="run_command" command="pytest tests/test_example.py" />
-              </actions>
-          
-              <!-- File edits (search and replace) -->
-              <file_edits>
-                <edit path="path/to/file.py">
-                  <search>def old_function():</search>
-                  <replace>def new_function():</replace>
-                </edit>
-              </file_edits>
-          
-              <!-- Shell commands -->
-              <shell_commands>
-                <command safe_to_autorun="true">echo "Hello World"</command>
-                <command safe_to_autorun="false">rm -rf some_directory</command>
-              </shell_commands>
-          
-              <!-- Memory updates -->
-              <memory_updates>
-                <edit>
-                  <search>Old information to replace</search>
-                  <replace>Updated information</replace>
-                </edit>
-                <add>New information to remember</add>
-              </memory_updates>
-          
-              <!-- Execution status -->
-              <execution_status complete="true|false" needs_user_input="true|false">
-                <message>Status message explaining what's done or what's needed</message>
-              </execution_status>
-          
-              <!-- Plan updates -->
-              <plan_update>
-                <add_task parent_id="task1" id="task1.3" description="New subtask" status="pending" complexity="medium" depends_on="" progress="0" />
-                <modify_task id="task2" description="Updated description" />
-                <remove_task id="task3" />
-              </plan_update>
-            </response>
-            
-            Think step by step about what needs to be done to complete this task.
-            Focus on creating actions that are specific, concrete, and directly implement the task.
-            """
-            
-            # Update progress to 30% - planning phase
-            task_element.set("progress", "30")
-            self.plan_tree = ET.tostring(root, encoding='unicode')
-            print(f"Progress updated to: 30% (planning phase)")
-            
-            response = self.stream_reasoning(prompt)
-            
-            # Update progress to 50% - actions generated
-            task_element.set("progress", "50")
-            self.plan_tree = ET.tostring(root, encoding='unicode')
-            print(f"Progress updated to: 50% (actions generated)")
-            
-            # Extract actions XML from the response
-            actions_xml = self.extract_xml_from_response(response, "actions")
-            plan_update_xml = self.extract_xml_from_response(response, "plan_update")
-            
-            # Apply plan updates if present
-            if plan_update_xml:
-                self.apply_plan_updates(plan_update_xml)
-            
-            if actions_xml:
-                # Update progress to 70% - ready for execution
-                task_element.set("progress", "70")
-                self.plan_tree = ET.tostring(root, encoding='unicode')
-                print(f"Progress updated to: 70% (ready for execution)")
-                
-                return self.format_xml_response({
-                    "task": {
-                        "id": task_id,
-                        "description": description,
-                        "progress": "70"
-                    },
-                    "actions": actions_xml,
-                    "plan_update": plan_update_xml if plan_update_xml else None
-                })
-            else:
-                # Update task status to failed
-                task_element.set("status", "failed")
-                task_element.set("notes", "Failed to generate actions")
-                task_element.set("progress", "0")
-                self.plan_tree = ET.tostring(root, encoding='unicode')
-                print(f"Task {task_id} failed: Could not generate actions")
-                
-                return self.format_xml_response({
-                    "error": "Failed to generate actions for task",
-                    "task": {
-                        "id": task_id,
-                        "description": description,
-                        "status": "failed"
-                    }
-                })
-                
-        except Exception as e:
-            return self.format_xml_response({"error": f"Error executing task: {str(e)}"})
+        return execute_task(self, task_id)
 
 def main():
     """Main function to handle command line arguments and run the agent"""

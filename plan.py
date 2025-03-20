@@ -5,7 +5,7 @@ import json
 import xml.etree.ElementTree as ET
 from typing import Dict, Any, List, Tuple, Optional
 
-from utils.xml_tools import extract_xml_from_response, format_xml_response
+from utils.xml_operations import extract_xml_from_response, format_xml_response
 from utils.feedback import DopamineReward
 
 def generate_plan(agent, spec: str) -> str:
