@@ -13,6 +13,7 @@ from src.agent.repository import analyze_repository
 from src.agent.plan import generate_plan, update_plan, check_dependencies, apply_plan_updates
 from src.agent.task import execute_task
 from src.utils.xml_operations import extract_xml_from_response, format_xml_response, pretty_format_xml
+from src.utils.xml_tools import extract_xml_from_response as extract_xml_alt
 from src.utils.feedback import DopamineReward
 
 class Agent:

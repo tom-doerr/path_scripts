@@ -348,3 +348,181 @@ def _load_persistent_memory() -> str:
     except Exception as e:
         print(f"Could not load memory: {e}")
         return "<memory></memory>"
+import os
+import sys
+import json
+import datetime
+import subprocess
+import xml.etree.ElementTree as ET
+from typing import List, Dict, Any, Optional, Tuple
+from rich.console import Console
+from rich.panel import Panel
+from rich.tree import Tree
+from rich.syntax import Syntax
+from rich.prompt import Prompt
+from rich.markdown import Markdown
+
+from src.interface.display import display_help, display_plan_tree
+from src.interface.actions import execute_action, execute_shell_command
+from src.utils.xml_schema import get_schema
+
+def process_command(
+    agent, 
+    command: List[str], 
+    chat_history: List[Dict[str, Any]], 
+    history_file: str,
+    console: Console,
+    multiline_input_mode: bool,
+    multiline_input_buffer: List[str]
+) -> None:
+    """
+    Process a command and handle the result.
+    
+    Args:
+        agent: The agent instance
+        command: List of command parts
+        chat_history: The chat history
+        history_file: Path to the history file
+        console: Rich console instance
+        multiline_input_mode: Whether multiline input mode is active
+        multiline_input_buffer: Buffer for multiline input
+    """
+    if not command:
+        return
+    
+    cmd = command[0].lower()
+    args = command[1:]
+    
+    # Handle paste mode commands
+    if cmd == "paste":
+        multiline_input_mode = True
+        multiline_input_buffer.clear()
+        console.print("[bold yellow]Entering multiline paste mode. Type /end when finished.[/bold yellow]")
+        return
+    
+    if cmd == "end":
+        if multiline_input_mode:
+            multiline_input_mode = False
+            if multiline_input_buffer:
+                full_input = "\n".join(multiline_input_buffer)
+                console.print(f"[dim]Processing {len(multiline_input_buffer)} lines of input...[/dim]")
+                # This would need to call back to the interface to process the input
+                # For now, just acknowledge
+                console.print("[yellow]Input processing would happen here[/yellow]")
+                multiline_input_buffer.clear()
+            else:
+                console.print("[yellow]No input to process[/yellow]")
+        else:
+            console.print("[yellow]Not in paste mode[/yellow]")
+        return
+    
+    if cmd == "help":
+        display_help(console)
+    
+    elif cmd == "exit":
+        console.print("[bold blue]Exiting...[/bold blue]")
+        sys.exit(0)
+    
+    elif cmd == "init":
+        with console.status("[bold blue]Initializing agent...[/bold blue]"):
+            agent.initialize()
+        console.print("[bold green]Agent initialized successfully[/bold green]")
+    
+    elif cmd == "plan":
+        # Use spec.md by default if no file specified
+        spec_file = args[0] if args else "spec.md"
+        console.print(f"[bold blue]Using specification file:[/bold blue] {spec_file}")
+        try:
+            with open(spec_file, 'r') as f:
+                spec = f.read()
+            
+            console.print(f"[bold blue]Using model:[/bold blue] {agent.model_name}")
+            
+            # Initialize if not already done
+            if not agent.repository_info:
+                with console.status("[bold blue]Initializing agent...[/bold blue]"):
+                    agent.initialize()
+            
+            # Generate plan - don't use status context manager to allow streaming
+            console.print("[bold blue]Generating plan...[/bold blue]")
+            try:
+                # Set a callback to handle streaming in the interface
+                def stream_callback(content, is_reasoning=False):
+                    if is_reasoning:
+                        # Use yellow color for reasoning tokens
+                        console.print(f"[yellow]{content}[/yellow]", end="")
+                    else:
+                        # Use rich for normal content
+                        console.print(content, end="", highlight=False)
+                        
+                # Pass the callback to the agent
+                agent.stream_callback = stream_callback
+                result = agent.generate_plan(spec)
+                        
+                # Save the plan to a file
+                with open("agent_plan.xml", 'w') as f:
+                    f.write(result)
+                        
+                # Extract plan XML for display
+                plan_xml = agent.extract_xml_from_response(result, "plan")
+                if plan_xml:
+                    console.print("\n\n[bold blue]Generated Plan:[/bold blue]")
+                    display_plan_tree(console, result)
+                else:
+                    console.print("[bold red]Error:[/bold red] No plan found in response")
+                            
+                console.print("[bold green]Plan saved to agent_plan.xml[/bold green]")
+                        
+            except KeyboardInterrupt:
+                console.print("\n[bold yellow]Operation cancelled by user[/bold yellow]")
+            
+        except FileNotFoundError:
+            console.print(f"[bold red]Error:[/bold red] Specification file '{spec_file}' not found")
+    
+    elif cmd == "model":
+        if not args:
+            console.print(f"[bold blue]Current model:[/bold blue] {agent.model_name}")
+            return
+            
+        model_name = args[0]
+        
+        # Check for model aliases
+        model_aliases = {
+            "flash": "openrouter/google/gemini-2.0-flash-001",
+            "r1": "deepseek/deepseek-reasoner",
+            "claude": "openrouter/anthropic/claude-3.7-sonnet"
+        }
+        
+        if model_name in model_aliases:
+            model_name = model_aliases[model_name]
+            
+        agent.model_name = model_name
+        console.print(f"[bold green]Model changed to:[/bold green] {agent.model_name}")
+    
+    elif cmd == "models":
+        console.print("[bold blue]Available models:[/bold blue]")
+        console.print("- [bold]flash[/bold]: openrouter/google/gemini-2.0-flash-001")
+        console.print("- [bold]r1[/bold]: deepseek/deepseek-reasoner")
+        console.print("- [bold]claude[/bold]: openrouter/anthropic/claude-3.7-sonnet")
+        console.print("\n[bold blue]Current model:[/bold blue] " + agent.model_name)
+    
+    else:
+        console.print(f"[bold red]Unknown command:[/bold red] {cmd}")
+        console.print("Type [bold]/help[/bold] for available commands")
+
+def _load_persistent_memory() -> str:
+    """Load memory from file"""
+    memory_file = "agent_memory.xml"
+    try:
+        if os.path.exists(memory_file):
+            with open(memory_file, 'r') as f:
+                return f.read()
+        else:
+            # Create default memory structure - simple and flexible
+            default_memory = "<memory>\n  <!-- Agent can structure this as needed -->\n</memory>"
+            with open(memory_file, 'w') as f:
+                f.write(default_memory)
+            return default_memory
+    except Exception as e:
+        print(f"Could not load memory: {e}")
+        return "<memory></memory>"
