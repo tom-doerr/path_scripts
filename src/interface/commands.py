@@ -559,21 +559,4 @@ def process_command(
         console.print("Type [bold]/help[/bold] for available commands")
 
 
-def _load_persistent_memory() -> str:
-    """Load memory from file"""
-    memory_file = "agent_memory.xml"
-    try:
-        if os.path.exists(memory_file):
-            with open(memory_file, "r") as f:
-                return f.read()
-        else:
-            # Create default memory structure - simple and flexible
-            default_memory = (
-                "<memory>\n  <!-- Agent can structure this as needed -->\n</memory>"
-            )
-            with open(memory_file, "w") as f:
-                f.write(default_memory)
-            return default_memory
-    except Exception as e:
-        print(f"Could not load memory: {e}")
-        return "<memory></memory>"
+from src.utils.helpers import load_persistent_memory
