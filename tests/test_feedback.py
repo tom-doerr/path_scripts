@@ -54,7 +54,7 @@ def test_empty_feedback():
 def test_score_boundaries():
     """Test score boundary conditions."""
     reward = DopamineReward(Console())
-    
+
     # Test exact boundary scores
     assert "SURGE" in reward.generate_reward(90)
     assert "BOOST" in reward.generate_reward(75)
