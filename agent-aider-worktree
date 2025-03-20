@@ -258,7 +258,7 @@ def _add_test_samples_to_context(f, worktree_path):
 
 
 # Aider integration
-def run_aider(worktree_path, task, args, model="r1", inner_loop_count=3):
+def run_aider(worktree_path, task, args, model=DEFAULT_MODEL, inner_loop_count=3):
     """Run aider with the given task."""
     console.print(Panel(f"[bold]Running aider with task:[/bold]\n{task}", style="cyan"))
     
@@ -512,7 +512,7 @@ def _merge_to_main(main_repo_path, main_branch, branch_name):
             no_python_files=False,
             inner_loop=1,
             max_iterations=1
-        ), model=DEFAULT_MODEL)
+        ))
         
         # Check if conflicts were resolved
         diff_result = run_command("git diff --name-only --diff-filter=U", cwd=main_repo_path, check=False)
@@ -620,7 +620,7 @@ def run_iteration(iteration, max_iterations, worktree_path, task, args, start_ti
     generate_context(worktree_path)
     
     # Run aider
-    run_aider(worktree_path, task, args, args.model)
+    run_aider(worktree_path, task, args, model=args.model)
     
     # Check if tests pass after aider run
     return run_tests(worktree_path)
