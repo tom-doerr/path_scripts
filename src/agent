@@ -202,7 +202,7 @@ class Agent:
                 if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'reasoning_content'):
                     reasoning = chunk.choices[0].delta.reasoning_content
                     if reasoning:
-                        # Clean up control chars
+                        # Clean up control chars and handle newlines
                         clean_reasoning = reasoning.replace('\r', '').replace('\b', '')
                         
                         # Use callback if available, otherwise use console
@@ -210,7 +210,16 @@ class Agent:
                             self.stream_callback(clean_reasoning, is_reasoning=True)
                         else:
                             # Use yellow color for reasoning
-                            self.console.print(f"[yellow]{clean_reasoning}[/yellow]", end='')
+                            # Only print newline if the content actually contains one
+                            if '\n' in clean_reasoning:
+                                # Split by newline and print each line
+                                for i, line in enumerate(clean_reasoning.split('\n')):
+                                    if i > 0:  # Only add newline before lines after the first
+                                        self.console.print("")
+                                    if line:  # Only print non-empty lines
+                                        self.console.print(f"[yellow]{line}[/yellow]", end='')
+                            else:
+                                self.console.print(f"[yellow]{clean_reasoning}[/yellow]", end='')
                         reasoning_output += clean_reasoning
             
             print("\n\n--- End of Reasoning ---\n")
