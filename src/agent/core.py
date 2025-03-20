@@ -60,9 +60,6 @@ class Agent:
         print(prompt)
         print("\n=== End Message ===\n")
         
-        # Get terminal height and add that many newlines to preserve history
-        terminal_height = self._get_terminal_height()
-        print("\n" * terminal_height)
         
         if not self.config["stream_reasoning"]:
             # Non-streaming mode
@@ -167,20 +164,6 @@ class Agent:
                 
             return full_response or error_response
     
-    def _get_terminal_height(self) -> int:
-        """
-        Get the terminal height for proper screen clearing.
-        
-        Returns:
-            The height of the terminal in lines
-        """
-        try:
-            import shutil
-            terminal_size = shutil.get_terminal_size()
-            return terminal_size.lines
-        except Exception:
-            # Fallback to a reasonable default if we can't get the terminal size
-            return 40
 
 
 if __name__ == "__main__":
