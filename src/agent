@@ -550,7 +550,7 @@ def main():
         print("Usage: ./agent [--model MODEL_NAME] <command> [arguments]")
         print("Commands:")
         print("  init                  - Initialize the agent")
-        print("  plan <spec_file>      - Generate a plan from specification")
+        print("  plan [spec_file]      - Generate a plan from specification (default: spec.md)")
         print("  display               - Display the current plan")
         print("  update <task_id> <status> [--notes=text] [--progress=0-100] - Update task status")
         print("  execute <task_id>     - Execute a specific task")
@@ -566,11 +566,9 @@ def main():
         print("Agent initialized successfully")
     
     elif command == "plan":
-        if len(sys.argv) < 3:
-            print("Error: Missing specification file")
-            sys.exit(1)
-        
-        spec_file = sys.argv[2]
+        # Use spec.md by default if no file specified
+        spec_file = sys.argv[2] if len(sys.argv) > 2 else "spec.md"
+        print(f"Using specification file: {spec_file}")
         try:
             with open(spec_file, 'r') as f:
                 spec = f.read()

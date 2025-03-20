@@ -39,7 +39,7 @@ class AgentInterface:
         self.console.print("[bold]Available Commands:[/bold]")
         self.console.print("")
         self.console.print("[bold green]init[/bold green]", "- Initialize the agent")
-        self.console.print("[bold green]plan <spec_file>[/bold green]", "- Generate a plan from specification")
+        self.console.print("[bold green]plan [spec_file][/bold green]", "- Generate a plan from specification (default: spec.md)")
         self.console.print("[bold green]display[/bold green]", "- Display the current plan")
         self.console.print("[bold green]update <task_id> <status> [--notes=text] [--progress=0-100][/bold green]", "- Update task status")
         self.console.print("[bold green]execute <task_id>[/bold green]", "- Execute a specific task (with confirmation)")
@@ -282,11 +282,9 @@ class AgentInterface:
             self.console.print(f"[bold green]Model changed to:[/bold green] {self.agent.model_name}")
         
         elif cmd == "plan":
-            if not args:
-                self.console.print("[bold red]Error:[/bold red] Missing specification file")
-                return
-            
-            spec_file = args[0]
+            # Use spec.md by default if no file specified
+            spec_file = args[0] if args else "spec.md"
+            self.console.print(f"[bold blue]Using specification file:[/bold blue] {spec_file}")
             try:
                 with open(spec_file, 'r') as f:
                     spec = f.read()
@@ -506,10 +504,17 @@ class AgentInterface:
         while True:
             try:
                 user_input = Prompt.ask("\n[bold blue]>[/bold blue]")
+                if user_input.lower() in ["exit", "quit", "q"]:
+                    self.console.print("[bold blue]Exiting...[/bold blue]")
+                    sys.exit(0)
                 command = user_input.strip().split()
                 self.run_command(command)
             except KeyboardInterrupt:
-                self.console.print("\n[bold yellow]Use 'exit' to quit[/bold yellow]")
+                self.console.print("\n[bold yellow]Exiting...[/bold yellow]")
+                sys.exit(0)
+            except EOFError:  # Handle Ctrl+D
+                self.console.print("\n[bold yellow]Exiting...[/bold yellow]")
+                sys.exit(0)
             except Exception as e:
                 self.console.print(f"[bold red]Error:[/bold red] {e}")
 
