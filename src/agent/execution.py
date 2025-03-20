@@ -101,7 +101,7 @@ def execute_task(agent, task_id: str) -> str:
           <action type="modify_file" path="existing.py">
             <change>
               <original>def old_function():</original>
-              <new>极def new_function():</new>
+              <new>def new_function():</new>
             </change>
           </action>
           <action type="run_command" command="pytest tests/test_example.py" />
