@@ -186,7 +186,7 @@ class Agent:
                         clean_content = content.replace('\r', '').replace('\b', '')
                         # Remove any potential token markers or brackets that might be causing display issues
                         clean_content = clean_content.replace('[', '').replace(']', '')
-                        print(clean_content, end='')
+                        self.console.print(clean_content, end='')
                         full_response += clean_content
                 
                 # Handle reasoning content separately (for deepseek models)
@@ -198,7 +198,7 @@ class Agent:
                         tokens = clean_reasoning.split(' ')
                         
                         # Print full reasoning content with rich color
-                        self.console.print(f"[yellow]{clean_reasoning}[/yellow]", end='', flush=True)
+                        self.console.print(f"[yellow]{clean_reasoning}[/yellow]", end='')
                         reasoning_output += clean_reasoning + ' '
             
             print("\n\n--- End of Reasoning ---\n")
