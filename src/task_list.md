@@ -103,10 +103,10 @@
     - Status: Completed
     - Notes: Added confirmation dialog showing diff before applying changes
 
-4. **Generate Output from Top of Terminal** - Ensure all output starts from the top of the terminal.
+4. **Generate Output Without Clearing Terminal** - Ensure output preserves terminal history.
    - Priority: HIGH
    - Status: Completed
-   - Notes: Implemented display_from_top function that preserves terminal history while starting output from the top
+   - Notes: Removed terminal clearing functionality to preserve all previous output
 
 5. **Fix System Info Display** - Ensure system information is properly displayed without errors.
    - Priority: HIGH
