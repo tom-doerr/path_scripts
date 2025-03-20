@@ -401,12 +401,24 @@ def _update_worktree(worktree_path, main_branch, branch_name, task, args):
     console.print(f"[bold blue]Merging changes from {main_branch}...[/bold blue]")
     merge_result = run_command(f"git merge origin/{main_branch}", cwd=worktree_path, check=False)
     
-    # Check if there are conflicts
-    status_result = run_command("git status --porcelain", cwd=worktree_path)
-    has_conflicts = "UU" in status_result.stdout
+    # Check if there are conflicts using multiple methods
+    has_conflicts = False
     
-    if has_conflicts or merge_result.returncode != 0:
-        console.print("[bold yellow]Merge conflicts detected. Running aider to resolve them.[/bold yellow]")
+    # Method 1: Check if MERGE_HEAD exists (indicates an in-progress merge)
+    merge_head_exists = os.path.exists(os.path.join(worktree_path, ".git", "MERGE_HEAD"))
+    
+    # Method 2: Use git diff to find unmerged files
+    unmerged_files = []
+    if merge_result.returncode != 0 or merge_head_exists:
+        diff_result = run_command("git diff --name-only --diff-filter=U", cwd=worktree_path, check=False)
+        unmerged_files = diff_result.stdout.strip().split('\n') if diff_result.stdout.strip() else []
+        has_conflicts = len(unmerged_files) > 0
+    
+    if has_conflicts:
+        console.print("[bold yellow]Merge conflicts detected in the following files:[/bold yellow]")
+        for file in unmerged_files:
+            if file:  # Skip empty lines
+                console.print(f"  - [yellow]{file}[/yellow]")
         
         # Create conflict resolution task
         conflict_task = f"Resolve all git merge conflicts while preserving functionality. Original task: {task}"
@@ -423,14 +435,24 @@ def _update_worktree(worktree_path, main_branch, branch_name, task, args):
         run_aider(worktree_path, conflict_task, conflict_args, model=args.model)
         
         # Verify conflicts were resolved
-        status_result = run_command("git status --porcelain", cwd=worktree_path)
-        if "UU" in status_result.stdout:
-            console.print("[bold red]Unresolved conflicts remain after aider run.[/bold red]")
+        diff_result = run_command("git diff --name-only --diff-filter=U", cwd=worktree_path, check=False)
+        remaining_conflicts = diff_result.stdout.strip().split('\n') if diff_result.stdout.strip() else []
+        
+        if remaining_conflicts and remaining_conflicts[0]:
+            console.print("[bold red]Unresolved conflicts remain after aider run:[/bold red]")
+            for file in remaining_conflicts:
+                if file:  # Skip empty lines
+                    console.print(f"  - [red]{file}[/red]")
             return False
         
         # Commit the resolved conflicts
         run_command("git add -A", cwd=worktree_path)
         run_command("git commit -m 'Resolved merge conflicts'", cwd=worktree_path, check=False)
+    elif merge_result.returncode != 0:
+        # Merge failed but not due to conflicts
+        console.print("[bold red]Merge failed for reasons other than conflicts:[/bold red]")
+        console.print(merge_result.stderr)
+        return False
     
     return True
 
@@ -461,8 +483,25 @@ def _merge_to_main(main_repo_path, main_branch, branch_name):
         return False
         
     merge_result = run_command(f"git merge --no-ff {branch_name}", cwd=main_repo_path, check=False)
-    if merge_result.returncode != 0:
+    
+    # Check for conflicts using multiple methods
+    has_conflicts = False
+    
+    # Method 1: Check if MERGE_HEAD exists (indicates an in-progress merge)
+    merge_head_exists = os.path.exists(os.path.join(main_repo_path, ".git", "MERGE_HEAD"))
+    
+    # Method 2: Use git diff to find unmerged files
+    unmerged_files = []
+    if merge_result.returncode != 0 or merge_head_exists:
+        diff_result = run_command("git diff --name-only --diff-filter=U", cwd=main_repo_path, check=False)
+        unmerged_files = diff_result.stdout.strip().split('\n') if diff_result.stdout.strip() else []
+        has_conflicts = len(unmerged_files) > 0
+    
+    if has_conflicts:
         console.print("[bold yellow]Merge conflict detected in main repo. Running aider to resolve...[/bold yellow]")
+        for file in unmerged_files:
+            if file:  # Skip empty lines
+                console.print(f"  - [yellow]{file}[/yellow]")
         
         # Create a task for resolving conflicts
         conflict_task = "Resolve all git merge conflicts while preserving functionality"
@@ -476,8 +515,10 @@ def _merge_to_main(main_repo_path, main_branch, branch_name):
         ), model=DEFAULT_MODEL)
         
         # Check if conflicts were resolved
-        status_result = run_command("git status --porcelain", cwd=main_repo_path)
-        if "UU" in status_result.stdout:
+        diff_result = run_command("git diff --name-only --diff-filter=U", cwd=main_repo_path, check=False)
+        remaining_conflicts = diff_result.stdout.strip().split('\n') if diff_result.stdout.strip() else []
+        
+        if remaining_conflicts and remaining_conflicts[0]:
             console.print("[bold red]Unresolved conflicts remain. Aborting merge.[/bold red]")
             run_command("git merge --abort", cwd=main_repo_path, check=False)
             return False
@@ -485,6 +526,12 @@ def _merge_to_main(main_repo_path, main_branch, branch_name):
         # Commit the resolved conflicts
         run_command("git add -A", cwd=main_repo_path)
         run_command("git commit -m 'Resolved merge conflicts'", cwd=main_repo_path, check=False)
+    elif merge_result.returncode != 0:
+        # Merge failed but not due to conflicts
+        console.print("[bold red]Merge failed for reasons other than conflicts:[/bold red]")
+        console.print(merge_result.stderr)
+        run_command("git merge --abort", cwd=main_repo_path, check=False)
+        return False
         
     push_result = run_command("git push", cwd=main_repo_path, check=False)
     if push_result.returncode != 0:
