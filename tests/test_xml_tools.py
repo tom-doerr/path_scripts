@@ -1,5 +1,4 @@
 """Tests for XML tools functionality."""
-import pytest
 from src.utils.xml_tools import extract_xml_from_response, pretty_format_xml
 
 SAMPLE_XML = """<response>
