@@ -4,6 +4,7 @@ from src.utils.xml_tools import (  # pylint: disable=no-name-in-module
     extract_xml_from_response,
     pretty_format_xml,
     validate_xml,
+    escape_xml_content,
 )
 
 SAMPLE_XML = """<response>

@@ -1,7 +1,7 @@
 """Tests for feedback functionality."""
 
 from rich.console import Console
-from src.utils.feedback import DopamineReward
+from src.utils.feedback import DopamineReward  # pylint: disable=no-name-in-module
 
 
 def test_initial_score_neutral():
