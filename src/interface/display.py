@@ -90,7 +90,7 @@ def display_help(console: Console):
     console.print("[bold green]/model [model_name][/bold green]", "- Change the model (aliases: flash, r1, claude)")
     console.print("[bold green]/models[/bold green]", "- List available models and aliases")
     console.print("[bold green]/history [count][/bold green]", "- Display chat history (default: last 10 messages)")
-    console.print("[bold green]/clear-history[/bold green]", "- Clear the chat history")
+    console.print("[bold green]/clear-history[/bold green] or [bold green]/reset[/bold green]", "- Clear the chat history")
     console.print("[bold green]/memory[/bold green]", "- Display the agent's memory")
     console.print("[bold green]/clear-memory[/bold green]", "- Clear the agent's memory")
     console.print("[bold green]/paste[/bold green]", "- Enter multiline paste mode (end with /end)")
