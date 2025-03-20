@@ -106,7 +106,7 @@
 4. **Generate Output from Top of Terminal** - Ensure all output starts from the top of the terminal.
    - Priority: HIGH
    - Status: Completed
-   - Notes: Using ANSI escape codes to position cursor at the top of the terminal
+   - Notes: Implemented display_from_top function that preserves terminal history while starting output from the top
 
 5. **Fix System Info Display** - Ensure system information is properly displayed without errors.
    - Priority: HIGH
