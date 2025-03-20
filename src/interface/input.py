@@ -273,30 +273,7 @@ def save_chat_history(chat_history: List[Dict[str, Any]], history_file: str):
         print(f"Could not save chat history: {e}")
 
 
-def _load_persistent_memory() -> str:
-    """
-    Load memory from file.
-
-    Returns:
-        Memory content as string
-    """
-    memory_file = "agent_memory.xml"
-    try:
-        if os.path.exists(memory_file):
-            with open(memory_file, "r") as f:
-                return f.read()
-        else:
-            # Create default memory structure - simple and flexible
-            default_memory = (
-                "<memory>\n  <!-- Agent can structure this as needed -->\n</memory>"
-            )
-            with open(memory_file, "w") as f:
-                f.write(default_memory)
-            return default_memory
-    except Exception as e:
-        print(f"Could not load memory: {e}")
-        return "<memory></memory>"
-
+from src.utils.helpers import load_persistent_memory
 
 def _update_persistent_memory(memory_updates_xml):
     """
@@ -355,16 +332,3 @@ def _update_persistent_memory(memory_updates_xml):
         print(f"Error updating memory: {e}")
 
 
-def _get_terminal_height() -> int:
-    """
-    Get the terminal height.
-
-    Returns:
-        Terminal height in lines
-    """
-    try:
-        import os
-
-        return os.get_terminal_size().lines
-    except:
-        return 24  # Fallback value
