@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 from typing import Dict, Any, List, Tuple, Optional
 
 from utils.xml_tools import extract_xml_from_response, format_xml_response
+from utils.feedback import DopamineReward
 
 def generate_plan(agent, spec: str) -> str:
     """
@@ -16,7 +17,7 @@ def generate_plan(agent, spec: str) -> str:
         spec: The specification text
         
     Returns:
-        Formatted XML response containing the plan
+        Formatted XML response containing the plan with dopamine feedback
     """
     prompt = f"""
     Based on the following specification, create a hierarchical plan as an XML tree.
@@ -59,9 +60,31 @@ def generate_plan(agent, spec: str) -> str:
     xml_content = extract_xml_from_response(response, "plan")
     if xml_content:
         agent.plan_tree = xml_content
-        return format_xml_response({"plan": xml_content})
+        
+        # Generate dopamine reward for successful plan creation
+        if hasattr(agent, 'dopamine_reward'):
+            dopamine = agent.dopamine_reward.generate_reward(75)  # Good score for successful plan
+        else:
+            # Create a new reward instance if not present
+            agent.dopamine_reward = DopamineReward(agent.console)
+            dopamine = agent.dopamine_reward.generate_reward(75)
+            
+        return format_xml_response({
+            "plan": xml_content,
+            "dopamine": dopamine
+        })
     else:
-        return format_xml_response({"error": "Failed to generate plan"})
+        # Generate dopamine reward for failed plan creation
+        if hasattr(agent, 'dopamine_reward'):
+            dopamine = agent.dopamine_reward.generate_reward(30)  # Low score for failure
+        else:
+            agent.dopamine_reward = DopamineReward(agent.console)
+            dopamine = agent.dopamine_reward.generate_reward(30)
+            
+        return format_xml_response({
+            "error": "Failed to generate plan",
+            "dopamine": dopamine
+        })
 
 def update_plan(agent, task_id: str, new_status: str, notes: Optional[str] = None, progress: Optional[str] = None) -> str:
     """
@@ -75,10 +98,20 @@ def update_plan(agent, task_id: str, new_status: str, notes: Optional[str] = Non
         progress: Optional progress value (0-100)
         
     Returns:
-        Formatted XML response with the updated plan
+        Formatted XML response with the updated plan and dopamine feedback
     """
     if not agent.plan_tree:
-        return format_xml_response({"error": "No plan exists"})
+        # Generate dopamine for error case
+        if hasattr(agent, 'dopamine_reward'):
+            dopamine = agent.dopamine_reward.generate_reward(25)
+        else:
+            agent.dopamine_reward = DopamineReward(agent.console)
+            dopamine = agent.dopamine_reward.generate_reward(25)
+            
+        return format_xml_response({
+            "error": "No plan exists",
+            "dopamine": dopamine
+        })
     
     try:
         # Parse the plan tree
@@ -100,13 +133,34 @@ def update_plan(agent, task_id: str, new_status: str, notes: Optional[str] = Non
         # Update the plan tree
         agent.plan_tree = ET.tostring(root, encoding='unicode')
         
+        # Generate dopamine reward for successful update
+        if hasattr(agent, 'dopamine_reward'):
+            # Higher score for completing tasks
+            score = 85 if new_status == "completed" else 70
+            dopamine = agent.dopamine_reward.generate_reward(score)
+        else:
+            agent.dopamine_reward = DopamineReward(agent.console)
+            score = 85 if new_status == "completed" else 70
+            dopamine = agent.dopamine_reward.generate_reward(score)
+            
         return format_xml_response({
             "plan": agent.plan_tree,
-            "status": f"Updated task {task_id} to {new_status}"
+            "status": f"Updated task {task_id} to {new_status}",
+            "dopamine": dopamine
         })
         
     except Exception as e:
-        return format_xml_response({"error": f"Error updating plan: {str(e)}"})
+        # Generate dopamine reward for error
+        if hasattr(agent, 'dopamine_reward'):
+            dopamine = agent.dopamine_reward.generate_reward(30)
+        else:
+            agent.dopamine_reward = DopamineReward(agent.console)
+            dopamine = agent.dopamine_reward.generate_reward(30)
+            
+        return format_xml_response({
+            "error": f"Error updating plan: {str(e)}",
+            "dopamine": dopamine
+        })
 
 def check_dependencies(agent, task_id: str) -> Tuple[bool, List[str]]:
     """
