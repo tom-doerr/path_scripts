@@ -1,6 +1,6 @@
 """Tests for XML tools functionality."""
 
-from src.utils.xml_tools import (
+from src.utils.xml_tools import (  # pylint: disable=no-name-in-module
     extract_xml_from_response,
     pretty_format_xml,
     validate_xml,
