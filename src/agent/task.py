@@ -270,26 +270,5 @@ def execute_task(agent, task_id: str) -> str:
     except Exception as e:
         return format_xml_response({"error": f"Error executing task: {str(e)}"})
 
-            # Generate dopamine reward for failure
-            if hasattr(agent, "dopamine_reward"):
-                dopamine = agent.dopamine_reward.generate_reward(30)
-            else:
-                from utils.feedback import DopamineReward
-
-                agent.dopamine_reward = DopamineReward(agent.console)
-                dopamine = agent.dopamine_reward.generate_reward(30)
-
-            return format_xml_response(
-                {
-                    "error": "Failed to generate actions for task",
-                    "task": {
-                        "id": task_id,
-                        "description": description,
-                        "status": "failed",
-                    },
-                    "dopamine": dopamine,
-                }
-            )
-
     except Exception as e:
         return format_xml_response({"error": f"Error executing task: {str(e)}"})
