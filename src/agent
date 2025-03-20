@@ -153,8 +153,9 @@ class Agent:
         print(prompt)
         print("\n=== End Message ===\n")
         
-        # Add many newlines to preserve history when scrolling up
-        print("\n" * 20)
+        # Get terminal height and add that many newlines to preserve history
+        terminal_height = self._get_terminal_height()
+        print("\n" * terminal_height)
         
         if not self.config["stream_reasoning"]:
             # Non-streaming mode
@@ -327,6 +328,16 @@ class Agent:
             except:
                 # If all else fails, return the original string
                 return xml_string
+                
+    def _get_terminal_height(self) -> int:
+        """Get the terminal height for proper screen clearing"""
+        try:
+            import shutil
+            terminal_size = shutil.get_terminal_size()
+            return terminal_size.lines
+        except Exception:
+            # Fallback to a reasonable default if we can't get the terminal size
+            return 40
     
     def update_plan(self, task_id: str, new_status: str, notes: Optional[str] = None, progress: Optional[str] = None) -> str:
         """Update the status of a task in the plan"""

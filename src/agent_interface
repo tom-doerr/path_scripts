@@ -1196,6 +1196,16 @@ class AgentInterface:
   <error><![CDATA[{context['error']}]]></error>
 </execution_context>"""
         return xml
+        
+    def _get_terminal_height(self) -> int:
+        """Get the terminal height for proper screen clearing"""
+        try:
+            import shutil
+            terminal_size = shutil.get_terminal_size()
+            return terminal_size.lines
+        except Exception:
+            # Fallback to a reasonable default if we can't get the terminal size
+            return 40
     
     def load_chat_history(self):
         """Load chat history from file if it exists"""
@@ -1218,8 +1228,9 @@ class AgentInterface:
     
     def chat_with_model(self, message: str):
         """Send a message directly to the model and handle the response"""
-        # Add many newlines to preserve history when scrolling up
-        print("\n" * 20)
+        # Get terminal height and add that many newlines to preserve history
+        terminal_height = self._get_terminal_height()
+        print("\n" * terminal_height)
         
         # Initialize agent if not already done
         if not self.agent.repository_info:
@@ -1494,8 +1505,9 @@ class AgentInterface:
         """Continue execution with the model using command execution context"""
         self.console.print("[bold blue]Continuing execution with command results...[/bold blue]")
         
-        # Add many newlines to preserve history when scrolling up
-        print("\n" * 20)
+        # Get terminal height and add that many newlines to preserve history
+        terminal_height = self._get_terminal_height()
+        print("\n" * terminal_height)
         
         # Extract message content if available
         message_content = ""
@@ -1697,8 +1709,9 @@ class AgentInterface:
     
     def process_chat_response(self, response: str):
         """Process the XML response from the model chat"""
-        # Add many newlines to preserve history when scrolling up
-        print("\n" * 20)
+        # Get terminal height and add that many newlines to preserve history
+        terminal_height = self._get_terminal_height()
+        print("\n" * terminal_height)
         
         # Extract different parts of the response
         message_xml = self.agent.extract_xml_from_response(response, "message")
