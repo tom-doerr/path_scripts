@@ -384,8 +384,8 @@ def _prepare_files_for_aider(worktree_path, args):
     if args.no_python_files:
         return []
     
-    # Limit number of files to avoid command line length issues
-    return [quote(f) for f in python_files[:20]]
+    # Include all Python files
+    return [quote(f) for f in python_files]
 
 
 # Git merge and push operations
