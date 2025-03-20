@@ -48,8 +48,8 @@
 
 2. **Add Vim-like Interface** - Implement vim-like navigation and editing in the interface.
    - Priority: LOW
-   - Status: Not started
-   - Notes: Will use Textual's custom key handlers to implement mode switching (normal/insert), navigation with j/k, and basic text manipulation commands.
+   - Status: In progress
+   - Notes: Implemented basic mode switching (normal/insert), history navigation with j/k, and simple text manipulation commands using Textual.
 
 3. **Add Textual UI Integration** - Consider integrating with Textual for a more advanced TUI.
    - Priority: LOW
