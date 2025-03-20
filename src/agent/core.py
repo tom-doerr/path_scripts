@@ -129,10 +129,14 @@ if __name__ == "__main__":
 import os
 import sys
 import json
+import threading
 import datetime
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, Callable
 import litellm
 from rich.console import Console
+from .plan import generate_plan, update_plan, check_dependencies, apply_plan_updates
+from .task import execute_task
+from utils.xml_operations import format_xml_response
 
 class Agent:
     """Main agent class for handling model interactions and reasoning."""
@@ -142,12 +146,12 @@ class Agent:
         self.model_name = model_name
         self.plan_tree = None
         self.plan_lock = threading.Lock()  # Thread safety for plan_tree access
-        self.repository_info = {}
+        self.repository_info: Dict[str, Any] = {}
         self.config = {
             "stream_reasoning": True,
             "verbose": True
         }
-        self.stream_callback = None
+        self.stream_callback: Optional[Callable[[str, bool], None]] = None
         
     def initialize(self, repo_path: str = ".") -> None:
         """Initialize the agent with repository information"""

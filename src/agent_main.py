@@ -16,11 +16,10 @@ from src.utils.xml_tools import extract_xml_from_response as extract_xml_alt
 from src.utils.feedback import DopamineReward
 
 from src.agent.core import Agent
-from typing import List, Dict, Optional, Any
+from typing import List, Optional
 import sys
 import litellm
 from rich.console import Console
-from utils.xml_operations import format_xml_response
 
 def main():
         """Stream the reasoning process from the model and return the final response"""
