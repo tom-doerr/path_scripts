@@ -7,12 +7,7 @@
    - Status: In progress
    - Notes: Need to improve the conversation flow and context preservation
 
-2. **Add File Editing Confirmation** - Add confirmation for each file edit before execution.
-   - Priority: HIGH
-   - Status: Not started
-   - Notes: Should show diff and ask for confirmation before applying changes
-
-3. **Improve Error Handling** - Add better error handling for API failures and timeouts.
+2. **Improve Error Handling** - Add better error handling for API failures and timeouts.
    - Priority: HIGH
    - Status: Not started
    - Notes: Need to handle API errors gracefully and provide helpful error messages
@@ -92,6 +87,11 @@
    - Priority: MEDIUM
    - Status: Completed
    - Notes: Added platform, Python version, and shell information to the welcome screen
+
+4. **Add File Editing Confirmation** - Add confirmation for each file edit before execution.
+    - Priority: HIGH
+    - Status: Completed
+    - Notes: Added confirmation dialog showing diff before applying changes
 
 4. **Generate Output from Top of Terminal** - Ensure all output starts from the top of the terminal.
    - Priority: HIGH
