@@ -5,14 +5,14 @@ import shutil
 from typing import Dict, Optional, Callable, Any, List, Tuple
 import litellm
 from rich.console import Console
-from src.agent.plan import (
+from .plan import (
     generate_plan,
     update_plan,
     check_dependencies,
     apply_plan_updates,
 )
-from src.agent.task import execute_task
-from src.utils.xml_tools import format_xml_response
+from .task import execute_task
+from ..utils.xml_tools import format_xml_response
 
 
 class Agent:
