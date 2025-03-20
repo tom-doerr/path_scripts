@@ -252,8 +252,9 @@ def _add_linting_to_context(f, worktree_path):
         lint_output = []
         for py_file in py_files[:5]:  # Limit to first 5 files
             if py_file.strip():
+                # Only focus on important issues (errors and warnings), ignore style/convention issues
                 lint_result = run_command(
-                    f"pylint {py_file}",
+                    f"pylint {py_file} --disable=C0303,C0111,C0103,C0301,C0411,C0412,C0413,W0311",
                     cwd=worktree_path,
                     check=False
                 )
@@ -263,8 +264,9 @@ def _add_linting_to_context(f, worktree_path):
         # Write lint output
         if lint_output:
             f.write('\n'.join(lint_output) + '\n')
+            f.write("\nNote: Minor style issues like trailing whitespace, import order, and line length are ignored.\n")
         else:
-            f.write("No linting issues found\n")
+            f.write("No significant linting issues found\n")
     else:
         console.print("[dim]No Python files found, skipping linting[/dim]")
         f.write("No Python files found for linting\n")
@@ -334,7 +336,7 @@ def run_aider(worktree_path, task, args, model=None, inner_loop_count=3):
         f"--chat-history-file {quote(history_file)} "
         f"--restore-chat-history "
         f"--edit-format diff "
-        f"--auto-lint --lint-cmd pylint "
+        f"--auto-lint --lint-cmd \"pylint --disable=C0303,C0111,C0103,C0301,C0411,C0412,C0413,W0311\" "
         f"--auto-test --test-cmd pytest "
         f"--message {quote(message)} "
         f"{' '.join(files_to_include)}"
