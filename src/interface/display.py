@@ -394,22 +394,12 @@ from rich.console import Console
 
 def display_from_top(console: Console, content: str, preserve_history: bool = True):
     """
-    Display content starting from the top of the terminal without erasing history.
+    Display content without clearing terminal history.
     
     Args:
         console: Rich console instance
         content: Content to display
-        preserve_history: Whether to preserve terminal history
+        preserve_history: Not used, kept for backward compatibility
     """
-    # Get terminal height
-    terminal_height = shutil.get_terminal_size().lines
-    
-    if preserve_history:
-        # Add newlines to push content to the top without erasing history
-        console.print("\n" * terminal_height)
-    else:
-        # Use ANSI escape to move cursor to top
-        console.print("\033[H", end="")
-    
-    # Print the actual content
+    # Simply print the content without any clearing or cursor manipulation
     console.print(content)
