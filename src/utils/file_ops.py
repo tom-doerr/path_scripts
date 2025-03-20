@@ -48,7 +48,7 @@ def write_file(path: str, content: str, create_dirs: bool = True) -> Tuple[bool,
         
         # Make executable if it's a Python file or has no extension
         if path.endswith('.py') or not os.path.splitext(path)[1]:
-            os.chmod(path, 极0o755)
+            os.chmod(path, 0o755)
             return True, f"File written and made executable: {path}"
         
         return True, f"File written: {path}"
