@@ -10,7 +10,7 @@
 2. **Fix Command Line Interface** - Make the agent command work globally.
    - Priority: HIGH
    - Status: In progress
-   - Notes: Need to fix the entry point in setup.py and ensure proper installation
+   - Notes: Created bin/agent script, but still need to resolve installation issues
 
 ## Medium Priority Tasks
 
@@ -48,8 +48,8 @@
 
 2. **Add Vim-like Interface** - Implement vim-like navigation and editing in the interface.
    - Priority: LOW
-   - Status: In progress
-   - Notes: Implemented basic mode switching (normal/insert), history navigation with j/k, and simple text manipulation commands using Textual.
+   - Status: Mostly complete
+   - Notes: Implemented mode switching (normal/insert), history navigation with j/k, cursor movement (0, $), and text manipulation commands (dd, x). Added configuration option to enable/disable.
 
 3. **Add Textual UI Integration** - Consider integrating with Textual for a more advanced TUI.
    - Priority: LOW
@@ -59,7 +59,7 @@
 4. **Refactor Code for Maintainability** - Improve code organization and reduce complexity.
    - Priority: MEDIUM
    - Status: In progress
-   - Notes: Moving functionality from agent.py to specialized modules
+   - Notes: Added configuration management, improved input handling, and enhanced Vim interface
 
 5. **Add Command Aliases** - Allow users to define custom aliases for common commands.
    - Priority: LOW

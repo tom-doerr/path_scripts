@@ -15,7 +15,8 @@ def get_user_input(
     console: Console,
     prompt: str = "> ",
     history: List[str] = None,
-    vim_mode: bool = True
+    vim_mode: bool = True,
+    config: Dict[str, Any] = None
 ) -> str:
     """
     Get input from the user with optional Vim-like interface.
@@ -25,13 +26,18 @@ def get_user_input(
         prompt: Input prompt to display
         history: Command history
         vim_mode: Whether to use Vim-like input mode
+        config: Configuration dictionary
         
     Returns:
         User input string
     """
+    # Check config for vim_mode setting if provided
+    if config is not None and "vim_mode" in config:
+        vim_mode = config["vim_mode"]
+    
     try:
         if vim_mode and VIM_INPUT_AVAILABLE:
-            console.print(prompt, end="")
+            console.print(f"[dim]{prompt}[/dim]", end="")
             return get_vim_input(console, history or [])
         else:
             # Fall back to regular input

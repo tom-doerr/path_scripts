@@ -60,6 +60,21 @@ class VimInput(App):
             self.mode = Mode.INSERT
             self.input.placeholder = "Enter command (Esc for normal mode)"
         
+        elif key == "a":
+            # Append (move cursor to end and switch to insert)
+            self.mode = Mode.INSERT
+            self.input.placeholder = "Enter command (Esc for normal mode)"
+            # Move cursor to end
+            self.input.cursor_position = len(self.input.value)
+        
+        elif key == "0":
+            # Move to beginning of line
+            self.input.cursor_position = 0
+            
+        elif key == "$":
+            # Move to end of line
+            self.input.cursor_position = len(self.input.value)
+        
         elif key == "j":
             # Navigate down in history
             if self.history and self.history_index < len(self.history) - 1:
@@ -73,11 +88,17 @@ class VimInput(App):
                 self.input.value = self.history[self.history_index]
         
         elif key == "d":
-            # dd to clear line (no need for is_repeat which isn't reliable)
+            # dd to clear line
             if getattr(self, '_last_key', None) == 'd':
                 self.input.value = ""
             self._last_key = 'd'
             return
+            
+        elif key == "x":
+            # Delete character under cursor
+            if self.input.value and self.input.cursor_position < len(self.input.value):
+                pos = self.input.cursor_position
+                self.input.value = self.input.value[:pos] + self.input.value[pos+1:]
         
         elif key == "enter":
             # Submit in normal mode too
