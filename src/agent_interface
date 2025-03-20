@@ -1228,9 +1228,8 @@ class AgentInterface:
     
     def chat_with_model(self, message: str):
         """Send a message directly to the model and handle the response"""
-        # Get terminal height and add that many newlines to preserve history
-        terminal_height = self._get_terminal_height()
-        print("\n" * terminal_height)
+        # Move cursor to top of terminal and clear scroll buffer
+        print("\x1b[3J\x1b[H\x1b[2J", end="")
         
         # Initialize agent if not already done
         if not self.agent.repository_info:
@@ -1505,9 +1504,8 @@ class AgentInterface:
         """Continue execution with the model using command execution context"""
         self.console.print("[bold blue]Continuing execution with command results...[/bold blue]")
         
-        # Get terminal height and add that many newlines to preserve history
-        terminal_height = self._get_terminal_height()
-        print("\n" * terminal_height)
+        # Move cursor to top of terminal and clear scroll buffer
+        print("\x1b[3J\x1b[H\x1c2J", end="")
         
         # Extract message content if available
         message_content = ""
