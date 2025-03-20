@@ -23,6 +23,18 @@ def process_chat_message(
     # Get the XML schema
     xml_schema = get_schema()
     
+    # Import the input schema formatter
+    from src.utils.input_schema import format_input_message
+    
+    # Format the message with XML tags using the schema if it's not already formatted
+    if not formatted_message.strip().startswith("<input>"):
+        formatted_message = format_input_message(
+            message=formatted_message,
+            system_info=system_info,
+            memory=memory_content,
+            history=formatted_history
+        )
+    
     # Construct a prompt that instructs the model to respond in XML format
     prompt = f"""
     <context>
@@ -172,6 +184,27 @@ def _continue_execution_with_context(
     # Get the XML schema
     xml_schema = get_schema()
     
+    # Get system information
+    from src.interface.display import get_system_info
+    system_info = get_system_info()
+    
+    # Import the input schema formatter
+    from src.utils.input_schema import format_input_message
+    
+    # Format the execution context
+    execution_context = {
+        "command": "Previous commands",
+        "output": contexts_xml,
+        "exit_code": 0
+    }
+    
+    # Format the message with XML tags using the schema
+    formatted_message = format_input_message(
+        message=message_content,
+        system_info=system_info,
+        execution_context=execution_context
+    )
+    
     # Print the model being used
     print("\n=== Message Sent to Model ===\n")
     print(f"Model: {agent.model_name}")
@@ -187,6 +220,7 @@ def _continue_execution_with_context(
         <time>{now.strftime('%H:%M:%S')}</time>
         <timezone>{timezone}</timezone>
       </system_info>
+      {formatted_message}
     </context>
     
     {xml_schema}

@@ -179,8 +179,17 @@ def process_command(
                 # Pass the callback to the agent
                 agent.stream_callback = stream_callback
                 
+                # Import the input schema formatter
+                from src.utils.input_schema import format_input_message
+                
+                # Format the message with XML tags using the schema
+                formatted_message = format_input_message(
+                    message=f"Generate a plan based on the following specification:\n\n{spec}",
+                    system_info=system_info
+                )
+                
                 from ..agent.plan import generate_plan
-                result = generate_plan(agent, spec)
+                result = generate_plan(agent, spec, formatted_message)
                         
                 # Save the plan to a file
                 with open("agent_plan.xml", 'w') as f:
