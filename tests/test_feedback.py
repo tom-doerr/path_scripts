@@ -8,8 +8,13 @@ project_root = str(Path(__file__).parent.parent)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+# Add src directory to Python path
+src_dir = str(Path(__file__).parent.parent / "src")
+if src_dir not in sys.path:
+    sys.path.insert(0, src_dir)
+
 from rich.console import Console
-from src.utils.feedback import DopamineReward
+from utils.feedback import DopamineReward
 
 
 def test_initial_score():
