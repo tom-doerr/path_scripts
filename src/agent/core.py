@@ -153,13 +153,6 @@ class Agent:
     
     def stream_reasoning(self, prompt: str) -> str:
         """Stream the reasoning process from the model and return the final response"""
-        messages = [{"role": "user", "content": prompt}]
-        
-        # Print the full message being sent to the model
-        print("\n=== Message Sent to Model ===\n")
-        print(f"Model: {self.model_name}")
-        print(prompt)
-        print("\n=== End Message ===\n")
         
         # Get terminal height and add that many newlines to preserve history
         terminal_height = self._get_terminal_height()
