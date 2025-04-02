@@ -895,9 +895,17 @@ def main():
     # Get absolute path to the main repository
     main_repo_path = os.path.abspath(args.path)
     
-    # Check if the path is a git repository
+    # Find git root directory by walking up the directory tree
+    current_path = main_repo_path
+    while current_path != '/':
+        if os.path.exists(os.path.join(current_path, ".git")):
+            main_repo_path = current_path
+            break
+        current_path = os.path.dirname(current_path)
+    
+    # Check if we found a git repository
     if not os.path.exists(os.path.join(main_repo_path, ".git")):
-        console.print(f"[bold red]Error:[/bold red] {main_repo_path} is not a git repository")
+        console.print(f"[bold red]Error:[/bold red] No git repository found in {main_repo_path} or its parent directories")
         sys.exit(1)
     
     # Start time for the entire process
