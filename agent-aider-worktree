@@ -332,10 +332,7 @@ def run_aider(worktree_path, task, args, model=None, weak_model=None, inner_loop
     
     # Add user-specified files to read
     for read_file in args.read:
-        if os.path.exists(read_file):
-            read_args.append(f"--read {quote(read_file)}")
-        else:
-            console.print(f"[bold yellow]Warning:[/bold yellow] Read file not found: {read_file}")
+        read_args.append(f"--read {quote(read_file)}")
     
     # Ensure we have Python files to work with
     files_to_include = _prepare_files_for_aider(worktree_path, args)
