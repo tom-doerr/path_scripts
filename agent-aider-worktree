@@ -916,8 +916,8 @@ def main():
     start_time = datetime.now()
     
     if args.exponential_retries:
-        # Start with just 1 iteration
-        iterations = 1
+        # Start with min_iterations
+        iterations = args.min_iterations
         success = False
         
         while iterations <= args.max_iterations and not success:
