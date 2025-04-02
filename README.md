@@ -1,92 +1,127 @@
-# Personal PATH Scripts Repository
+# Development Automation Tools
 
-Collection of utility scripts designed to be added to system PATH for easy command-line access
+A collection of powerful CLI tools for automating development workflows and task management.
 
-## Scripts
+## Tools Overview
 
-### 1. Taskwarrior Task Viewer (c)
+### 1. Agent Aider Worktree
 
-Simple bash wrapper for viewing Taskwarrior tasks with common filters
+Automates code improvements using AI agents in isolated git worktrees.
+
+#### Key Features
+- Creates isolated git worktrees for safe experimentation
+- Runs AI-powered code analysis and improvements
+- Automatically merges changes back to main branch
+- Handles merge conflicts intelligently
+- Test-driven development workflow
+- Exponential retry strategy for complex tasks
 
 #### Installation
 ```bash
-# Make executable and install to PATH
-chmod +x c
-sudo mv c /usr/local/bin/  # Or ~/.local/bin/ for user-specific install
+# Clone and install
+git clone <repository-url>
+cd <repository-name>
+pip install -r requirements.txt
 
-# Edit the script to point to your show_tw_tasks.py location
+# Add to PATH (optional)
+ln -s $PWD/agent-aider-worktree ~/.local/bin/
 ```
 
 #### Usage
-Basic usage with default filters (+PENDING -bu):
 ```bash
-c
-```
+# Basic usage
+agent-aider-worktree "Add user authentication"
 
-With additional filters and report name:
-```bash
-c "+work" "active" my_report
-```
+# With custom iterations and model
+agent-aider-worktree --max-iterations 20 --model claude-3-opus "Refactor database code"
 
-Disable default filters:
-```bash
-c -n "+customfilter" 
-c --no_default_filters "+otherfilter"
+# From a subdirectory
+agent-aider-worktree --exponential-retries "Fix login form validation"
 ```
 
 #### Command Line Options
-| Option | Description |
-|--------|-------------|
-| `-n`, `--no_default_filters` | Disable default task filters |
-
-#### Dependencies
-Requires tasklib and a local copy of `show_tw_tasks.py` from the user's scripts repository
-
-**Note:** The script contains an absolute path to `show_tw_tasks.py` that users will need to modify for their system
-
----
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--path` | Repository path | Current directory |
+| `--model` | AI model to use | deepseek-reasoner |
+| `--weak-model` | Secondary model | deepseek |
+| `--max-iterations` | Maximum iterations | 10 |
+| `--inner-loop` | Inner loop iterations | 10 |
+| `--exponential-retries` | Use exponential retry strategy | False |
+| `--no-push` | Skip pushing changes | False |
+| `--read` | Additional files to analyze | [] |
 
 ### 2. Aider Multi-Agent System
 
-A script to run multiple aider agents in parallel using tmux for code analysis and improvement.
+Runs multiple AI agents in parallel for distributed code analysis.
 
-#### Installation
-```bash
-chmod +x aider_multi_agent
-sudo mv aider_multi_agent /usr/local/bin/  # Optional: for global access
-```
+#### Key Features
+- Parallel agent execution in tmux sessions
+- Configurable models and iterations
+- Session persistence and recovery
+- Centralized management interface
 
 #### Usage
-Start multiple sessions:
 ```bash
-aider_multi_agent -n 3  # Starts 3 horizontal splits
-```
+# Start 3 parallel agents
+aider_multi_agent -n 3
 
-Stop all sessions:
-```bash
+# Use specific model
+aider_multi_agent -m claude-3-opus -n 2
+
+# Kill all sessions
 aider_multi_agent -k
 ```
 
-Check running sessions:
-```bash
-tmux list-sessions | grep aider_multi_agent
-```
-
 #### Options
-```
--h, --help      Show help message
--i ITERATIONS   Number of iterations (default: 1000)
--m MODEL        Model to use (default: r1)
--w WEAK_MODEL   Weak model to use (default: gemini-2.0-flash-001)
--n SESSIONS     Number of tmux sessions (default: 1)
--k              Kill all running sessions
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-n SESSIONS` | Number of agents | 1 |
+| `-m MODEL` | AI model | r1 |
+| `-w WEAK_MODEL` | Secondary model | gemini-2.0-flash-001 |
+| `-i ITERATIONS` | Max iterations | 1000 |
+| `-k` | Kill all sessions | - |
+
+### 3. Task Management (c)
+
+Streamlined interface for Taskwarrior with smart filtering.
+
+#### Installation
+```bash
+# Install to PATH
+cp c ~/.local/bin/
+chmod +x ~/.local/bin/c
+
+# Configure task script path
+export TASK_SCRIPT_PATH="/path/to/show_tw_tasks.py"
 ```
 
-#### Features
-- Parallel execution in tmux sessions
-- Horizontal splits for multiple agents 
-- Centralized session management
-- Configurable models and iterations
-- Automatic history management
-- Parallel task execution
-- Session persistence and recovery
+#### Usage
+```bash
+# Show pending tasks
+c
+
+# Filter by tag and report
+c "+work" "active"
+
+# Custom filters
+c -n "+project:home" "next"
+```
+
+## Dependencies
+
+- Python 3.8+
+- Git 2.25+
+- tmux
+- Taskwarrior (for task management)
+- Required Python packages in requirements.txt
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Submit a pull request
+
+## License
+
+MIT License - See LICENSE file for details
