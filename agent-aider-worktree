@@ -899,11 +899,11 @@ def main():
     # Parse arguments
     args = parse_arguments()
     
-    # Get absolute path to the main repository
-    main_repo_path = os.path.abspath(args.path)
+    # Get absolute path to current directory
+    current_dir = os.path.abspath(os.curdir)
     
     # Find git root directory by walking up the directory tree
-    current_path = main_repo_path
+    current_path = current_dir
     while current_path != '/':
         if os.path.exists(os.path.join(current_path, ".git")):
             main_repo_path = current_path
@@ -912,8 +912,12 @@ def main():
     
     # Check if we found a git repository
     if not os.path.exists(os.path.join(main_repo_path, ".git")):
-        console.print(f"[bold red]Error:[/bold red] No git repository found in {main_repo_path} or its parent directories")
+        console.print(f"[bold red]Error:[/bold red] No git repository found in {current_dir} or its parent directories")
         sys.exit(1)
+        
+    # Convert read file paths to be relative to git root
+    for i, read_file in enumerate(args.read):
+        args.read[i] = os.path.relpath(os.path.join(current_dir, read_file), main_repo_path)
     
     # Start time for the entire process
     start_time = datetime.now()
