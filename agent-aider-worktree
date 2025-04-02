@@ -364,14 +364,24 @@ def run_aider(worktree_path, task, args, model=None, weak_model=None, inner_loop
     
     # Run aider with proper environment
     console.print(f"[dim]Running aider in {worktree_path}[/dim]")
+    
+    # Get the original working directory
+    original_cwd = os.getcwd()
+    
+    # Change to worktree path before running aider
+    os.chdir(worktree_path)
+    
     process = subprocess.Popen(
         aider_cmd,
-        cwd=worktree_path,
         text=True,
         shell=True,
         env={**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONINSPECT": "0"}
     )
-    process.wait()
+    try:
+        process.wait()
+    finally:
+        # Always restore original working directory
+        os.chdir(original_cwd)
     
     console.print(f"[bold yellow]Aider session completed[/bold yellow]")
     
