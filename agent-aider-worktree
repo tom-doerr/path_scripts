@@ -756,6 +756,7 @@ def display_configuration(args, worktree_path, branch_name, current_iterations=N
     
     if current_iterations is not None:
         config_table.add_row("Current Iterations", str(current_iterations))
+    config_table.add_row("Min Iterations", str(args.min_iterations))
     config_table.add_row("Max Iterations", str(args.max_iterations))
     config_table.add_row("Inner Loop", str(args.inner_loop))
     config_table.add_row("Push Changes", "No" if args.no_push else "Yes")
