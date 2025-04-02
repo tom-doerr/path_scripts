@@ -1,6 +1,8 @@
-# Development Automation Tools
+# Path Scripts
 
-A collection of powerful CLI tools for automating development workflows and task management.
+A collection of powerful CLI tools for automating development workflows and task management. These scripts are designed to be added to your system PATH for easy command-line access.
+
+Repository: https://github.com/tom-doerr/path_scripts
 
 ## Tools Overview
 
@@ -19,8 +21,8 @@ Automates code improvements using AI agents in isolated git worktrees.
 #### Installation
 ```bash
 # Clone and install
-git clone <repository-url>
-cd <repository-name>
+git clone https://github.com/tom-doerr/path_scripts.git
+cd path_scripts
 pip install -r requirements.txt
 
 # Add to PATH (optional)
