@@ -715,6 +715,8 @@ Examples:
                         help=f"Model to use with aider (default: {DEFAULT_MODEL})")
     parser.add_argument("--weak-model", default=DEFAULT_WEAK_MODEL,
                         help=f"Weak model to use with aider (default: {DEFAULT_WEAK_MODEL})")
+    parser.add_argument("--min-iterations", type=int, default=1,
+                        help="Minimum number of iterations to run before accepting success (default: 1)")
     parser.add_argument("--max-iterations", type=int, default=10,
                         help="Maximum number of iterations to run (default: 10)")
     parser.add_argument("--inner-loop", type=int, default=10,
@@ -829,7 +831,8 @@ def handle_success(worktree_path, main_repo_path, branch_name, main_branch, task
 
 
 def run_with_iterations(main_repo_path, args, iterations_to_use, start_time=None):
-    """Run the task with a specific number of iterations."""
+    """Run the task with a specific number of iterations.
+    Won't exit before min_iterations even if tests pass."""
     if start_time is None:
         start_time = datetime.now()
         
@@ -855,11 +858,13 @@ def run_with_iterations(main_repo_path, args, iterations_to_use, start_time=None
                 iteration, iterations_to_use, worktree_path, args.task, args, start_time
             )
             
-            if tests_pass:
+            if tests_pass and iteration >= args.min_iterations:
                 # Handle successful test completion
                 if handle_success(worktree_path, main_repo_path, branch_name, main_branch, 
                                  args.task, args, iteration, start_time):
                     return True
+            elif tests_pass:
+                console.print(f"[yellow]Tests passed but continuing for minimum {args.min_iterations} iterations[/yellow]")
             
             iteration += 1
             
